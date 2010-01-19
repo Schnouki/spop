@@ -1,0 +1,14 @@
+# CMake stuff
+CMakeCache.txt
+CMakeFiles
+cmake_install.cmake
+Makefile
+
+# App key is private
+appkey.c
+
+# Binary
+spop
+
+# Temp files
+tmp
