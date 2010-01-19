@@ -10,6 +10,9 @@ set(SRC
   src/main.c
   src/session.c
 )
+set_source_files_properties(${SRC}
+  COMPILE_FLAGS "-O2 -Wall -Werror"
+)
 add_executable(spop ${SRC})
 
 target_link_libraries(spop ${SPOTIFY_LIBRARIES})

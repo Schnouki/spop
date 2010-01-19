@@ -1,0 +1,4 @@
+#!/bin/sh
+
+rm -rf CMakeCache.txt CMakeFiles cmake_install.cmake Makefile
+cmake -Wdev . && make clean all
