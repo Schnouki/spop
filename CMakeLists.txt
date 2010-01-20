@@ -8,6 +8,7 @@ pkg_check_modules(SPOTIFY REQUIRED libspotify>=0.0.3)
 set(SRC
   src/appkey.c
   src/main.c
+  src/oss.c
   src/session.c
 )
 set_source_files_properties(${SRC}

@@ -19,6 +19,7 @@
 #include <unistd.h>
 
 #include "spop.h"
+#include "audio.h"
 #include "session.h"
 
 int main(int argc, char** argv) {

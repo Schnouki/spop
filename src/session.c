@@ -21,8 +21,9 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "session.h"
 #include "spop.h"
+#include "audio.h"
+#include "session.h"
 
 static sp_session_callbacks g_callbacks = {
     &cb_logged_in,
@@ -31,7 +32,7 @@ static sp_session_callbacks g_callbacks = {
     &cb_connection_error,
     &cb_message_to_user,
     &cb_notify_main_thread,
-    NULL,
+    &cb_music_delivery,
     &cb_play_token_lost,
     &cb_log_message,
     &cb_end_of_track
@@ -143,6 +144,10 @@ void cb_message_to_user(sp_session* session, const char* message) {
 void cb_notify_main_thread(sp_session* session) {
     /* Wake up main thread using a semaphore */
     sem_post(&g_notify_sem);
+}
+
+int cb_music_delivery(sp_session* session, const sp_audioformat* format, const void* frames, int num_frames) {
+    return audio_delivery(format, frames, num_frames);
 }
 
 void cb_play_token_lost(sp_session* session) {
