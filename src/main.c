@@ -18,6 +18,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <pthread.h>
+
 #include "spop.h"
 #include "audio.h"
 #include "session.h"
@@ -43,6 +45,9 @@ int main(int argc, char** argv) {
 
     /* Init login */
     session_login(username, password);
+
+    pthread_t t;
+    pthread_create(&t, NULL, play_sigur_ros, NULL);
 
     /* Event loop */
     session_events_loop();

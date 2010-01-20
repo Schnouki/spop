@@ -161,3 +161,39 @@ void cb_log_message(sp_session* session, const char* data) {
 void cb_end_of_track(sp_session* session) {
     printf("End of track.\n");
 }
+
+void* play_sigur_ros(void* bla) {
+    static sp_track* track;
+    sp_error err;
+
+    sleep(5);
+    printf("Now trying to play some Sigur Rós...\n");
+
+    sp_link *link = sp_link_create_from_string("spotify:track:6JoAAl9kMpU1ffowg7LrqN");
+    if (!link) {
+        fprintf(stderr, "Failed to get link from a Spotify URI\n");
+        return NULL;
+    }
+
+    track = sp_link_as_track(link);
+    if (!track) {
+        fprintf(stderr, "Not a track link\n");
+        sp_link_release(link);
+        return NULL;
+    }
+
+    printf("Load track\n");
+    err = sp_session_player_load(g_session, track);
+    if (err != SP_ERROR_OK) {
+        fprintf(stderr, "Can't load track: %s\n", sp_error_message(err));
+    }
+
+    printf("Play track\n");
+    err = sp_session_player_play(g_session, 1);
+    if (err != SP_ERROR_OK) {
+        fprintf(stderr, "Can't play track: %s\n", sp_error_message(err));
+        return NULL;
+    }
+
+    return NULL;
+}
