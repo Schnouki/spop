@@ -27,8 +27,12 @@ void session_events_loop();
 /* Callbacks */
 void cb_logged_in(sp_session* session, sp_error error);
 void cb_logged_out(sp_session* session);
+void cb_metadata_updated(sp_session* session);
+void cb_connection_error(sp_session* session, sp_error error);
 void cb_message_to_user(sp_session* session, const char* message);
 void cb_notify_main_thread(sp_session* session);
+void cb_play_token_lost(sp_session* session);
 void cb_log_message(sp_session* session, const char* data);
+void cb_end_of_track(sp_session* session);
 
 #endif

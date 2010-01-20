@@ -27,14 +27,14 @@
 static sp_session_callbacks g_callbacks = {
     &cb_logged_in,
     &cb_logged_out,
-    NULL,
-    NULL,
+    &cb_metadata_updated,
+    &cb_connection_error,
     &cb_message_to_user,
     &cb_notify_main_thread,
     NULL,
-    NULL,
+    &cb_play_token_lost,
     &cb_log_message,
-    NULL
+    &cb_end_of_track
 };
 
 static sp_session* g_session = NULL;
@@ -98,7 +98,7 @@ void session_events_loop() {
         } while (g_timeout == 0);
 
         /* Wait until either the timeout expires, or the main thread is notified
-           using g_notify_sem. */        
+           using g_notify_sem. */
         clock_gettime(CLOCK_REALTIME, &ts);
         ts.tv_sec += g_timeout / 1000;
         ts.tv_nsec += (g_timeout % 1000) * 1000000;
@@ -129,6 +129,13 @@ void cb_logged_out(sp_session* session) {
     exit(1);
 }
 
+void cb_metadata_updated(sp_session* session) {
+}
+
+void cb_connection_error(sp_session* session, sp_error error) {
+    fprintf(stderr, "Connection error: %s\n", sp_error_message(error));
+}
+
 void cb_message_to_user(sp_session* session, const char* message) {
     printf("Message from Spotify: %s\n", message);
 }
@@ -138,6 +145,14 @@ void cb_notify_main_thread(sp_session* session) {
     sem_post(&g_notify_sem);
 }
 
+void cb_play_token_lost(sp_session* session) {
+    fprintf(stderr, "Play token lost.\n");
+}
+
 void cb_log_message(sp_session* session, const char* data) {
     fprintf(stderr, data);
+}
+
+void cb_end_of_track(sp_session* session) {
+    printf("End of track.\n");
 }
