@@ -166,7 +166,9 @@ void* play_sigur_ros(void* bla) {
     static sp_track* track;
     sp_error err;
 
-    sleep(5);
+    while (sp_session_connectionstate(g_session) != SP_CONNECTION_STATE_LOGGED_IN) {
+        sleep(1);
+    }
     printf("Now trying to play some Sigur Rós...\n");
 
     sp_link *link = sp_link_create_from_string("spotify:track:6JoAAl9kMpU1ffowg7LrqN");
@@ -181,13 +183,15 @@ void* play_sigur_ros(void* bla) {
         sp_link_release(link);
         return NULL;
     }
+    while (!sp_track_is_loaded(track)) usleep(10000);
 
     printf("Load track\n");
     err = sp_session_player_load(g_session, track);
     if (err != SP_ERROR_OK) {
         fprintf(stderr, "Can't load track: %s\n", sp_error_message(err));
+        return NULL;
     }
-
+    
     printf("Play track\n");
     err = sp_session_player_play(g_session, 1);
     if (err != SP_ERROR_OK) {
