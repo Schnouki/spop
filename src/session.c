@@ -22,7 +22,7 @@
 #include <unistd.h>
 
 #include "spop.h"
-#include "audio.h"
+#include "plugin.h"
 #include "session.h"
 
 static sp_session_callbacks g_callbacks = {
@@ -147,7 +147,7 @@ void cb_notify_main_thread(sp_session* session) {
 }
 
 int cb_music_delivery(sp_session* session, const sp_audioformat* format, const void* frames, int num_frames) {
-    return audio_delivery(format, frames, num_frames);
+    return g_audio_delivery_func(format, frames, num_frames);
 }
 
 void cb_play_token_lost(sp_session* session) {

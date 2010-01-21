@@ -21,7 +21,7 @@
 #include <pthread.h>
 
 #include "spop.h"
-#include "audio.h"
+#include "plugin.h"
 #include "session.h"
 
 int main(int argc, char** argv) {
@@ -30,6 +30,9 @@ int main(int argc, char** argv) {
            "This is free software, and you are welcome to redistribute it under certain conditions.\n"
            "See the COPYING file bundled with this program for details.\n"
            "Uses SPOTIFY(R) CORE\n\n");
+
+    /* Init plugins */
+    init_plugins();
 
     /* Read username and password */
     char username[80];

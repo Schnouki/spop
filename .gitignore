@@ -7,8 +7,9 @@ Makefile
 # App key is private
 appkey.c
 
-# Binary
-spop
+# Binaries
+spopd
+*.so
 
 # Temp files
 tmp
