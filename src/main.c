@@ -29,7 +29,12 @@ int main(int argc, char** argv) {
            "This program comes with ABSOLUTELY NO WARRANTY.\n"
            "This is free software, and you are welcome to redistribute it under certain conditions.\n"
            "See the COPYING file bundled with this program for details.\n"
-           "Uses SPOTIFY(R) CORE\n\n");
+#ifdef OPENSPOTIFY
+           "Powered by libopenspotify"
+#else
+           "Powered by SPOTIFY(R) CORE"
+#endif
+           "\n\n");
 
     /* Init plugins */
     init_plugins();

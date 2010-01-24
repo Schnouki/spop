@@ -13,3 +13,8 @@ spopd
 
 # Temp files
 tmp
+
+# Files created by libopenspotify
+*.log
+*.xml
+playlist-*

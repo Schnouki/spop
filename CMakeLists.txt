@@ -17,7 +17,11 @@ cmake_minimum_required(VERSION 2.8)
 project(spop C)
 
 find_package(PkgConfig)
-pkg_check_modules(SPOTIFY REQUIRED libspotify>=0.0.3)
+pkg_check_modules(SPOTIFY libspotify>=0.0.3)
+if(NOT SPOTIFY_FOUND)
+  pkg_check_modules(SPOTIFY REQUIRED libopenspotify)
+  add_definitions(-DOPENSPOTIFY)
+endif(NOT SPOTIFY_FOUND)
 
 # spop daemon
 set(SPOPD
