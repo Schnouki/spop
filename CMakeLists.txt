@@ -17,22 +17,31 @@ cmake_minimum_required(VERSION 2.8)
 project(spop C)
 
 find_package(PkgConfig)
+
+# Check for libspotify or libopenspotify
 pkg_check_modules(SPOTIFY libspotify>=0.0.3)
 if(NOT SPOTIFY_FOUND)
   pkg_check_modules(SPOTIFY REQUIRED libopenspotify)
   add_definitions(-DOPENSPOTIFY)
 endif(NOT SPOTIFY_FOUND)
 
+# Check for libconfig
+pkg_check_modules(CONFIG REQUIRED libconfig)
+
 # spop daemon
 set(SPOPD
   src/appkey.c
+  src/config.c
   src/main.c
   src/plugin.c
   src/session.c
 )
 add_executable(spopd ${SPOPD})
 
-target_link_libraries(spopd ${SPOTIFY_LIBRARIES} dl)
+set_source_files_properties(${SPOPD}
+  COMPILE_FLAGS "${SPOTIFY_CFLAGS} ${CONFIG_CFLAGS}"
+)
+target_link_libraries(spopd dl ${SPOTIFY_LIBRARIES} ${CONFIG_LIBRARIES})
 
 # OSS plugin
 set(OSS

@@ -4,8 +4,9 @@ CMakeFiles
 cmake_install.cmake
 Makefile
 
-# App key is private
+# App key and configuration file are private
 appkey.c
+*.conf
 
 # Binaries
 spopd

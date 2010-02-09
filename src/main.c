@@ -21,6 +21,7 @@
 #include <pthread.h>
 
 #include "spop.h"
+#include "config.h"
 #include "plugin.h"
 #include "session.h"
 
@@ -40,16 +41,12 @@ int main(int argc, char** argv) {
     init_plugins();
 
     /* Read username and password */
-    char username[80];
-    char password[80];
-    char* pass;
+    const char* username;
+    const char* password;
 
-    printf("Username: ");
-    fgets(username, 80, stdin);
-    username[strlen(username)-1] = 0; /* remove carriage return */
-
-    pass = getpass("Password: "); /* getpass() is bad, but this is temporary anyway */
-    strncpy(password, pass, 80);
+    config_get_string("spotify_username", &username);
+    config_get_string("spotify_password", &password);
+    printf("Username: [%s]\n", username);
 
     /* Init login */
     session_login(username, password);
