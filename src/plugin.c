@@ -19,18 +19,24 @@
 #include <stdlib.h>
 
 #include "spop.h"
+#include "config.h"
 #include "plugin.h"
 
 audio_delivery_func_ptr g_audio_delivery_func = NULL;
 
 void init_plugins() {
     void* lib_audio;
+    const char* audio_output;
+    char lib_name[80];
     char* error;
 
-    /* Load audio plugin -- only OSS at the moment */
-    lib_audio = dlopen("libspop_oss.so", RTLD_LAZY);
+    /* Load audio plugin */
+    config_get_string("audio_output", &audio_output);
+    snprintf(lib_name, sizeof(lib_name), "libspop_%s.so", audio_output);
+
+    lib_audio = dlopen(lib_name, RTLD_LAZY);
     if (!lib_audio) {
-        fprintf(stderr, "Can't load audio plugin: %s\n", dlerror());
+        fprintf(stderr, "Can't load audio plugin %s: %s\n", lib_name, dlerror());
         exit(1);
     }
     dlerror(); /* Clear any existing error */

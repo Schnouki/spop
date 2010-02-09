@@ -1,0 +1,11 @@
+# This is a sample configuration file for spopd.
+# Be sure to update it to fit your setup!
+#
+# Since this file contains your Spotify username and password in clear text,
+# be sure to keep it in a safe place, with reasonable read permissions
+# (something like "chmod 0600 spopd.conf" should be safe).
+
+spotify_username = "USERNAME";
+spotify_password = "PASSWORD";
+
+audio_output = "oss";

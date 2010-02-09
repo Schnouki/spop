@@ -46,7 +46,6 @@ int main(int argc, char** argv) {
 
     config_get_string("spotify_username", &username);
     config_get_string("spotify_password", &password);
-    printf("Username: [%s]\n", username);
 
     /* Init login */
     session_login(username, password);
