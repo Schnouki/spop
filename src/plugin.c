@@ -31,7 +31,7 @@ void init_plugins() {
     char* error;
 
     /* Load audio plugin */
-    config_get_string("audio_output", &audio_output);
+    audio_output = config_get_string("audio_output");
     snprintf(lib_name, sizeof(lib_name), "libspop_%s.so", audio_output);
 
     lib_audio = dlopen(lib_name, RTLD_LAZY);

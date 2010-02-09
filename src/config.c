@@ -64,8 +64,43 @@ static void config_ready() {
     }
 }
 
-/* Read data from the config file */
-config_result config_get_bool(const char* name, int* value) {
+/* Read mandatory options from the config file */
+int config_get_bool(const char* name) {
+    int value;
+
+    int res = config_get_bool_opt(name, &value);
+    if (res != CONFIG_FOUND) {
+        fprintf(stderr, "Missing configuration value: %s\n", name);
+        exit(1);
+    }
+
+    return value;
+}
+int config_get_int(const char* name) {
+    int value;
+
+    int res = config_get_int_opt(name, &value);
+    if (res != CONFIG_FOUND) {
+        fprintf(stderr, "Missing configuration value: %s\n", name);
+        exit(1);
+    }
+
+    return value;
+}
+const char* config_get_string(const char* name) {
+    const char* value;
+
+    int res = config_get_string_opt(name, &value);
+    if (res != CONFIG_FOUND) {
+        fprintf(stderr, "Missing configuration value: %s\n", name);
+        exit(1);
+    }
+
+    return value;
+}
+
+/* Read optional options from the config file */
+config_result config_get_bool_opt(const char* name, int* value) {
     int res;
 
     config_ready();
@@ -77,7 +112,7 @@ config_result config_get_bool(const char* name, int* value) {
     return (res == CONFIG_TRUE) ? CONFIG_FOUND : CONFIG_NOT_FOUND;
 }
 
-config_result config_get_int(const char* name, int* value) {
+config_result config_get_int_opt(const char* name, int* value) {
     int res;
 
     config_ready();
@@ -89,7 +124,7 @@ config_result config_get_int(const char* name, int* value) {
     return (res == CONFIG_TRUE) ? CONFIG_FOUND : CONFIG_NOT_FOUND;
 }
 
-config_result config_get_string(const char* name, const char** value) {
+config_result config_get_string_opt(const char* name, const char** value) {
     int res;
 
     config_ready();

@@ -22,9 +22,16 @@ typedef enum {
     CONFIG_NOT_FOUND,
 } config_result;
 
-config_result config_get_bool(const char* name, int* value);
-config_result config_get_int(const char* name, int* value);
-config_result config_get_string(const char* name, const char** value);
+
+/* Read mandatory options */
+int config_get_bool(const char* name);
+int config_get_int(const char* name);
+const char* config_get_string(const char* name);
+
+/* Read optional options */
+config_result config_get_bool_opt(const char* name, int* value);
+config_result config_get_int_opt(const char* name, int* value);
+config_result config_get_string_opt(const char* name, const char** value);
 
 
 #endif

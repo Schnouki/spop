@@ -44,8 +44,8 @@ int main(int argc, char** argv) {
     const char* username;
     const char* password;
 
-    config_get_string("spotify_username", &username);
-    config_get_string("spotify_password", &password);
+    username = config_get_string("spotify_username");
+    password = config_get_string("spotify_password");
 
     /* Init login */
     session_login(username, password);
