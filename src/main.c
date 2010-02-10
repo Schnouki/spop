@@ -58,9 +58,6 @@ int real_main() {
     /* Init various subsystems */
     playlist_init();
 
-    pthread_t t;
-    pthread_create(&t, NULL, play_sigur_ros, NULL);
-
     /* Event loop */
     session_events_loop();
 
