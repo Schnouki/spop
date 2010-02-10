@@ -45,12 +45,12 @@ int real_main() {
     const char* username;
     const char* password;
 
-    /* Init plugins */
-    plugins_init();
-
     /* Read username and password */
     username = config_get_string("spotify_username");
     password = config_get_string("spotify_password");
+
+    /* Init plugins */
+    plugins_init();
 
     /* Init login */
     session_login(username, password);
