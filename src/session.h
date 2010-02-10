@@ -24,6 +24,9 @@ void session_init();
 void session_login(const char* username, const char* password);
 void session_events_loop();
 
+/* Utility functions */
+void logged_in();
+
 /* Callbacks */
 void cb_logged_in(sp_session* session, sp_error error);
 void cb_logged_out(sp_session* session);

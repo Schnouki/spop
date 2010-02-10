@@ -41,6 +41,7 @@ static sp_session_callbacks g_callbacks = {
 static sp_session* g_session = NULL;
 static int g_timeout = 0;
 static sem_t g_notify_sem;
+static sem_t g_logged_in_sem;
 
 /* Application key -- defined in appkey.c */
 extern const uint8_t g_appkey[];
@@ -52,6 +53,9 @@ void session_init() {
 
     /* Semaphore used to notify main thread to process new events */
     sem_init(&g_notify_sem, 0, 0);
+
+    /* Semaphore used to wait until logged in */
+    sem_init(&g_logged_in_sem, 0, 0);
 
     /* libspotify session config
        TODO: change settings and cache path to a real path... */
@@ -113,6 +117,13 @@ void session_events_loop() {
     }
 }
 
+/* Utility functions */
+void logged_in() {
+    sem_wait(&g_logged_in_sem);
+    sem_post(&g_logged_in_sem);
+}
+
+
 /* Callbacks */
 void cb_logged_in(sp_session* session, sp_error error) {
     if (error != SP_ERROR_OK) {
@@ -122,6 +133,7 @@ void cb_logged_in(sp_session* session, sp_error error) {
     }
     else {
         printf("Logged in.\n");
+        sem_post(&g_logged_in_sem);
     }
 }
 
@@ -166,9 +178,7 @@ void* play_sigur_ros(void* bla) {
     static sp_track* track;
     sp_error err;
 
-    while (sp_session_connectionstate(g_session) != SP_CONNECTION_STATE_LOGGED_IN) {
-        sleep(1);
-    }
+    logged_in();
     printf("Now trying to play some Sigur Rós...\n");
 
     sp_link *link = sp_link_create_from_string("spotify:track:6JoAAl9kMpU1ffowg7LrqN");
