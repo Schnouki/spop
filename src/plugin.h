@@ -22,6 +22,6 @@
 typedef int (*audio_delivery_func_ptr)(const sp_audioformat*, const void*, int);
 extern audio_delivery_func_ptr g_audio_delivery_func;
 
-void init_plugins();
+void plugins_init();
 
 #endif

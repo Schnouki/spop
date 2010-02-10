@@ -45,7 +45,7 @@ int real_main() {
     const char* password;
 
     /* Init plugins */
-    init_plugins();
+    plugins_init();
 
     /* Read username and password */
     username = config_get_string("spotify_username");

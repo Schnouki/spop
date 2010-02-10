@@ -24,7 +24,7 @@
 
 audio_delivery_func_ptr g_audio_delivery_func = NULL;
 
-void init_plugins() {
+void plugins_init() {
     void* lib_audio;
     const char* audio_output;
     char lib_name[80];
