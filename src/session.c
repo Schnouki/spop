@@ -22,6 +22,7 @@
 #include <unistd.h>
 
 #include "spop.h"
+#include "playlist.h"
 #include "plugin.h"
 #include "session.h"
 
@@ -117,6 +118,11 @@ void session_events_loop() {
     }
 }
 
+sp_playlistcontainer* session_playlistcontainer() {
+    return sp_session_playlistcontainer(g_session);
+}
+
+
 /* Utility functions */
 void logged_in() {
     sem_wait(&g_logged_in_sem);
@@ -179,6 +185,8 @@ void* play_sigur_ros(void* bla) {
     sp_error err;
 
     logged_in();
+
+    list_playlists();
     printf("Now trying to play some Sigur Rós...\n");
 
     sp_link *link = sp_link_create_from_string("spotify:track:6JoAAl9kMpU1ffowg7LrqN");

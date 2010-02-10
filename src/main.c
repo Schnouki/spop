@@ -22,6 +22,7 @@
 
 #include "spop.h"
 #include "config.h"
+#include "playlist.h"
 #include "plugin.h"
 #include "session.h"
 
@@ -53,6 +54,9 @@ int real_main() {
 
     /* Init login */
     session_login(username, password);
+
+    /* Init various subsystems */
+    playlist_init();
 
     pthread_t t;
     pthread_create(&t, NULL, play_sigur_ros, NULL);

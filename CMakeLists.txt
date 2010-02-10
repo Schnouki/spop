@@ -33,6 +33,7 @@ set(SPOPD
   src/appkey.c
   src/config.c
   src/main.c
+  src/playlist.c
   src/plugin.c
   src/session.c
 )

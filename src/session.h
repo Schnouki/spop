@@ -24,6 +24,8 @@ void session_init();
 void session_login(const char* username, const char* password);
 void session_events_loop();
 
+sp_playlistcontainer* session_playlistcontainer();
+
 /* Utility functions */
 void logged_in();
 
