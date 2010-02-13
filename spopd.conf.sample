@@ -9,3 +9,9 @@ spotify_username = "USERNAME";
 spotify_password = "PASSWORD";
 
 audio_output = "oss";
+
+# Address and port on which spopd should listen for mpd-like commands.
+# Use 0.0.0.0 to listen on all the available interfaces.
+# Default is port 6600 on 127.0.0.1.
+#listen_address = "127.0.0.1";
+#listen_port = 6600;

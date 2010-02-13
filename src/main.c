@@ -22,6 +22,7 @@
 
 #include "spop.h"
 #include "config.h"
+#include "interface.h"
 #include "playlist.h"
 #include "plugin.h"
 #include "session.h"
@@ -58,6 +59,7 @@ int real_main() {
 
     /* Init various subsystems */
     playlist_init();
+    interface_init();
 
     /* Event loop */
     session_events_loop();

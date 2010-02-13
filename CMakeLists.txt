@@ -32,6 +32,7 @@ pkg_check_modules(CONFIG REQUIRED libconfig)
 set(SPOPD
   src/appkey.c
   src/config.c
+  src/interface.c
   src/main.c
   src/playlist.c
   src/plugin.c
