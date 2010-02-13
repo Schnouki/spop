@@ -62,7 +62,8 @@ void list_playlists() {
     int i, n, t;
     sp_playlist* pl;
 
-    printf("Waiting for container...\n");
+    if (g_debug)
+        fprintf(stderr, "Waiting for container...\n");
     container_ready();
 
     n = sp_playlistcontainer_num_playlists(g_container);
@@ -70,7 +71,8 @@ void list_playlists() {
         fprintf(stderr, "Could not determine the number of playlists\n");
         return;
     }
-    printf("%d playlists\n", n);
+    if (g_debug)
+        fprintf(stderr, "%d playlists\n", n);
 
     for (i=0; i<n; i++) {
         pl = sp_playlistcontainer_playlist(g_container, i);

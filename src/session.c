@@ -138,13 +138,15 @@ void cb_logged_in(sp_session* session, sp_error error) {
         exit(1);
     }
     else {
-        printf("Logged in.\n");
+        if (g_debug)
+            fprintf(stderr, "Logged in.\n");
         sem_post(&g_logged_in_sem);
     }
 }
 
 void cb_logged_out(sp_session* session) {
-    printf("Logged out.\n");
+    if (g_debug)
+        fprintf(stderr, "Logged out.\n");
     exit(1);
 }
 
@@ -177,5 +179,6 @@ void cb_log_message(sp_session* session, const char* data) {
 }
 
 void cb_end_of_track(sp_session* session) {
-    printf("End of track.\n");
+    if (g_debug)
+        fprintf(stderr, "End of track.\n");
 }
