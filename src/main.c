@@ -39,7 +39,8 @@ static const char* copyright_notice =
 #endif
     "\n\n";
 
-static int run_as_daemon = 1;
+int g_run_as_daemon = 1;
+int g_debug = 0;
 
 int real_main() {
     const char* username;
@@ -67,22 +68,28 @@ int real_main() {
 int main(int argc, char** argv) {
     /* Parse command line options */
     int opt;
-    while ((opt = getopt(argc, argv, "fh")) != -1) {
+    while ((opt = getopt(argc, argv, "dfh")) != -1) {
         switch (opt) {
+        case 'd':
+            g_debug = 1; g_run_as_daemon = 0; break;
         case 'f':
-            run_as_daemon = 0; break;
+            g_run_as_daemon = 0; break;
         default:
             printf("Usage: spopd [options\n"
                    "Options:\n"
+                   "  -d        debug mode (implies -f)"
                    "  -f        run in foreground (default: fork to background)\n"
                    "  -h        display this message\n");
             return 0;
         }
     }
 
-    if (!run_as_daemon) {
+    if (!g_run_as_daemon) {
         /* Stay in foreground: do everything here */
         printf(copyright_notice);
+
+        if (g_debug)
+            printf("** RUNNING IN DEBUG MODE **\n\n");
     }
     else {
         /* Run in daemon mode: fork to background */
@@ -93,7 +100,8 @@ int main(int argc, char** argv) {
         }
         else if (pid > 0) {
             /* Parent process */
-            printf("spopd forked to background with pid %d\n", pid);
+            if (g_debug)
+                fprintf(stderr, "spopd forked to background with pid %d\n", pid);
             return 0;
         }
         /* The child process will continue and run the real_main() function */
