@@ -78,7 +78,7 @@ int main(int argc, char** argv) {
         default:
             printf("Usage: spopd [options\n"
                    "Options:\n"
-                   "  -d        debug mode (implies -f)"
+                   "  -d        debug mode (implies -f)\n"
                    "  -f        run in foreground (default: fork to background)\n"
                    "  -h        display this message\n");
             return 0;
