@@ -44,11 +44,11 @@ set_source_files_properties(${SPOPD}
 )
 target_link_libraries(spopd dl ${SPOTIFY_LIBRARIES} ${CONFIG_LIBRARIES})
 
-# OSS plugin
-set(OSS
+# OSS audio plugin
+set(AUDIO_OSS
   src/oss.c
 )
-add_library(spop_oss MODULE ${OSS})
+add_library(spop_audio_oss MODULE ${AUDIO_OSS})
 
 # MPD interface plugin
 set(IF_MPD
