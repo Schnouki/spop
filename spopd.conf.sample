@@ -9,6 +9,7 @@ spotify_username = "USERNAME";
 spotify_password = "PASSWORD";
 
 audio_output = "oss";
+interface = "mpd";
 
 # Address and port on which spopd should listen for mpd-like commands.
 # Use 0.0.0.0 to listen on all the available interfaces.

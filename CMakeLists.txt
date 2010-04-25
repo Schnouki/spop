@@ -32,7 +32,6 @@ pkg_check_modules(CONFIG REQUIRED libconfig)
 set(SPOPD
   src/appkey.c
   src/config.c
-  src/interface.c
   src/main.c
   src/playlist.c
   src/plugin.c
@@ -50,6 +49,12 @@ set(OSS
   src/oss.c
 )
 add_library(spop_oss MODULE ${OSS})
+
+# MPD interface plugin
+set(IF_MPD
+  src/interface-mpd.c
+)
+add_library(spop_interface_mpd MODULE ${IF_MPD})
 
 # common to all source files
 set(SRC
