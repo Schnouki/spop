@@ -17,7 +17,7 @@
 #ifndef PLAYLIST_H
 #define PLAYLIST_H
 
-#include <spotify/api.h>
+#include <libspotify/api.h>
 
 /* Functions called directly from spop */
 void playlist_init();

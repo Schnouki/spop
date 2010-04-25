@@ -17,7 +17,7 @@
 #ifndef AUDIO_H
 #define AUDIO_H
 
-#include <spotify/api.h>
+#include <libspotify/api.h>
 
 int audio_delivery(const sp_audioformat *format, const void *frames, int num_frames);
 

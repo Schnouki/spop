@@ -17,7 +17,7 @@
 #ifndef SESSION_H
 #define SESSION_H
 
-#include <spotify/api.h>
+#include <libspotify/api.h>
 
 /* Functions called directly from spop */
 void session_init();
