@@ -226,6 +226,8 @@ void interface_handle_command(gchar** command, GString* result) {
     /* Now parse the command... */
     if (strcmp(cmd, "ls") == 0) {
         list_playlists(result);
+    else if (strcmp(cmd, "quit") == 0) {
+        exit(0);
     }
     else {
         g_string_assign(result, "- unknown command\n");
