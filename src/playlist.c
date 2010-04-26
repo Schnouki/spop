@@ -56,6 +56,18 @@ void playlist_init() {
     sp_playlistcontainer_add_callbacks(g_container, &g_container_callbacks, NULL);
 }
 
+int playlists_len() {
+    return g_playlists->len;
+}
+
+sp_playlist* playlist_get(int nb) {
+    if ((nb >= 0) && (nb < g_playlists->len))
+        return g_array_index(g_playlists, sp_playlist*, nb);
+    else
+        return NULL;
+}
+
+
 /* Utility functions */
 void container_ready() {
     sem_wait(&g_container_loaded_sem);

@@ -29,6 +29,7 @@
 #include "config.h"
 #include "interface.h"
 #include "playlist.h"
+#include "track.h"
 
 static int g_sockfd;
 static pthread_t if_t;
@@ -224,7 +225,11 @@ void interface_handle_command(gchar** command, GString* result) {
 
     /* Now parse the command... */
     if (strcmp(cmd, "ls") == 0) {
-        list_playlists(result);
+        if (arg1 == -1)
+            list_playlists(result);
+        else
+            list_tracks(arg1, result);
+    }
     else if (strcmp(cmd, "quit") == 0) {
         exit(0);
     }

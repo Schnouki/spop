@@ -26,6 +26,7 @@
 #include "playlist.h"
 #include "plugin.h"
 #include "session.h"
+#include "track.h"
 
 static const char* copyright_notice = 
     "spop Copyright (C) " SPOP_YEAR " Thomas Jost\n"
@@ -59,6 +60,7 @@ int real_main() {
 
     /* Init various subsystems */
     playlist_init();
+    tracks_init();
     interface_init();
 
     /* Event loop */

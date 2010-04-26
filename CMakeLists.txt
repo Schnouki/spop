@@ -41,6 +41,7 @@ set(SPOPD
   src/playlist.c
   src/plugin.c
   src/session.c
+  src/track.c
 )
 add_executable(spopd ${SPOPD})
 

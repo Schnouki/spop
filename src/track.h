@@ -14,27 +14,20 @@
  * spop. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef PLAYLIST_H
-#define PLAYLIST_H
+#ifndef TRACK_H
+#define TRACK_H
 
 #include <glib.h>
 #include <libspotify/api.h>
 
 /* Functions called directly from spop */
-void playlist_init();
-int playlists_len();
-sp_playlist* playlist_get(int nb);
+void tracks_init();
 
-/* Utility functions that should not be used from outside of playlist.c */
-void container_ready();
+/* Utility functions that should not be used from outside of track.c */
 
 /* Commands */
-void list_playlists(GString* result);
+void list_tracks(int idx, GString* result);
 
 /* Callbacks */
-void cb_container_loaded(sp_playlistcontainer* pc, void* data);
-void cb_playlist_added(sp_playlistcontainer* pc, sp_playlist* playlist, int position, void* userdata);
-void cb_playlist_removed(sp_playlistcontainer* pc, sp_playlist* playlist, int position, void* userdata);
-void cb_playlist_moved(sp_playlistcontainer* pc, sp_playlist* playlist, int position, int new_position, void* userdata);
 
 #endif
