@@ -91,7 +91,7 @@ void interface_init() {
         fprintf(stderr, "Listening on %s:%d\n", ip_addr, port);
 }
 
-/* Interface thread -- accepts connections, reads commands, execute them */
+/* Interface thread -- accept connections, read commands, execute them */
 void* interface_thread(void* data) {
     struct sockaddr_in client_addr;
     socklen_t sin_size;
@@ -107,7 +107,8 @@ void* interface_thread(void* data) {
             exit(1);
         }
 
-        fprintf(stderr, "Connection from (%s, %d)\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+        if (g_debug)
+            fprintf(stderr, "Connection from (%s, %d)\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 
         /* Greetings to the client */
         sent = send(client, proto_greetings, proto_greetings_len, 0);
@@ -125,7 +126,8 @@ void* interface_thread(void* data) {
                 break;
             }
             else if (recvd == 0) {
-                fprintf(stderr, "Connection closed\n");
+                if (g_debug)
+                    fprintf(stderr, "Connection closed\n");
                 close(client);
                 break;
             }
