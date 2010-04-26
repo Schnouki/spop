@@ -14,6 +14,7 @@
  * spop. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <glib.h>
 #include <semaphore.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,12 +26,13 @@
 
 /* Global variables used only from here */
 static sp_playlistcontainer* g_container;
+static GArray* g_playlists;
 static sem_t g_container_loaded_sem;
 
 static sp_playlistcontainer_callbacks g_container_callbacks = {
-    NULL,
-    NULL,
-    NULL,
+    &cb_playlist_added,
+    &cb_playlist_removed,
+    &cb_playlist_moved,
     &cb_container_loaded
 };
 
@@ -39,6 +41,9 @@ static sp_playlistcontainer_callbacks g_container_callbacks = {
 void playlist_init() {
     /* Semaphore used to determine if the playlist container is loaded */
     sem_init(&g_container_loaded_sem, 0, 0);
+
+    /* Init the playlists sequence */
+    g_playlists = g_array_new(FALSE, TRUE, sizeof(sp_playlist*));
 
     /* Get the container */
     g_container = session_playlistcontainer();
@@ -75,7 +80,7 @@ void list_playlists() {
         fprintf(stderr, "%d playlists\n", n);
 
     for (i=0; i<n; i++) {
-        pl = sp_playlistcontainer_playlist(g_container, i);
+        pl = g_array_index(g_playlists, sp_playlist*, i);
         while (!sp_playlist_is_loaded(pl)) { usleep(10000); }
         t = sp_playlist_num_tracks(pl);
         printf("Playlist %d: \"%s\", %d tracks\n", i+1, sp_playlist_name(pl), t);
@@ -85,5 +90,31 @@ void list_playlists() {
 
 /* Callbacks, not to be used directly */
 void cb_container_loaded(sp_playlistcontainer* pc, void* data) {
+    int i, np;
+    sp_playlist* pl;
+
+    np = sp_playlistcontainer_num_playlists(pc);
+    if (np == -1) {
+        fprintf(stderr, "Could not determine the number of playlists\n");
+        exit(1);
+    }
+
+    /* Begin loading the playlists */
+    g_array_set_size(g_playlists, np);
+    for (i=0; i < np; i++) {
+        pl = sp_playlistcontainer_playlist(pc, i);
+        g_array_insert_val(g_playlists, i, pl);
+    }
+
     sem_post(&g_container_loaded_sem);
+}
+void cb_playlist_added(sp_playlistcontainer* pc, sp_playlist* playlist, int position, void* userdata) {
+    g_array_insert_val(g_playlists, position, playlist);
+}
+void cb_playlist_removed(sp_playlistcontainer* pc, sp_playlist* playlist, int position, void* userdata) {
+    g_array_remove_index(g_playlists, position);
+}
+void cb_playlist_moved(sp_playlistcontainer* pc, sp_playlist* playlist, int position, int new_position, void* userdata) {
+    g_array_remove_index(g_playlists, position);
+    g_array_insert_val(g_playlists, position, playlist);
 }

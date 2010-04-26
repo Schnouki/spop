@@ -25,8 +25,9 @@ if(NOT SPOTIFY_FOUND)
   add_definitions(-DOPENSPOTIFY)
 endif(NOT SPOTIFY_FOUND)
 
-# Check for libconfig
+# Check for required libraries
 pkg_check_modules(CONFIG REQUIRED libconfig)
+pkg_check_modules(GLIB2 REQUIRED glib-2.0)
 
 # spop daemon
 set(SPOPD
@@ -39,10 +40,11 @@ set(SPOPD
 )
 add_executable(spopd ${SPOPD})
 
-set_source_files_properties(${SPOPD}
-  COMPILE_FLAGS "${SPOTIFY_CFLAGS} ${CONFIG_CFLAGS}"
+string(REPLACE ";" " " SPOPD_CFLAGS "${SPOTIFY_CFLAGS} ${CONFIG_CFLAGS} ${GLIB2_CFLAGS}")
+set_target_properties(spopd PROPERTIES
+  COMPILE_FLAGS ${SPOPD_CFLAGS}
 )
-target_link_libraries(spopd dl ${SPOTIFY_LIBRARIES} ${CONFIG_LIBRARIES})
+target_link_libraries(spopd dl ${SPOTIFY_LIBRARIES} ${CONFIG_LIBRARIES} ${GLIB2_LIBRARIES})
 
 # OSS audio plugin
 set(AUDIO_OSS
@@ -55,6 +57,12 @@ set(IF_MPD
   src/interface-mpd.c
 )
 add_library(spop_interface_mpd MODULE ${IF_MPD})
+
+# Simple interface plugin
+#set(IF_SIMPLE
+#  src/interface-simple.c
+#)
+#add_library(spop_interface_simple MODULE ${IF_SIMPLE})
 
 # common to all source files
 set(SRC
