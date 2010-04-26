@@ -2,4 +2,4 @@
 
 make clean
 rm -rf CMakeCache.txt CMakeFiles cmake_install.cmake Makefile
-cmake -Wdev . && make clean all
+cmake -Wdev -DCMAKE_BUILD_TYPE=Debug . && make clean all
