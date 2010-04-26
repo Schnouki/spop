@@ -63,7 +63,7 @@ void container_ready() {
 }
 
 /* Commands */
-void list_playlists() {
+void list_playlists(GString* result) {
     int i, n, t;
     sp_playlist* pl;
 
@@ -81,9 +81,9 @@ void list_playlists() {
 
     for (i=0; i<n; i++) {
         pl = g_array_index(g_playlists, sp_playlist*, i);
-        while (!sp_playlist_is_loaded(pl)) { usleep(10000); }
+        if (!sp_playlist_is_loaded(pl)) continue;
         t = sp_playlist_num_tracks(pl);
-        printf("Playlist %d: \"%s\", %d tracks\n", i+1, sp_playlist_name(pl), t);
+        g_string_append_printf(result, "%d %s (%d)\n", i, sp_playlist_name(pl), t);
     }
 }
 

@@ -17,6 +17,7 @@
 #ifndef PLAYLIST_H
 #define PLAYLIST_H
 
+#include <glib.h>
 #include <libspotify/api.h>
 
 /* Functions called directly from spop */
@@ -26,7 +27,7 @@ void playlist_init();
 void container_ready();
 
 /* Commands */
-void list_playlists();
+void list_playlists(GString* result);
 
 /* Callbacks */
 void cb_container_loaded(sp_playlistcontainer* pc, void* data);

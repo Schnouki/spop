@@ -24,10 +24,13 @@ if(NOT SPOTIFY_FOUND)
   pkg_check_modules(SPOTIFY REQUIRED libopenspotify)
   add_definitions(-DOPENSPOTIFY)
 endif(NOT SPOTIFY_FOUND)
+ string(REPLACE ";" " " SPOTIFY_CFLAGS "${SPOTIFY_CFLAGS}")
 
 # Check for required libraries
 pkg_check_modules(CONFIG REQUIRED libconfig)
+string(REPLACE ";" " " CONFIG_CFLAGS "${CONFIG_CFLAGS}")
 pkg_check_modules(GLIB2 REQUIRED glib-2.0)
+string(REPLACE ";" " " GLIB2_CFLAGS "${GLIB2_CFLAGS}")
 
 # spop daemon
 set(SPOPD
@@ -40,9 +43,8 @@ set(SPOPD
 )
 add_executable(spopd ${SPOPD})
 
-string(REPLACE ";" " " SPOPD_CFLAGS "${SPOTIFY_CFLAGS} ${CONFIG_CFLAGS} ${GLIB2_CFLAGS}")
 set_target_properties(spopd PROPERTIES
-  COMPILE_FLAGS ${SPOPD_CFLAGS}
+  COMPILE_FLAGS "${SPOTIFY_CFLAGS} ${CONFIG_CFLAGS} ${GLIB2_CFLAGS}"
 )
 target_link_libraries(spopd dl ${SPOTIFY_LIBRARIES} ${CONFIG_LIBRARIES} ${GLIB2_LIBRARIES})
 
@@ -59,10 +61,14 @@ set(IF_MPD
 add_library(spop_interface_mpd MODULE ${IF_MPD})
 
 # Simple interface plugin
-#set(IF_SIMPLE
-#  src/interface-simple.c
-#)
-#add_library(spop_interface_simple MODULE ${IF_SIMPLE})
+set(IF_SIMPLE
+  src/interface-simple.c
+)
+add_library(spop_interface_simple MODULE ${IF_SIMPLE})
+set_target_properties(spop_interface_simple PROPERTIES
+  COMPILE_FLAGS "${GLIB2_CFLAGS}"
+)
+target_link_libraries(spop_interface_simple ${GLIB2_LIBRARIES})
 
 # common to all source files
 set(SRC
