@@ -11,11 +11,8 @@ spotify_password = "PASSWORD";
 # Audio plugin -- right now, only OSS is available
 audio_output = "oss";
 
-# Interface plugin -- mpd or simple
-interface = "simple";
-
-# Address and port on which spopd should listen for mpd-like or "simple"
-# commands (depending on the interface plugin in use). Use 0.0.0.0 to listen on
-# all the available interfaces. Default is port 6600 on 127.0.0.1.
-#listen_address = "127.0.0.1";
-#listen_port = 6600;
+# Address and port on which spopd should listen for commands.
+# Use 0.0.0.0 to listen on all the available interfaces.
+# Default is port 6602 on 127.0.0.1.
+#listen_address = "127.0.0.1"; 
+#listen_port = 6602;

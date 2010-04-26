@@ -14,7 +14,6 @@
  * spop. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <errno.h>
 #include <glib.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -51,7 +50,7 @@ void interface_init() {
     if (config_get_string_opt("listen_address", &ip_addr) != CONFIG_FOUND)
         ip_addr = "127.0.0.1";
     if (config_get_int_opt("listen_port", &port) != CONFIG_FOUND)
-        port = 6600;
+        port = 6602;
 
     /* Create the socket */
     g_sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -83,7 +82,7 @@ void interface_init() {
     /* Create the interface thread */
     pthread_create(&if_t, NULL, interface_thread, NULL);
     if (g_debug)
-        fprintf(stderr, "Simple interface listening on %s:%d\n", ip_addr, port);
+        fprintf(stderr, "Listening on %s:%d\n", ip_addr, port);
 
 }
 

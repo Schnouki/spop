@@ -36,6 +36,7 @@ string(REPLACE ";" " " GLIB2_CFLAGS "${GLIB2_CFLAGS}")
 set(SPOPD
   src/appkey.c
   src/config.c
+  src/interface.c
   src/main.c
   src/playlist.c
   src/plugin.c
@@ -53,22 +54,6 @@ set(AUDIO_OSS
   src/oss.c
 )
 add_library(spop_audio_oss MODULE ${AUDIO_OSS})
-
-# MPD interface plugin
-set(IF_MPD
-  src/interface-mpd.c
-)
-add_library(spop_interface_mpd MODULE ${IF_MPD})
-
-# Simple interface plugin
-set(IF_SIMPLE
-  src/interface-simple.c
-)
-add_library(spop_interface_simple MODULE ${IF_SIMPLE})
-set_target_properties(spop_interface_simple PROPERTIES
-  COMPILE_FLAGS "${GLIB2_CFLAGS}"
-)
-target_link_libraries(spop_interface_simple ${GLIB2_LIBRARIES})
 
 # common to all source files
 set(SRC

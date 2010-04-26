@@ -26,10 +26,7 @@ audio_delivery_func_ptr g_audio_delivery_func = NULL;
 
 void plugins_init() {
     void* lib_audio;
-    void* lib_interface;
     const char* audio_output;
-    const char* interface;
-    void (*interface_init)();
     char lib_name[80];
     char* error;
 
@@ -48,21 +45,4 @@ void plugins_init() {
         fprintf(stderr, "Can't find symbol in audio plugin: %s\n", error);
         exit(1);
     }
-
-    /* Load interface plugin */
-    interface = config_get_string("interface");
-    snprintf(lib_name, sizeof(lib_name), "libspop_interface_%s.so", interface);
-
-    lib_interface = dlopen(lib_name, RTLD_LAZY);
-    if (!lib_interface) {
-        fprintf(stderr, "Can't load interface plugin %s: %s\n", lib_name, dlerror());
-        exit(1);
-    }
-    dlerror(); /* Clear any existing error */
-    interface_init = dlsym(lib_interface, "interface_init");
-    if ((error = dlerror()) != NULL) {
-        fprintf(stderr, "Can't find symbol in interface plugin: %s\n", error);
-        exit(1);
-    }
-    interface_init();    
 }
