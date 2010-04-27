@@ -28,6 +28,7 @@
 /* Global variables used only from here */
 static sp_playlistcontainer* g_container;
 static GArray* g_playlists;
+static GStaticRWLock g_playlist_lock = G_STATIC_RW_LOCK_INIT;
 static sem_t g_container_loaded_sem;
 
 static sp_playlistcontainer_callbacks g_container_callbacks = {
@@ -53,7 +54,9 @@ void playlist_init() {
     sem_init(&g_container_loaded_sem, 0, 0);
 
     /* Init the playlists sequence */
+    g_static_rw_lock_writer_lock(&g_playlist_lock);
     g_playlists = g_array_new(FALSE, TRUE, sizeof(sp_playlist*));
+    g_static_rw_lock_writer_unlock(&g_playlist_lock);
 
     /* Get the container */
     g_container = session_playlistcontainer();
@@ -67,14 +70,23 @@ void playlist_init() {
 }
 
 int playlists_len() {
-    return g_playlists->len;
+    int len;
+    g_static_rw_lock_reader_lock(&g_playlist_lock);
+    len = g_playlists->len;
+    g_static_rw_lock_reader_unlock(&g_playlist_lock);
+
+    return len;
 }
 
 sp_playlist* playlist_get(int nb) {
+    sp_playlist* pl = NULL;
+
+    g_static_rw_lock_reader_lock(&g_playlist_lock);
     if ((nb >= 0) && (nb < g_playlists->len))
-        return g_array_index(g_playlists, sp_playlist*, nb);
-    else
-        return NULL;
+        pl = g_array_index(g_playlists, sp_playlist*, nb);
+    g_static_rw_lock_reader_unlock(&g_playlist_lock);
+
+    return pl;
 }
 
 
@@ -101,12 +113,14 @@ void list_playlists(GString* result) {
     if (g_debug)
         fprintf(stderr, "%d playlists\n", n);
 
+    g_static_rw_lock_reader_lock(&g_playlist_lock);
     for (i=0; i<n; i++) {
         pl = g_array_index(g_playlists, sp_playlist*, i);
         if (!sp_playlist_is_loaded(pl)) continue;
         t = sp_playlist_num_tracks(pl);
         g_string_append_printf(result, "%d %s (%d)\n", i, sp_playlist_name(pl), t);
     }
+    g_static_rw_lock_reader_unlock(&g_playlist_lock);
 }
 
 
@@ -122,11 +136,13 @@ void cb_container_loaded(sp_playlistcontainer* pc, void* data) {
     }
 
     /* Begin loading the playlists */
+    g_static_rw_lock_writer_lock(&g_playlist_lock);
     g_array_set_size(g_playlists, np);
     for (i=0; i < np; i++) {
         pl = sp_playlistcontainer_playlist(pc, i);
         g_array_insert_val(g_playlists, i, pl);
     }
+    g_static_rw_lock_writer_unlock(&g_playlist_lock);
 
     sem_post(&g_container_loaded_sem);
 }
@@ -134,7 +150,9 @@ void cb_playlist_added(sp_playlistcontainer* pc, sp_playlist* playlist, int posi
     if (g_debug)
         fprintf(stderr, "Adding playlist %d.\n", position);
 
+    g_static_rw_lock_writer_lock(&g_playlist_lock);
     g_array_insert_val(g_playlists, position, playlist);
+    g_static_rw_lock_writer_unlock(&g_playlist_lock);
     tracks_add_playlist(playlist);
     sp_playlist_add_callbacks(playlist, &g_playlist_callbacks, NULL);
 }
@@ -142,13 +160,17 @@ void cb_playlist_removed(sp_playlistcontainer* pc, sp_playlist* playlist, int po
     if (g_debug)
         fprintf(stderr, "Removing playlist %d.\n", position);
 
+    g_static_rw_lock_writer_lock(&g_playlist_lock);
     g_array_remove_index(g_playlists, position);
+    g_static_rw_lock_writer_unlock(&g_playlist_lock);
     tracks_remove_playlist(playlist);
 }
 void cb_playlist_moved(sp_playlistcontainer* pc, sp_playlist* playlist, int position, int new_position, void* userdata) {
     if (g_debug)
         fprintf(stderr, "Moving playlist %d to %d.\n", position, new_position);
 
+    g_static_rw_lock_writer_lock(&g_playlist_lock);
     g_array_remove_index(g_playlists, position);
     g_array_insert_val(g_playlists, position, playlist);
+    g_static_rw_lock_writer_unlock(&g_playlist_lock);
 }
