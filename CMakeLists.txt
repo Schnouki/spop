@@ -31,6 +31,8 @@ pkg_check_modules(CONFIG REQUIRED libconfig)
 string(REPLACE ";" " " CONFIG_CFLAGS "${CONFIG_CFLAGS}")
 pkg_check_modules(GLIB2 REQUIRED glib-2.0)
 string(REPLACE ";" " " GLIB2_CFLAGS "${GLIB2_CFLAGS}")
+pkg_check_modules(GTHREAD2 REQUIRED gthread-2.0)
+string(REPLACE ";" " " GTHREAD2_CFLAGS "${GTHREAD2_CFLAGS}")
 
 # spop daemon
 set(SPOPD
@@ -46,9 +48,9 @@ set(SPOPD
 add_executable(spopd ${SPOPD})
 
 set_target_properties(spopd PROPERTIES
-  COMPILE_FLAGS "${SPOTIFY_CFLAGS} ${CONFIG_CFLAGS} ${GLIB2_CFLAGS}"
+  COMPILE_FLAGS "${SPOTIFY_CFLAGS} ${CONFIG_CFLAGS} ${GLIB2_CFLAGS} ${GTHREAD2_CFLAGS}"
 )
-target_link_libraries(spopd dl ${SPOTIFY_LIBRARIES} ${CONFIG_LIBRARIES} ${GLIB2_LIBRARIES})
+target_link_libraries(spopd dl ${SPOTIFY_LIBRARIES} ${CONFIG_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES})
 
 # OSS audio plugin
 set(AUDIO_OSS

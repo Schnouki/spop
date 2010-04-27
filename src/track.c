@@ -25,10 +25,13 @@
 
 /* Global variables used only from here */
 static GHashTable* g_playlist_tracks;
+static GStaticRWLock g_playlist_tracks_lock = G_STATIC_RW_LOCK_INIT;
 
 /* Functions exposed to the rest of spop */
 void tracks_init() {
+    g_static_rw_lock_writer_lock(&g_playlist_tracks_lock);
     g_playlist_tracks = g_hash_table_new(NULL, NULL);
+    g_static_rw_lock_writer_unlock(&g_playlist_tracks_lock);
 }
 void tracks_add_playlist(sp_playlist* pl) {
     GArray* tracks;
@@ -38,14 +41,18 @@ void tracks_add_playlist(sp_playlist* pl) {
     nb = sp_playlist_num_tracks(pl);
     
     /* Get or create array */
+    g_static_rw_lock_writer_lock(&g_playlist_tracks_lock);
     tracks = g_hash_table_lookup(g_playlist_tracks, pl);
     if (tracks == NULL) {
         tracks = g_array_sized_new(FALSE, TRUE, sizeof(sp_track*), nb);
         g_hash_table_insert(g_playlist_tracks, pl, tracks);
     }
+    g_static_rw_lock_writer_unlock(&g_playlist_tracks_lock);
 }
 void tracks_remove_playlist(sp_playlist* pl) {
+    g_static_rw_lock_writer_lock(&g_playlist_tracks_lock);
     g_hash_table_remove(g_playlist_tracks, pl);
+    g_static_rw_lock_writer_unlock(&g_playlist_tracks_lock);
 }
 
 GString* track_get_link(sp_track* track) {
@@ -100,6 +107,7 @@ void list_tracks(int idx, GString* result) {
     }
 
     /* Get the tracks array */
+    g_static_rw_lock_reader_lock(&g_playlist_tracks_lock);
     tracks = g_hash_table_lookup(g_playlist_tracks, pl);
     if (tracks == NULL) {
         fprintf(stderr, "Can't find tracks array.\n");
@@ -137,6 +145,7 @@ void list_tracks(int idx, GString* result) {
         g_string_free(track_artist, TRUE);
         g_string_free(track_link, TRUE);
     }
+    g_static_rw_lock_reader_unlock(&g_playlist_tracks_lock);
 }
 
 
@@ -146,6 +155,7 @@ void cb_tracks_added(sp_playlist* pl, sp_track* const* tracks, int num_tracks, i
     int i;
 
     /* Get tracks array */
+    g_static_rw_lock_writer_lock(&g_playlist_tracks_lock);
     ta = g_hash_table_lookup(g_playlist_tracks, pl);
     if (ta == NULL) {
         fprintf(stderr, "Can't find tracks array\n");
@@ -156,6 +166,8 @@ void cb_tracks_added(sp_playlist* pl, sp_track* const* tracks, int num_tracks, i
     for (i=0; i < num_tracks; i++)
         g_array_insert_val(ta, position+i, tracks[i]);
 
+    g_static_rw_lock_writer_unlock(&g_playlist_tracks_lock);
+
     if (g_debug)
         fprintf(stderr, "Added %d tracks at position %d.\n", num_tracks, position);
 }
@@ -164,6 +176,7 @@ void cb_tracks_removed(sp_playlist* pl, const int* tracks, int num_tracks, void*
     int i;
 
     /* Get tracks array */
+    g_static_rw_lock_writer_lock(&g_playlist_tracks_lock);
     ta = g_hash_table_lookup(g_playlist_tracks, pl);
     if (ta == NULL) {
         fprintf(stderr, "Can't find tracks array\n");
@@ -173,6 +186,8 @@ void cb_tracks_removed(sp_playlist* pl, const int* tracks, int num_tracks, void*
     /* Remove tracks from array */
     for (i=num_tracks-1; i >= 0; i--)
         g_array_remove_index(ta, tracks[i]);
+
+    g_static_rw_lock_writer_unlock(&g_playlist_tracks_lock);
 
     if (g_debug)
         fprintf(stderr, "Removed %d tracks.\n", num_tracks);
@@ -184,6 +199,7 @@ void cb_tracks_moved(sp_playlist* pl, const int* tracks, int num_tracks, int new
     int i;
 
     /* Get tracks array */
+    g_static_rw_lock_writer_lock(&g_playlist_tracks_lock);
     ta = g_hash_table_lookup(g_playlist_tracks, pl);
     if (ta == NULL) {
         fprintf(stderr, "Can't find tracks array\n");
@@ -203,6 +219,8 @@ void cb_tracks_moved(sp_playlist* pl, const int* tracks, int num_tracks, int new
     /* Remove tracks from tracks array */
     for (i=num_tracks-1; i >= 0; i--)
         g_array_remove_index(ta, num_tracks + tracks[i]);
+
+    g_static_rw_lock_writer_unlock(&g_playlist_tracks_lock);
 
     /* Free tmp array */
     g_array_free(tmp, TRUE);

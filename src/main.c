@@ -52,6 +52,9 @@ int real_main() {
     username = config_get_string("spotify_username");
     password = config_get_string("spotify_password");
 
+    /* Init essential stuff */
+    g_thread_init(NULL);
+
     /* Init plugins */
     plugins_init();
 
