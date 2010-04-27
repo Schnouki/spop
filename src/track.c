@@ -15,6 +15,8 @@
  */
 
 #include <glib.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 #include "spop.h"
@@ -27,6 +29,23 @@ static GHashTable* g_playlist_tracks;
 /* Functions exposed to the rest of spop */
 void tracks_init() {
     g_playlist_tracks = g_hash_table_new(NULL, NULL);
+}
+void tracks_add_playlist(sp_playlist* pl) {
+    GArray* tracks;
+    int nb;
+
+    /* Number of tracks */
+    nb = sp_playlist_num_tracks(pl);
+    
+    /* Get or create array */
+    tracks = g_hash_table_lookup(g_playlist_tracks, pl);
+    if (tracks == NULL) {
+        tracks = g_array_sized_new(FALSE, TRUE, sizeof(sp_track*), nb);
+        g_hash_table_insert(g_playlist_tracks, pl, tracks);
+    }
+}
+void tracks_remove_playlist(sp_playlist* pl) {
+    g_hash_table_remove(g_playlist_tracks, pl);
 }
 
 /* Utility functions */
@@ -54,16 +73,17 @@ void list_tracks(int idx, GString* result) {
     /* Tracks number */
     tracks_nb = sp_playlist_num_tracks(pl);
 
+    /* If the playlist is empty, just add a newline (an empty string would mean "error") */
+    if (tracks_nb == 0) {
+        g_string_assign(result, "\n");
+        return;
+    }
+
     /* Get the tracks array */
     tracks = g_hash_table_lookup(g_playlist_tracks, pl);
     if (tracks == NULL) {
-        /* Create a new array and populate it */
-        tracks = g_array_sized_new(FALSE, TRUE, sizeof(sp_track*), tracks_nb);
-        g_hash_table_insert(g_playlist_tracks, pl, tracks);
-        for (i=0; i < tracks_nb; i++) {
-            track = sp_playlist_track(pl, i);
-            g_array_insert_val(tracks, i, track);
-        }
+        fprintf(stderr, "Can't find tracks array.\n");
+        exit(1);
     }
 
     /* For each track, add a line to the result string */
@@ -98,3 +118,72 @@ void list_tracks(int idx, GString* result) {
 }
 
 /* Callbacks, not to be used directly */
+void cb_tracks_added(sp_playlist* pl, sp_track* const* tracks, int num_tracks, int position, void* userdata) {
+    GArray* ta;
+    int i;
+
+    /* Get tracks array */
+    ta = g_hash_table_lookup(g_playlist_tracks, pl);
+    if (ta == NULL) {
+        fprintf(stderr, "Can't find tracks array\n");
+        exit(1);
+    }
+
+    /* Insert tracks in array */
+    for (i=0; i < num_tracks; i++)
+        g_array_insert_val(ta, position+i, tracks[i]);
+
+    if (g_debug)
+        fprintf(stderr, "Added %d tracks at position %d.\n", num_tracks, position);
+}
+void cb_tracks_removed(sp_playlist* pl, const int* tracks, int num_tracks, void* userdata) {
+    GArray* ta;
+    int i;
+
+    /* Get tracks array */
+    ta = g_hash_table_lookup(g_playlist_tracks, pl);
+    if (ta == NULL) {
+        fprintf(stderr, "Can't find tracks array\n");
+        exit(1);
+    }
+
+    /* Remove tracks from array */
+    for (i=num_tracks-1; i >= 0; i--)
+        g_array_remove_index(ta, tracks[i]);
+
+    if (g_debug)
+        fprintf(stderr, "Removed %d tracks.\n", num_tracks);
+}
+void cb_tracks_moved(sp_playlist* pl, const int* tracks, int num_tracks, int new_position, void* userdata) {
+    GArray* ta;
+    GArray* tmp;
+    sp_track* track;
+    int i;
+
+    /* Get tracks array */
+    ta = g_hash_table_lookup(g_playlist_tracks, pl);
+    if (ta == NULL) {
+        fprintf(stderr, "Can't find tracks array\n");
+        exit(1);
+    }
+
+    /* Array of tracks to be moved */
+    tmp = g_array_sized_new(FALSE, TRUE, sizeof(sp_track*), num_tracks);
+    for (i=0; i < num_tracks; i++) {
+        track = g_array_index(ta, sp_track*, tracks[i]);
+        g_array_insert_val(tmp, i, track);
+    }
+
+    /* Insert tracks at their new position */
+    g_array_insert_vals(ta, new_position, tmp->data, num_tracks);
+
+    /* Remove tracks from tracks array */
+    for (i=num_tracks-1; i >= 0; i--)
+        g_array_remove_index(ta, num_tracks + tracks[i]);
+
+    /* Free tmp array */
+    g_array_free(tmp, TRUE);
+
+    if (g_debug)
+        fprintf(stderr, "Moved %d tracks to position %d.\n", num_tracks, new_position);
+}

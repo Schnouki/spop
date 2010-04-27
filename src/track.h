@@ -22,6 +22,8 @@
 
 /* Functions called directly from spop */
 void tracks_init();
+void tracks_add_playlist(sp_playlist* pl);
+void tracks_remove_playlist(sp_playlist* pl);
 
 /* Utility functions that should not be used from outside of track.c */
 
@@ -29,5 +31,8 @@ void tracks_init();
 void list_tracks(int idx, GString* result);
 
 /* Callbacks */
+void cb_tracks_added(sp_playlist* pl, sp_track* const* tracks, int num_tracks, int position, void* userdata);
+void cb_tracks_removed(sp_playlist* pl, const int* tracks, int num_tracks, void* userdata);
+void cb_tracks_moved(sp_playlist* pl, const int* tracks, int num_tracks, int new_position, void* userdata);
 
 #endif

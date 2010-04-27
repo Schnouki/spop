@@ -23,6 +23,7 @@
 #include "spop.h"
 #include "playlist.h"
 #include "session.h"
+#include "track.h"
 
 /* Global variables used only from here */
 static sp_playlistcontainer* g_container;
@@ -34,6 +35,15 @@ static sp_playlistcontainer_callbacks g_container_callbacks = {
     &cb_playlist_removed,
     &cb_playlist_moved,
     &cb_container_loaded
+};
+static sp_playlist_callbacks g_playlist_callbacks = {
+    &cb_tracks_added,
+    &cb_tracks_removed,
+    &cb_tracks_moved,
+    NULL,
+    NULL,
+    NULL,
+    NULL
 };
 
 
@@ -121,12 +131,24 @@ void cb_container_loaded(sp_playlistcontainer* pc, void* data) {
     sem_post(&g_container_loaded_sem);
 }
 void cb_playlist_added(sp_playlistcontainer* pc, sp_playlist* playlist, int position, void* userdata) {
+    if (g_debug)
+        fprintf(stderr, "Adding playlist %d.\n", position);
+
     g_array_insert_val(g_playlists, position, playlist);
+    tracks_add_playlist(playlist);
+    sp_playlist_add_callbacks(playlist, &g_playlist_callbacks, NULL);
 }
 void cb_playlist_removed(sp_playlistcontainer* pc, sp_playlist* playlist, int position, void* userdata) {
+    if (g_debug)
+        fprintf(stderr, "Removing playlist %d.\n", position);
+
     g_array_remove_index(g_playlists, position);
+    tracks_remove_playlist(playlist);
 }
 void cb_playlist_moved(sp_playlistcontainer* pc, sp_playlist* playlist, int position, int new_position, void* userdata) {
+    if (g_debug)
+        fprintf(stderr, "Moving playlist %d to %d.\n", position, new_position);
+
     g_array_remove_index(g_playlists, position);
     g_array_insert_val(g_playlists, position, playlist);
 }
