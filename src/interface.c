@@ -15,7 +15,6 @@
  */
 
 #include <glib.h>
-#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,7 +31,7 @@
 #include "track.h"
 
 static int g_sockfd;
-static pthread_t if_t;
+static GThread* g_if_t;
 
 const char proto_greetings[] = "spop " SPOP_VERSION "\n";
 
@@ -47,6 +46,7 @@ void interface_init() {
     int port;
     int true = 1;
     struct sockaddr_in addr;
+    GError* err;
 
     if (config_get_string_opt("listen_address", &ip_addr) != CONFIG_FOUND)
         ip_addr = "127.0.0.1";
@@ -81,7 +81,11 @@ void interface_init() {
     }
 
     /* Create the interface thread */
-    pthread_create(&if_t, NULL, interface_thread, NULL);
+    g_if_t = g_thread_create(interface_thread, NULL, FALSE, &err);
+    if (g_if_t == NULL) {
+        fprintf(stderr, "Can't create interface thread: %s\n", err->message);
+        exit(1);
+    }
     if (g_debug)
         fprintf(stderr, "Listening on %s:%d\n", ip_addr, port);
 

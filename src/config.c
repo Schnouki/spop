@@ -14,15 +14,15 @@
  * spop. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <glib.h>
 #include <libconfig.h>
-#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "config.h"
 
 /* Mutex for accessing config file */
-static pthread_mutex_t config_mutex = PTHREAD_MUTEX_INITIALIZER;
+static GStaticMutex config_mutex = G_STATIC_MUTEX_INIT;
 
 /* Data structure representing the configuration file */
 static config_t config_file;
@@ -32,11 +32,11 @@ static int config_loaded = 0;
 static void config_ready() {
     int res;
 
-    pthread_mutex_lock(&config_mutex);
+    g_static_mutex_lock(&config_mutex);
 
     if (config_loaded) {
         /* Ready to use the config file */
-        pthread_mutex_unlock(&config_mutex);
+        g_static_mutex_unlock(&config_mutex);
         return;
     }
 
@@ -47,7 +47,7 @@ static void config_ready() {
     res = config_read_file(&config_file, "spopd.conf");
     if (res == CONFIG_TRUE) {
         /* Success! */
-        pthread_mutex_unlock(&config_mutex);
+        g_static_mutex_unlock(&config_mutex);
         return;
     }
     else {
@@ -59,7 +59,7 @@ static void config_ready() {
             fprintf(stderr, "Parse error while reading the configuration file\nIn %s, line %d:\n%s\n",
                     config_error_file(&config_file), config_error_line(&config_file), config_error_text(&config_file));
         }
-        pthread_mutex_unlock(&config_mutex);
+        g_static_mutex_unlock(&config_mutex);
         exit(1);
     }
 }
@@ -105,9 +105,9 @@ config_result config_get_bool_opt(const char* name, int* value) {
 
     config_ready();
 
-    pthread_mutex_lock(&config_mutex);
+    g_static_mutex_lock(&config_mutex);
     res = config_lookup_bool(&config_file, name, value);
-    pthread_mutex_unlock(&config_mutex);
+    g_static_mutex_unlock(&config_mutex);
 
     return (res == CONFIG_TRUE) ? CONFIG_FOUND : CONFIG_NOT_FOUND;
 }
@@ -117,9 +117,9 @@ config_result config_get_int_opt(const char* name, int* value) {
 
     config_ready();
 
-    pthread_mutex_lock(&config_mutex);
+    g_static_mutex_lock(&config_mutex);
     res = config_lookup_int(&config_file, name, value);
-    pthread_mutex_unlock(&config_mutex);
+    g_static_mutex_unlock(&config_mutex);
 
     return (res == CONFIG_TRUE) ? CONFIG_FOUND : CONFIG_NOT_FOUND;
 }
@@ -129,9 +129,9 @@ config_result config_get_string_opt(const char* name, const char** value) {
 
     config_ready();
 
-    pthread_mutex_lock(&config_mutex);
+    g_static_mutex_lock(&config_mutex);
     res = config_lookup_string(&config_file, name, value);
-    pthread_mutex_unlock(&config_mutex);
+    g_static_mutex_unlock(&config_mutex);
 
     return (res == CONFIG_TRUE) ? CONFIG_FOUND : CONFIG_NOT_FOUND;
 }

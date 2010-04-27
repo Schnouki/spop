@@ -18,8 +18,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <pthread.h>
-
 #include "spop.h"
 #include "config.h"
 #include "interface.h"
