@@ -48,6 +48,25 @@ void tracks_remove_playlist(sp_playlist* pl) {
     g_hash_table_remove(g_playlist_tracks, pl);
 }
 
+GString* track_get_link(sp_track* track) {
+    sp_link* link;
+    GString* uri;
+
+    link = sp_link_create_from_track(track, 0);
+    if (!link) {
+        fprintf(stderr, "Can't get URI from track\n");
+        exit(1);
+    }
+    uri = g_string_sized_new(1024);
+    if (sp_link_as_string(link, uri->str, 1024) < 0) {
+        fprintf(stderr, "Can't render URI from link\n");
+        exit(1);
+    }
+    sp_link_release(link);
+
+    return uri;
+}
+
 /* Utility functions */
 
 /* Commands */
@@ -65,6 +84,7 @@ void list_tracks(int idx, GString* result) {
     const char* track_name;
     GString* track_artist = NULL;
     const char* track_album;
+    GString* track_link;
 
     /* Get the playlist */
     pl = playlist_get(idx);
@@ -108,14 +128,17 @@ void list_tracks(int idx, GString* result) {
         album = sp_track_album(track);
         while (!sp_album_is_loaded(album)) { usleep(10000); }
         track_album = sp_album_name(album);
+        track_link = track_get_link(track);
 
-        g_string_append_printf(result, "%d%s %s -- \"%s\" -- \"%s\" (%d:%02d)\n",
+        g_string_append_printf(result, "%d%s %s -- \"%s\" -- \"%s\" (%d:%02d) URI:%s\n",
                                i, (track_available ? "" : "-"), track_artist->str,
-                               track_album, track_name,
-                               track_duration/60000, (track_duration/1000)%60);
+                               track_album, track_name, track_duration/60000, 
+                               (track_duration/1000)%60, track_link->str);
         g_string_free(track_artist, TRUE);
+        g_string_free(track_link, TRUE);
     }
 }
+
 
 /* Callbacks, not to be used directly */
 void cb_tracks_added(sp_playlist* pl, sp_track* const* tracks, int num_tracks, int position, void* userdata) {

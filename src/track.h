@@ -24,6 +24,7 @@
 void tracks_init();
 void tracks_add_playlist(sp_playlist* pl);
 void tracks_remove_playlist(sp_playlist* pl);
+GString* track_get_link(sp_track* track);
 
 /* Utility functions that should not be used from outside of track.c */
 
