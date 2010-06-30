@@ -62,7 +62,7 @@ add_library(spop_audio_oss MODULE ${AUDIO_OSS})
 # common to all source files
 set(SRC
   ${SPOPD}
-  ${OSS}
+  ${AUDIO_OSS}
 )
 set_source_files_properties(${SRC}
   COMPILE_FLAGS "-O2 -Wall -Werror"
