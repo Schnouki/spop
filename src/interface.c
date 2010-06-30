@@ -25,10 +25,9 @@
 #include <sys/socket.h>
 
 #include "spop.h"
+#include "commands.h"
 #include "config.h"
 #include "interface.h"
-#include "playlist.h"
-#include "track.h"
 
 static int g_sockfd;
 static GThread* g_if_t;
@@ -234,6 +233,16 @@ void interface_handle_command(gchar** command, GString* result) {
         else
             list_tracks(arg1, result);
     }
+    else if (strcmp(cmd, "play") == 0) {
+        if (arg1 == -1) {
+            g_string_assign(result, "- missing parameter\n");
+            return;
+        }
+        if (arg2 == -1)
+            play_playlist(arg1, result);
+        else
+            play_track(arg1, arg2, result);
+    }
     else if (strcmp(cmd, "quit") == 0) {
         exit(0);
     }
@@ -244,6 +253,6 @@ void interface_handle_command(gchar** command, GString* result) {
 
     if (result->len == 0)
         g_string_append(result, "- ERR\n");
-    else
+    else if (result->str[0] != '-')
         g_string_append(result, "+ OK\n");
 }

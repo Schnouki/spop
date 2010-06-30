@@ -22,14 +22,14 @@
 
 /* Functions called directly from spop */
 void tracks_init();
+GArray* tracks_get_playlist(sp_playlist* pl);
 void tracks_add_playlist(sp_playlist* pl);
 void tracks_remove_playlist(sp_playlist* pl);
+void tracks_lock();
+void tracks_unlock();
 GString* track_get_link(sp_track* track);
 
 /* Utility functions that should not be used from outside of track.c */
-
-/* Commands */
-void list_tracks(int idx, GString* result);
 
 /* Callbacks */
 void cb_tracks_added(sp_playlist* pl, sp_track* const* tracks, int num_tracks, int position, void* userdata);

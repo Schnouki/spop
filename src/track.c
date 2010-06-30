@@ -33,6 +33,9 @@ void tracks_init() {
     g_playlist_tracks = g_hash_table_new(NULL, NULL);
     g_static_rw_lock_writer_unlock(&g_playlist_tracks_lock);
 }
+GArray* tracks_get_playlist(sp_playlist* pl) {
+    return g_hash_table_lookup(g_playlist_tracks, pl);
+}
 void tracks_add_playlist(sp_playlist* pl) {
     GArray* tracks;
     int nb;
@@ -55,6 +58,13 @@ void tracks_remove_playlist(sp_playlist* pl) {
     g_static_rw_lock_writer_unlock(&g_playlist_tracks_lock);
 }
 
+void tracks_lock() {
+    g_static_rw_lock_reader_lock(&g_playlist_tracks_lock);
+}
+void tracks_unlock() {
+    g_static_rw_lock_reader_unlock(&g_playlist_tracks_lock);
+}
+
 GString* track_get_link(sp_track* track) {
     sp_link* link;
     GString* uri;
@@ -75,79 +85,6 @@ GString* track_get_link(sp_track* track) {
 }
 
 /* Utility functions */
-
-/* Commands */
-void list_tracks(int idx, GString* result) {
-    sp_playlist* pl;
-    sp_track* track;
-    GArray* tracks;
-    int tracks_nb;
-    int i, j;
-
-    sp_album* album;
-    sp_artist* artist;
-    bool track_available;
-    int track_duration;
-    const char* track_name;
-    GString* track_artist = NULL;
-    const char* track_album;
-    GString* track_link;
-
-    /* Get the playlist */
-    pl = playlist_get(idx);
-    if (pl == NULL) return;
-    
-    /* Tracks number */
-    tracks_nb = sp_playlist_num_tracks(pl);
-
-    /* If the playlist is empty, just add a newline (an empty string would mean "error") */
-    if (tracks_nb == 0) {
-        g_string_assign(result, "\n");
-        return;
-    }
-
-    /* Get the tracks array */
-    g_static_rw_lock_reader_lock(&g_playlist_tracks_lock);
-    tracks = g_hash_table_lookup(g_playlist_tracks, pl);
-    if (tracks == NULL) {
-        fprintf(stderr, "Can't find tracks array.\n");
-        exit(1);
-    }
-
-    /* For each track, add a line to the result string */
-    for (i=0; i < tracks_nb; i++) {
-        track = g_array_index(tracks, sp_track*, i);
-        if (!sp_track_is_loaded(track)) continue;
-
-        track_available = sp_track_is_available(track);
-        track_duration = sp_track_duration(track);
-        track_name = sp_track_name(track);
-        for (j=0; j < sp_track_num_artists(track); j++) {
-            artist = sp_track_artist(track, j);
-            while (!sp_artist_is_loaded(artist)) { usleep(10000); }
-            if (j == 0) {
-                track_artist = g_string_new(sp_artist_name(artist));
-            }
-            else {
-                g_string_append(track_artist, ", ");
-                g_string_append(track_artist, sp_artist_name(artist));
-            }
-        }
-        album = sp_track_album(track);
-        while (!sp_album_is_loaded(album)) { usleep(10000); }
-        track_album = sp_album_name(album);
-        track_link = track_get_link(track);
-
-        g_string_append_printf(result, "%d%s %s -- \"%s\" -- \"%s\" (%d:%02d) URI:%s\n",
-                               i, (track_available ? "" : "-"), track_artist->str,
-                               track_album, track_name, track_duration/60000, 
-                               (track_duration/1000)%60, track_link->str);
-        g_string_free(track_artist, TRUE);
-        g_string_free(track_link, TRUE);
-    }
-    g_static_rw_lock_reader_unlock(&g_playlist_tracks_lock);
-}
-
 
 /* Callbacks, not to be used directly */
 void cb_tracks_added(sp_playlist* pl, sp_track* const* tracks, int num_tracks, int position, void* userdata) {

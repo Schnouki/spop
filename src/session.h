@@ -26,6 +26,9 @@ void session_events_loop();
 
 sp_playlistcontainer* session_playlistcontainer();
 
+void session_load(sp_track* track);
+void session_play(bool play);
+
 /* Utility functions */
 void logged_in();
 

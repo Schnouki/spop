@@ -89,37 +89,16 @@ sp_playlist* playlist_get(int nb) {
     return pl;
 }
 
-
-/* Utility functions */
-void container_ready() {
+void playlist_container_ready() {
     sem_wait(&g_container_loaded_sem);
     sem_post(&g_container_loaded_sem);
 }
 
-/* Commands */
-void list_playlists(GString* result) {
-    int i, n, t;
-    sp_playlist* pl;
-
-    if (g_debug)
-        fprintf(stderr, "Waiting for container...\n");
-    container_ready();
-
-    n = sp_playlistcontainer_num_playlists(g_container);
-    if (n == -1) {
-        fprintf(stderr, "Could not determine the number of playlists\n");
-        return;
-    }
-    if (g_debug)
-        fprintf(stderr, "%d playlists\n", n);
-
+void playlist_lock() {
     g_static_rw_lock_reader_lock(&g_playlist_lock);
-    for (i=0; i<n; i++) {
-        pl = g_array_index(g_playlists, sp_playlist*, i);
-        if (!sp_playlist_is_loaded(pl)) continue;
-        t = sp_playlist_num_tracks(pl);
-        g_string_append_printf(result, "%d %s (%d)\n", i, sp_playlist_name(pl), t);
-    }
+}
+
+void playlist_unlock() {
     g_static_rw_lock_reader_unlock(&g_playlist_lock);
 }
 

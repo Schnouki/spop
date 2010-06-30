@@ -122,6 +122,29 @@ sp_playlistcontainer* session_playlistcontainer() {
     return sp_session_playlistcontainer(g_session);
 }
 
+void session_load(sp_track* track) {
+    sp_error error;
+    
+    error = sp_session_player_load(g_session, track);
+    if (error != SP_ERROR_OK) {
+        fprintf(stderr, "Failed to load track: %s\n",
+                sp_error_message(error));
+        exit(1);
+    }
+}
+
+void session_play(bool play) {
+    sp_error error;
+
+    error = sp_session_player_play(g_session, play);
+    if (error != SP_ERROR_OK) {
+        fprintf(stderr, "Failed to play: %s\n",
+                sp_error_message(error));
+        exit(1);
+    }
+}
+
+
 
 /* Utility functions */
 void logged_in() {

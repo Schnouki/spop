@@ -37,6 +37,7 @@ string(REPLACE ";" " " GTHREAD2_CFLAGS "${GTHREAD2_CFLAGS}")
 # spop daemon
 set(SPOPD
   src/appkey.c
+  src/commands.c
   src/config.c
   src/interface.c
   src/main.c
