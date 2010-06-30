@@ -1,0 +1,12 @@
+#!/bin/sh
+
+if [ -d build ]; then
+    cd build && make rebuild_cache
+else
+    mkdir build && cd build && cmake -Wdev -DCMAKE_BUILD_TYPE=Debug ..
+fi
+
+make all
+cd ..
+
+LD_LIBRARY_PATH=build ./build/spopd $@

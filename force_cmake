@@ -1,5 +1,0 @@
-#!/bin/sh
-
-make clean
-rm -rf CMakeCache.txt CMakeFiles cmake_install.cmake Makefile
-cmake -Wdev -DCMAKE_BUILD_TYPE=Debug . && make clean all

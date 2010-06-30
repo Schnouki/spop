@@ -1,21 +1,9 @@
-# CMake stuff
-CMakeCache.txt
-CMakeFiles
-cmake_install.cmake
-Makefile
-
 # App key and configuration file are private
 appkey.c
 *.conf
 
-# Binaries
-spopd
-*.so
-
 # Temp files
 tmp
 
-# Files created by libopenspotify
-*.log
-*.xml
-playlist-*
+# Build directory
+build/
