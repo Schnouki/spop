@@ -50,7 +50,7 @@ void list_playlists(GString* result) {
         pl = playlist_get(i);
         if (!sp_playlist_is_loaded(pl)) continue;
         t = sp_playlist_num_tracks(pl);
-        g_string_append_printf(result, "%d %s (%d)\n", i, sp_playlist_name(pl), t);
+        g_string_append_printf(result, "%d %s (%d)\n", i+1, sp_playlist_name(pl), t);
     }
     playlist_unlock();
 }
@@ -70,8 +70,11 @@ void list_tracks(int idx, GString* result) {
     GString* track_link = NULL;
 
     /* Get the playlist */
-    pl = playlist_get(idx);
-    if (pl == NULL) return;
+    pl = playlist_get(idx-1);
+    if (!pl) {
+        g_string_assign(result, "- invalid playlist\n");
+        return;
+    }
     
     /* Tracks number */
     tracks_lock();
@@ -100,7 +103,7 @@ void list_tracks(int idx, GString* result) {
         track_get_data(track, &track_name, &track_artist, &track_album, &track_link, &track_min, &track_sec);
 
         g_string_append_printf(result, "%d%s %s -- \"%s\" -- \"%s\" (%d:%02d) URI:%s\n",
-                               i, (track_available ? "" : "-"), track_artist->str,
+                               i+1, (track_available ? "" : "-"), track_artist->str,
                                track_album->str, track_name, track_min, track_sec, 
                                track_link->str);
         g_string_free(track_artist, TRUE);
@@ -150,7 +153,7 @@ void play_playlist(int idx, GString* result) {
 
     /* First get the playlist */
     playlist_lock();
-    pl = playlist_get(idx);
+    pl = playlist_get(idx-1);
     playlist_unlock();
 
     if (!pl) {
@@ -172,7 +175,7 @@ void play_track(int pl_idx, int tr_idx, GString* result) {
 
     /* First get the playlist */
     playlist_lock();
-    pl = playlist_get(pl_idx);
+    pl = playlist_get(pl_idx-1);
     if (!pl) {
         playlist_unlock();
         g_string_assign(result, "- invalid playlist\n");
@@ -186,7 +189,7 @@ void play_track(int pl_idx, int tr_idx, GString* result) {
         fprintf(stderr, "Can't find tracks array.\n");
         exit(1);
     }
-    tr = g_array_index(tracks, sp_track*, tr_idx);
+    tr = g_array_index(tracks, sp_track*, tr_idx-1);
 
     tracks_unlock();
     playlist_unlock();
