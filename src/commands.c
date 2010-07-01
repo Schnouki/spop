@@ -22,6 +22,7 @@
 
 #include "spop.h"
 #include "commands.h"
+#include "queue.h"
 #include "spotify.h"
 
 /****************
@@ -111,7 +112,24 @@ void list_tracks(int idx, GString* result) {
 
 
 void play_playlist(int idx, GString* result) {
-    g_string_assign(result, "- not implemented\n");
+    sp_playlist* pl;
+
+    /* First get the playlist */
+    playlist_lock();
+    pl = playlist_get(idx);
+    playlist_unlock();
+
+    if (!pl) {
+        g_string_assign(result, "- invalid playlist\n");
+        return;
+    }
+
+    /* Load it and play it */
+    queue_set_playlist(pl);
+    queue_play();
+
+    /* TODO: display something to the user */
+    g_string_assign(result, "+ OK\n");
 }
 
 void play_track(int pl_idx, int tr_idx, GString* result) {
@@ -151,8 +169,8 @@ void play_track(int pl_idx, int tr_idx, GString* result) {
     }
 
     /* Load it and play it */
-    session_load(tr);
-    session_play(1);
+    queue_set_track(tr);
+    queue_play();
 
     /* Return some data about it to the user */
     track_get_data(tr, &name, &artist, &album, &link, &min, &sec);

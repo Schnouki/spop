@@ -23,6 +23,7 @@
 
 #include "spop.h"
 #include "plugin.h"
+#include "queue.h"
 #include "spotify.h"
 
 /************************
@@ -205,6 +206,10 @@ void session_load(sp_track* track) {
                 sp_error_message(error));
         exit(1);
     }
+}
+
+void session_unload() {
+    sp_session_player_unload(g_session);
 }
 
 void session_play(gboolean play) {
@@ -436,6 +441,7 @@ void cb_log_message(sp_session* session, const char* data) {
 void cb_end_of_track(sp_session* session) {
     if (g_debug)
         fprintf(stderr, "End of track.\n");
+    queue_next();
 }
 
 void cb_tracks_added(sp_playlist* pl, sp_track* const* tracks, int num_tracks, int position, void* userdata) {

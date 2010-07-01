@@ -20,7 +20,6 @@
 #include <glib.h>
 #include <libspotify/api.h>
 
-
 /* Init functions */
 void playlist_init();
 void session_init();
@@ -36,6 +35,7 @@ void session_events_loop();
 sp_playlistcontainer* session_playlistcontainer();
 
 void session_load(sp_track* track);
+void session_unload();
 void session_play(gboolean play);
 
 GArray* tracks_get_playlist(sp_playlist* pl);
