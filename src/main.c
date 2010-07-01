@@ -21,10 +21,8 @@
 #include "spop.h"
 #include "config.h"
 #include "interface.h"
-#include "playlist.h"
 #include "plugin.h"
-#include "session.h"
-#include "track.h"
+#include "spotify.h"
 
 static const char* copyright_notice = 
     "spop Copyright (C) " SPOP_YEAR " Thomas Jost\n"

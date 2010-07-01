@@ -41,10 +41,8 @@ set(SPOPD
   src/config.c
   src/interface.c
   src/main.c
-  src/playlist.c
   src/plugin.c
-  src/session.c
-  src/track.c
+  src/spotify.c
 )
 add_executable(spopd ${SPOPD})
 

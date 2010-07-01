@@ -22,9 +22,7 @@
 
 #include "spop.h"
 #include "commands.h"
-#include "playlist.h"
-#include "session.h"
-#include "track.h"
+#include "spotify.h"
 
 void list_playlists(GString* result) {
     int i, n, t;
@@ -32,7 +30,7 @@ void list_playlists(GString* result) {
 
     if (g_debug)
         fprintf(stderr, "Waiting for container...\n");
-    playlist_container_ready();
+    container_ready();
 
     n = playlists_len();
     if (n == -1) {

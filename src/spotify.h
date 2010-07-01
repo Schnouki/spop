@@ -14,13 +14,22 @@
  * spop. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef SESSION_H
-#define SESSION_H
+#ifndef SPOTIFY_H
+#define SPOTIFY_H
 
+#include <glib.h>
 #include <libspotify/api.h>
 
-/* Functions called directly from spop */
+
+/* Init functions */
+void playlist_init();
 void session_init();
+void tracks_init();
+
+/* Functions used from commands or callbacks */
+int playlists_len();
+sp_playlist* playlist_get(int nb);
+
 void session_login(const char* username, const char* password);
 void session_events_loop();
 
@@ -29,10 +38,31 @@ sp_playlistcontainer* session_playlistcontainer();
 void session_load(sp_track* track);
 void session_play(bool play);
 
+GArray* tracks_get_playlist(sp_playlist* pl);
+void tracks_add_playlist(sp_playlist* pl);
+void tracks_remove_playlist(sp_playlist* pl);
+GString* track_get_link(sp_track* track);
+
 /* Utility functions */
+void container_ready();
 void logged_in();
 
+void playlist_lock();
+void playlist_unlock();
+
+void tracks_lock();
+void tracks_unlock();
+
 /* Callbacks */
+void cb_container_loaded(sp_playlistcontainer* pc, void* data);
+void cb_playlist_added(sp_playlistcontainer* pc, sp_playlist* playlist, int position, void* userdata);
+void cb_playlist_removed(sp_playlistcontainer* pc, sp_playlist* playlist, int position, void* userdata);
+void cb_playlist_moved(sp_playlistcontainer* pc, sp_playlist* playlist, int position, int new_position, void* userdata);
+
+void cb_tracks_added(sp_playlist* pl, sp_track* const* tracks, int num_tracks, int position, void* userdata);
+void cb_tracks_removed(sp_playlist* pl, const int* tracks, int num_tracks, void* userdata);
+void cb_tracks_moved(sp_playlist* pl, const int* tracks, int num_tracks, int new_position, void* userdata);
+
 void cb_logged_in(sp_session* session, sp_error error);
 void cb_logged_out(sp_session* session);
 void cb_metadata_updated(sp_session* session);
