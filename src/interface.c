@@ -253,6 +253,11 @@ void interface_handle_command(gchar** command, GString* result) {
 
     if (result->len == 0)
         g_string_append(result, "- ERR\n");
-    else if ((result->str[0] != '-') && (result->str[0] != '+'))
-        g_string_append(result, "+ OK\n");
+    else if ((result->str[0] != '-') && (result->str[0] != '+')) {
+        /* Is there something to add ?... */
+        gchar* needle = "\n";
+        gchar* pos = g_strrstr_len(result->str, result->len-1, needle);
+        if (pos && (pos < &(result->str[result->len])) && (pos[1] != '+') && (pos[1] != '-'))
+            g_string_append(result, "+ OK\n");
+    }
 }
