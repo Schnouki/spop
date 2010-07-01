@@ -258,7 +258,7 @@ queue_status queue_get_status(sp_track** current_track, int* current_track_numbe
 }
 
 void queue_next() {
-    g_static_rw_lock_reader_lock(&g_queue_lock);
+    g_static_rw_lock_writer_lock(&g_queue_lock);
 
     if (g_debug)
         fprintf(stderr, "Switching to next track.\n");
@@ -278,11 +278,11 @@ void queue_next() {
             session_play(TRUE);
     }
 
-    g_static_rw_lock_reader_unlock(&g_queue_lock);
+    g_static_rw_lock_writer_unlock(&g_queue_lock);
 }
 
 void queue_prev() {
-    g_static_rw_lock_reader_lock(&g_queue_lock);
+    g_static_rw_lock_writer_lock(&g_queue_lock);
 
     if (g_debug)
         fprintf(stderr, "Switching to previous track.\n");
@@ -303,5 +303,5 @@ void queue_prev() {
             session_play(TRUE);
     }
 
-    g_static_rw_lock_reader_unlock(&g_queue_lock);
+    g_static_rw_lock_writer_unlock(&g_queue_lock);
 }
