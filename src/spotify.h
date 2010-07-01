@@ -41,7 +41,8 @@ void session_play(bool play);
 GArray* tracks_get_playlist(sp_playlist* pl);
 void tracks_add_playlist(sp_playlist* pl);
 void tracks_remove_playlist(sp_playlist* pl);
-GString* track_get_link(sp_track* track);
+
+void track_get_data(sp_track* track, const char** name, GString** artist, GString** album, GString** link, int* min, int* sec);
 
 /* Utility functions */
 void container_ready();

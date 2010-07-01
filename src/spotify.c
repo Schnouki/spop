@@ -250,24 +250,72 @@ void tracks_remove_playlist(sp_playlist* pl) {
     g_static_rw_lock_writer_unlock(&g_playlist_tracks_lock);
 }
 
-GString* track_get_link(sp_track* track) {
-    sp_link* link;
-    GString* uri;
+void track_get_data(sp_track* track, const char** name, GString** artist, GString** album, GString** link, int* min, int* sec) {
+    sp_artist** art = NULL;
+    sp_album* alb = NULL;
+    sp_link* lnk;
+    int dur;
+    int i;
+    int nb_art = 0;
 
-    link = sp_link_create_from_track(track, 0);
-    if (!link) {
-        fprintf(stderr, "Can't get URI from track\n");
-        exit(1);
+    /* Begin loading everything */
+    if (name) {
+        *name = sp_track_name(track);
     }
-    uri = g_string_sized_new(1024);
-    if (sp_link_as_string(link, uri->str, 1024) < 0) {
-        fprintf(stderr, "Can't render URI from link\n");
-        exit(1);
-    }
-    sp_link_release(link);
+    if (artist) {
+        nb_art = sp_track_num_artists(track);
+        art = (sp_artist**) malloc(nb_art * sizeof(sp_artist*));
+        if (!art) {
+            fprintf(stderr, "Can't allocate memory\n");
+            exit(1);
+        }
 
-    return uri;
+        for (i=0; i < nb_art; i++)
+            art[i] = sp_track_artist(track, i);
+    }
+    if (album) {
+        alb = sp_track_album(track);
+    }
+    if (link) {
+        lnk = sp_link_create_from_track(track, 0);
+        if (!lnk) {
+            fprintf(stderr, "Can't get URI from track\n");
+            exit(1);
+        }
+        *link = g_string_sized_new(1024);
+        if (sp_link_as_string(lnk, (*link)->str, 1024) < 0) {
+            fprintf(stderr, "Can't render URI from link\n");
+            exit(1);
+        }
+        sp_link_release(lnk);
+    }
+    if (min || sec) {
+        dur = sp_track_duration(track);
+        if (min)
+            *min = dur/(1000*60);
+        if (sec)
+            *sec = (dur/1000)%60;
+    }
+
+    /* Now create destination strings */
+    if (artist) {
+        for (i=0; i < nb_art; i++) {
+            while (!sp_artist_is_loaded(art[i])) { usleep(10000); }
+            if (i == 0) {
+                *artist = g_string_new(sp_artist_name(art[i]));
+            }
+            else {
+                g_string_append(*artist, ", ");
+                g_string_append(*artist, sp_artist_name(art[i]));
+            }
+        }
+    }
+    if (album) {
+        while (!sp_album_is_loaded(alb)) { usleep(10000); }
+        *album = g_string_new(sp_album_name(alb));
+    }
 }
+
 
 
 /*************************

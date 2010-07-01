@@ -24,6 +24,9 @@
 #include "commands.h"
 #include "spotify.h"
 
+/****************
+ *** Commands ***
+ ****************/
 void list_playlists(GString* result) {
     int i, n, t;
     sp_playlist* pl;
@@ -55,16 +58,14 @@ void list_tracks(int idx, GString* result) {
     sp_track* track;
     GArray* tracks;
     int tracks_nb;
-    int i, j;
+    int i;
 
-    sp_album* album;
-    sp_artist* artist;
     bool track_available;
-    int track_duration;
+    int track_min, track_sec;
     const char* track_name;
     GString* track_artist = NULL;
-    const char* track_album;
-    GString* track_link;
+    GString* track_album = NULL;
+    GString* track_link = NULL;
 
     /* Get the playlist */
     pl = playlist_get(idx);
@@ -93,29 +94,14 @@ void list_tracks(int idx, GString* result) {
         if (!sp_track_is_loaded(track)) continue;
 
         track_available = sp_track_is_available(track);
-        track_duration = sp_track_duration(track);
-        track_name = sp_track_name(track);
-        for (j=0; j < sp_track_num_artists(track); j++) {
-            artist = sp_track_artist(track, j);
-            while (!sp_artist_is_loaded(artist)) { usleep(10000); }
-            if (j == 0) {
-                track_artist = g_string_new(sp_artist_name(artist));
-            }
-            else {
-                g_string_append(track_artist, ", ");
-                g_string_append(track_artist, sp_artist_name(artist));
-            }
-        }
-        album = sp_track_album(track);
-        while (!sp_album_is_loaded(album)) { usleep(10000); }
-        track_album = sp_album_name(album);
-        track_link = track_get_link(track);
+        track_get_data(track, &track_name, &track_artist, &track_album, &track_link, &track_min, &track_sec);
 
         g_string_append_printf(result, "%d%s %s -- \"%s\" -- \"%s\" (%d:%02d) URI:%s\n",
                                i, (track_available ? "" : "-"), track_artist->str,
-                               track_album, track_name, track_duration/60000, 
-                               (track_duration/1000)%60, track_link->str);
+                               track_album->str, track_name, track_min, track_sec, 
+                               track_link->str);
         g_string_free(track_artist, TRUE);
+        g_string_free(track_album, TRUE);
         g_string_free(track_link, TRUE);
     }
     tracks_unlock();
@@ -130,7 +116,13 @@ void play_track(int pl_idx, int tr_idx, GString* result) {
     sp_playlist* pl;
     sp_track* tr;
     GArray* tracks;
+    GString* artist;
+    GString* album;
+    GString* link;
+    const char* name;
+    int min, sec;
 
+    /* First get the playlist */
     playlist_lock();
     pl = playlist_get(pl_idx);
     if (pl == NULL) {
@@ -139,20 +131,32 @@ void play_track(int pl_idx, int tr_idx, GString* result) {
         return;
     }
 
+    /* Then get the track itself */
     tracks_lock();
     tracks = tracks_get_playlist(pl);
     if (tracks == NULL) {
         fprintf(stderr, "Can't find tracks array.\n");
         exit(1);
     }
-
     tr = g_array_index(tracks, sp_track*, tr_idx);
 
     tracks_unlock();
     playlist_unlock();
 
+    /* Load it and play it */
     session_load(tr);
     session_play(1);
 
-    g_string_assign(result, "+ OK\n");
+    /* Return some data about it to the user */
+    track_get_data(tr, &name, &artist, &album, &link, &min, &sec);
+
+    g_string_printf(result, "Artist: %s\n", artist->str);
+    g_string_append_printf(result, "Title: %s\n", name);
+    g_string_append_printf(result, "Album: %s\n", album->str);
+    g_string_append_printf(result, "Duration: %d:%02d\n", min, sec);
+    g_string_append_printf(result, "URI: %s\n", link->str);
+
+    g_string_free(artist, TRUE);
+    g_string_free(album, TRUE);
+    g_string_free(link, TRUE);
 }
