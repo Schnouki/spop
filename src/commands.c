@@ -185,3 +185,26 @@ void play_track(int pl_idx, int tr_idx, GString* result) {
     g_string_free(album, TRUE);
     g_string_free(link, TRUE);
 }
+
+void play(GString* result) {
+    queue_play();
+    g_string_assign(result, "+ OK\n");
+}
+void stop(GString* result) {
+    queue_stop();
+    g_string_assign(result, "+ OK\n");
+}
+void toggle(GString* result) {
+    queue_toggle();
+    g_string_assign(result, "+ OK\n");
+}
+
+void goto_next(GString* result) {
+    queue_next();
+    g_string_assign(result, "+ OK\n");
+}
+void goto_prev(GString* result) {
+    queue_prev();
+    g_string_assign(result, "+ OK\n");
+}
+

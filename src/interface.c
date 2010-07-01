@@ -234,15 +234,21 @@ void interface_handle_command(gchar** command, GString* result) {
             list_tracks(arg1, result);
     }
     else if (strcmp(cmd, "play") == 0) {
-        if (arg1 == -1) {
-            g_string_assign(result, "- missing parameter\n");
-            return;
-        }
-        if (arg2 == -1)
+        if (arg1 == -1)
+            play(result);
+        else if (arg2 == -1)
             play_playlist(arg1, result);
         else
             play_track(arg1, arg2, result);
     }
+    else if (strcmp(cmd, "toggle") == 0)
+        toggle(result);
+    else if (strcmp(cmd, "stop") == 0)
+        stop(result);
+    else if (strcmp(cmd, "next") == 0)
+        goto_next(result);
+    else if (strcmp(cmd, "prev") == 0)
+        goto_prev(result);
     else if (strcmp(cmd, "quit") == 0) {
         exit(0);
     }

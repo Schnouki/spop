@@ -269,3 +269,28 @@ void queue_next() {
 
     g_static_rw_lock_reader_unlock(&g_queue_lock);
 }
+
+void queue_prev() {
+    g_static_rw_lock_reader_lock(&g_queue_lock);
+
+    if (g_debug)
+        fprintf(stderr, "Switching to previous track.\n");
+
+    if (g_current_track == 0) {
+        if (g_debug)
+            fprintf(stderr, "First track reached, stopping playback.\n");
+        g_current_track = -1;
+        g_status = STOPPED;
+    }
+    else if (g_current_track > 0)
+        g_current_track -= 1;
+
+    session_unload();
+    if (g_status != STOPPED) {
+        session_load(g_queue_peek_nth(&g_queue, g_current_track));
+        if (g_status == PLAYING)
+            session_play(TRUE);
+    }
+
+    g_static_rw_lock_reader_unlock(&g_queue_lock);
+}
