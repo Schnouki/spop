@@ -36,7 +36,7 @@ void session_events_loop();
 sp_playlistcontainer* session_playlistcontainer();
 
 void session_load(sp_track* track);
-void session_play(bool play);
+void session_play(gboolean play);
 
 GArray* tracks_get_playlist(sp_playlist* pl);
 void tracks_add_playlist(sp_playlist* pl);

@@ -35,15 +35,16 @@ void list_playlists(GString* result) {
         fprintf(stderr, "Waiting for container...\n");
     container_ready();
 
+    playlist_lock();
     n = playlists_len();
     if (n == -1) {
+        playlist_unlock();
         fprintf(stderr, "Could not determine the number of playlists\n");
         return;
     }
     if (g_debug)
         fprintf(stderr, "%d playlists\n", n);
 
-    playlist_lock();
     for (i=0; i<n; i++) {
         pl = playlist_get(i);
         if (!sp_playlist_is_loaded(pl)) continue;
@@ -72,16 +73,17 @@ void list_tracks(int idx, GString* result) {
     if (pl == NULL) return;
     
     /* Tracks number */
+    tracks_lock();
     tracks_nb = sp_playlist_num_tracks(pl);
 
     /* If the playlist is empty, just add a newline (an empty string would mean "error") */
     if (tracks_nb == 0) {
+        tracks_unlock();
         g_string_assign(result, "\n");
         return;
     }
 
     /* Get the tracks array */
-    tracks_lock();
     tracks = tracks_get_playlist(pl);
     if (tracks == NULL) {
         fprintf(stderr, "Can't find tracks array.\n");
@@ -125,16 +127,16 @@ void play_track(int pl_idx, int tr_idx, GString* result) {
     /* First get the playlist */
     playlist_lock();
     pl = playlist_get(pl_idx);
-    if (pl == NULL) {
-        g_string_assign(result, "- invalid playlist\n");
+    if (!pl) {
         playlist_unlock();
+        g_string_assign(result, "- invalid playlist\n");
         return;
     }
 
     /* Then get the track itself */
     tracks_lock();
     tracks = tracks_get_playlist(pl);
-    if (tracks == NULL) {
+    if (!tracks) {
         fprintf(stderr, "Can't find tracks array.\n");
         exit(1);
     }
@@ -142,6 +144,11 @@ void play_track(int pl_idx, int tr_idx, GString* result) {
 
     tracks_unlock();
     playlist_unlock();
+
+    if (!tr) {
+        g_string_assign(result, "- invalid track number\n");
+        return;
+    }
 
     /* Load it and play it */
     session_load(tr);

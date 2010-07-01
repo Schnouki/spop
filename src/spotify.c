@@ -140,12 +140,7 @@ void tracks_init() {
  *** Functions used from commands and callbacks ***
  **************************************************/
 int playlists_len() {
-    int len;
-    g_static_rw_lock_reader_lock(&g_playlist_lock);
-    len = g_playlists->len;
-    g_static_rw_lock_reader_unlock(&g_playlist_lock);
-
-    return len;
+    return g_playlists->len;
 }
 
 sp_playlist* playlist_get(int nb) {
@@ -212,7 +207,7 @@ void session_load(sp_track* track) {
     }
 }
 
-void session_play(bool play) {
+void session_play(gboolean play) {
     sp_error error;
 
     error = sp_session_player_play(g_session, play);
