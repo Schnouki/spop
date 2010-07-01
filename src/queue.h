@@ -20,6 +20,8 @@
 #include <glib.h>
 #include <libspotify/api.h>
 
+typedef enum { STOPPED, PLAYING, PAUSED } queue_status;
+
 void queue_set_track(sp_track* track);
 void queue_add_track(sp_track* track);
 
@@ -32,7 +34,8 @@ void queue_play();
 void queue_stop();
 void queue_toggle();
 
-sp_track* queue_current_track();
+queue_status queue_get_status(sp_track** current_track, int* current_track_number, int* total_tracks);
+
 void queue_next();
 void queue_prev();
 void queue_set(int idx);

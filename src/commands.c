@@ -111,6 +111,40 @@ void list_tracks(int idx, GString* result) {
 }
 
 
+void status(GString* result) {
+    sp_track* track;
+    int track_nb, total_tracks;
+    queue_status qs;
+    int track_min, track_sec;
+    const char* track_name;
+    GString* track_artist = NULL;
+    GString* track_album = NULL;
+    GString* track_link = NULL;
+
+    qs = queue_get_status(&track, &track_nb, &total_tracks);
+
+    g_string_assign(result, "Status: ");
+    if (qs == PLAYING) g_string_append(result, "playing");
+    else if (qs == PAUSED) g_string_append(result, "paused");
+    else g_string_append(result, "stopped");
+
+    g_string_append_printf(result, "\nTotal tracks: %d\n", total_tracks);
+
+    if (qs != STOPPED) {
+        g_string_append_printf(result, "Current track: %d\n", track_nb+1);
+
+        track_get_data(track, &track_name, &track_artist, &track_album, &track_link, &track_min, &track_sec);
+
+        g_string_append_printf(result, "Artist: %s\nTitle: %s\nAlbum: %s\n",
+                               track_artist->str, track_name, track_album->str);
+        g_string_append_printf(result, "Duration: %d:%02d\nURI: %s\n",
+                               track_min, track_sec, track_link->str);
+        g_string_free(track_artist, TRUE);
+        g_string_free(track_album, TRUE);
+        g_string_free(track_link, TRUE);
+    }
+}
+
 void play_playlist(int idx, GString* result) {
     sp_playlist* pl;
 
@@ -128,19 +162,13 @@ void play_playlist(int idx, GString* result) {
     queue_set_playlist(pl);
     queue_play();
 
-    /* TODO: display something to the user */
-    g_string_assign(result, "+ OK\n");
+    status(result);
 }
 
 void play_track(int pl_idx, int tr_idx, GString* result) {
     sp_playlist* pl;
     sp_track* tr;
     GArray* tracks;
-    GString* artist;
-    GString* album;
-    GString* link;
-    const char* name;
-    int min, sec;
 
     /* First get the playlist */
     playlist_lock();
@@ -172,39 +200,28 @@ void play_track(int pl_idx, int tr_idx, GString* result) {
     queue_set_track(tr);
     queue_play();
 
-    /* Return some data about it to the user */
-    track_get_data(tr, &name, &artist, &album, &link, &min, &sec);
-
-    g_string_printf(result, "Artist: %s\n", artist->str);
-    g_string_append_printf(result, "Title: %s\n", name);
-    g_string_append_printf(result, "Album: %s\n", album->str);
-    g_string_append_printf(result, "Duration: %d:%02d\n", min, sec);
-    g_string_append_printf(result, "URI: %s\n", link->str);
-
-    g_string_free(artist, TRUE);
-    g_string_free(album, TRUE);
-    g_string_free(link, TRUE);
+    status(result);
 }
 
 void play(GString* result) {
     queue_play();
-    g_string_assign(result, "+ OK\n");
+    status(result);
 }
 void stop(GString* result) {
     queue_stop();
-    g_string_assign(result, "+ OK\n");
+    status(result);
 }
 void toggle(GString* result) {
     queue_toggle();
-    g_string_assign(result, "+ OK\n");
+    status(result);
 }
 
 void goto_next(GString* result) {
     queue_next();
-    g_string_assign(result, "+ OK\n");
+    status(result);
 }
 void goto_prev(GString* result) {
     queue_prev();
-    g_string_assign(result, "+ OK\n");
+    status(result);
 }
 

@@ -29,7 +29,7 @@
 static GQueue g_queue = G_QUEUE_INIT;
 static GStaticRWLock g_queue_lock = G_STATIC_RW_LOCK_INIT;
 static int g_current_track = -1;
-static enum { STOPPED, PLAYING, PAUSED } g_status = STOPPED;
+static queue_status g_status = STOPPED;
 
 
 /**********************************
@@ -235,15 +235,26 @@ void queue_toggle() {
     g_static_rw_lock_writer_unlock(&g_queue_lock);
 }
 
-sp_track* queue_current_track() {
-    sp_track* track = NULL;
+queue_status queue_get_status(sp_track** current_track, int* current_track_number, int* total_tracks) {
+    queue_status s;
 
     g_static_rw_lock_reader_lock(&g_queue_lock);
-    if (g_current_track >= 0)
-        track = g_queue_peek_nth(&g_queue, g_current_track);
+
+    if (current_track) {
+        *current_track = NULL;
+        if (g_current_track >= 0)
+            *current_track = g_queue_peek_nth(&g_queue, g_current_track);
+    }
+    if (current_track_number)
+        *current_track_number = g_current_track;
+    if (total_tracks)
+        *total_tracks = g_queue_get_length(&g_queue);
+
+    s = g_status;
+
     g_static_rw_lock_reader_unlock(&g_queue_lock);
 
-    return track;
+    return s;
 }
 
 void queue_next() {

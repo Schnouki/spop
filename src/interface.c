@@ -249,6 +249,8 @@ void interface_handle_command(gchar** command, GString* result) {
         goto_next(result);
     else if (strcmp(cmd, "prev") == 0)
         goto_prev(result);
+    else if (strcmp(cmd, "status") == 0)
+        status(result);
     else if (strcmp(cmd, "quit") == 0) {
         exit(0);
     }
