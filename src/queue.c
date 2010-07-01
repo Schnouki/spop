@@ -305,3 +305,29 @@ void queue_prev() {
 
     g_static_rw_lock_writer_unlock(&g_queue_lock);
 }
+
+void queue_set(int idx) {
+    g_static_rw_lock_writer_lock(&g_queue_lock);
+
+    if (g_debug)
+        fprintf(stderr, "Switching to track %d.\n", idx);
+
+    if ((idx >= 0) && (idx < g_queue_get_length(&g_queue))) {
+        g_current_track = idx;
+    }
+    else {
+        if (g_debug)
+            fprintf(stderr, "Invalid track number, stopping playback.\n");
+        g_current_track = -1;
+        g_status = STOPPED;
+    }
+
+    session_unload();
+    if (g_status != STOPPED) {
+        session_load(g_queue_peek_nth(&g_queue, g_current_track));
+        if (g_status == PLAYING)
+            session_play(TRUE);
+    }
+
+    g_static_rw_lock_writer_unlock(&g_queue_lock);
+}

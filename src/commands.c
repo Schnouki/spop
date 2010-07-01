@@ -227,4 +227,7 @@ void goto_prev(GString* result) {
     queue_prev();
     status(result);
 }
-
+void goto_nb(GString* result, int nb) {
+    queue_set(nb-1);
+    status(result);
+}

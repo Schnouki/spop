@@ -34,6 +34,6 @@ void stop(GString* result);
 
 void goto_next(GString* result);
 void goto_prev(GString* result);
-
+void goto_nb(GString* result, int nb);
 
 #endif

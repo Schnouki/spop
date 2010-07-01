@@ -249,6 +249,14 @@ void interface_handle_command(gchar** command, GString* result) {
         goto_next(result);
     else if (strcmp(cmd, "prev") == 0)
         goto_prev(result);
+    else if (strcmp(cmd, "goto") == 0) {
+        if (arg1 == -1) {
+            g_string_assign(result, "- missing argument\n");
+            return;
+        }
+        else
+            goto_nb(result, arg1);
+    }
     else if (strcmp(cmd, "status") == 0)
         status(result);
     else if (strcmp(cmd, "quit") == 0) {
