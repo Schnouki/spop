@@ -32,9 +32,6 @@
 static sp_playlistcontainer* g_container;
 static gboolean g_container_loaded = FALSE;
 
-static GArray* g_playlists;
-static GStaticRWLock g_playlist_lock = G_STATIC_RW_LOCK_INIT;
-
 static GHashTable* g_playlist_tracks;
 static GStaticRWLock g_playlist_tracks_lock = G_STATIC_RW_LOCK_INIT;
 
@@ -54,7 +51,7 @@ extern const size_t g_appkey_size;
 static sp_playlistcontainer_callbacks g_container_callbacks = {
     &cb_playlist_added,
     &cb_playlist_removed,
-    &cb_playlist_moved,
+    NULL,
     &cb_container_loaded
 };
 static sp_playlist_callbacks g_playlist_callbacks = {
@@ -84,11 +81,6 @@ static sp_session_callbacks g_session_callbacks = {
  *** Init functions ***
  **********************/
 void playlist_init() {
-    /* Init the playlists sequence */
-    g_static_rw_lock_writer_lock(&g_playlist_lock);
-    g_playlists = g_array_new(FALSE, TRUE, sizeof(sp_playlist*));
-    g_static_rw_lock_writer_unlock(&g_playlist_lock);
-
     /* Get the container */
     g_container = sp_session_playlistcontainer(g_session);
     if (g_container == NULL) {
@@ -138,18 +130,11 @@ void tracks_init() {
  *** Functions used from commands and callbacks ***
  **************************************************/
 int playlists_len() {
-    return g_playlists->len;
+    return sp_playlistcontainer_num_playlists(g_container);
 }
 
 sp_playlist* playlist_get(int nb) {
-    sp_playlist* pl = NULL;
-
-    g_static_rw_lock_reader_lock(&g_playlist_lock);
-    if ((nb >= 0) && (nb < g_playlists->len))
-        pl = g_array_index(g_playlists, sp_playlist*, nb);
-    g_static_rw_lock_reader_unlock(&g_playlist_lock);
-
-    return pl;
+    return sp_playlistcontainer_playlist(g_container, nb);
 }
 
 void session_login(const char* username, const char* password) {
@@ -326,13 +311,6 @@ void logged_in() {
     sem_post(&g_logged_in_sem);
 }
 
-void playlist_lock() {
-    g_static_rw_lock_reader_lock(&g_playlist_lock);
-}
-void playlist_unlock() {
-    g_static_rw_lock_reader_unlock(&g_playlist_lock);
-}
-
 void tracks_lock() {
     g_static_rw_lock_reader_lock(&g_playlist_tracks_lock);
 }
@@ -345,56 +323,23 @@ void tracks_unlock() {
  *** Callbacks, not to be used directly ***
  ******************************************/
 void cb_container_loaded(sp_playlistcontainer* pc, void* data) {
-    int i, np;
-    sp_playlist* pl;
-
     if (g_debug)
-        fprintf(stderr, "Container loaded, now loading playlists.\n");
-
-    np = sp_playlistcontainer_num_playlists(pc);
-    if (np == -1) {
-        fprintf(stderr, "Could not determine the number of playlists\n");
-        exit(1);
-    }
-
-    /* Begin loading the playlists */
-    g_static_rw_lock_writer_lock(&g_playlist_lock);
-    g_array_set_size(g_playlists, np);
-    for (i=0; i < np; i++) {
-        pl = sp_playlistcontainer_playlist(pc, i);
-        g_array_insert_val(g_playlists, i, pl);
-    }
-
+        fprintf(stderr, "Container loaded.\n");
     g_container_loaded = TRUE;
-    g_static_rw_lock_writer_unlock(&g_playlist_lock);
 }
 void cb_playlist_added(sp_playlistcontainer* pc, sp_playlist* playlist, int position, void* userdata) {
     if (g_debug)
         fprintf(stderr, "Adding playlist %d.\n", position);
 
-    g_static_rw_lock_writer_lock(&g_playlist_lock);
-    g_array_insert_val(g_playlists, position, playlist);
-    g_static_rw_lock_writer_unlock(&g_playlist_lock);
-    tracks_add_playlist(playlist);
     sp_playlist_add_callbacks(playlist, &g_playlist_callbacks, NULL);
+    tracks_add_playlist(playlist);
 }
 void cb_playlist_removed(sp_playlistcontainer* pc, sp_playlist* playlist, int position, void* userdata) {
     if (g_debug)
         fprintf(stderr, "Removing playlist %d.\n", position);
 
-    g_static_rw_lock_writer_lock(&g_playlist_lock);
-    g_array_remove_index(g_playlists, position);
-    g_static_rw_lock_writer_unlock(&g_playlist_lock);
+    sp_playlist_remove_callbacks(playlist, &g_playlist_callbacks, NULL);
     tracks_remove_playlist(playlist);
-}
-void cb_playlist_moved(sp_playlistcontainer* pc, sp_playlist* playlist, int position, int new_position, void* userdata) {
-    if (g_debug)
-        fprintf(stderr, "Moving playlist %d to %d.\n", position, new_position);
-
-    g_static_rw_lock_writer_lock(&g_playlist_lock);
-    g_array_remove_index(g_playlists, position);
-    g_array_insert_val(g_playlists, position, playlist);
-    g_static_rw_lock_writer_unlock(&g_playlist_lock);
 }
 
 void cb_logged_in(sp_session* session, sp_error error) {
@@ -450,7 +395,7 @@ void cb_tracks_added(sp_playlist* pl, sp_track* const* tracks, int num_tracks, i
     /* Get tracks array */
     g_static_rw_lock_writer_lock(&g_playlist_tracks_lock);
     ta = g_hash_table_lookup(g_playlist_tracks, pl);
-    if (ta == NULL) {
+    if (!ta) {
         fprintf(stderr, "Can't find tracks array\n");
         exit(1);
     }

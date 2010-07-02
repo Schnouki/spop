@@ -37,10 +37,8 @@ void list_playlists(GString* result) {
         return;
     }
 
-    playlist_lock();
     n = playlists_len();
     if (n == -1) {
-        playlist_unlock();
         fprintf(stderr, "Could not determine the number of playlists\n");
         return;
     }
@@ -49,11 +47,19 @@ void list_playlists(GString* result) {
 
     for (i=0; i<n; i++) {
         pl = playlist_get(i);
-        if (!sp_playlist_is_loaded(pl)) continue;
+        if (!pl) {
+            if (g_debug)
+                fprintf(stderr, "Got NULL pointer when loading playlist %d.\n", i);
+            continue;
+        }
+        if (!sp_playlist_is_loaded(pl)) {
+            if (g_debug)
+                fprintf(stderr, "Playlist %d is not loaded.\n", i);
+            continue;
+        }
         t = sp_playlist_num_tracks(pl);
         g_string_append_printf(result, "%d %s (%d)\n", i+1, sp_playlist_name(pl), t);
     }
-    playlist_unlock();
 }
 
 void list_tracks(int idx, GString* result) {
@@ -153,9 +159,7 @@ void play_playlist(int idx, GString* result) {
     sp_playlist* pl;
 
     /* First get the playlist */
-    playlist_lock();
     pl = playlist_get(idx-1);
-    playlist_unlock();
 
     if (!pl) {
         g_string_assign(result, "- invalid playlist\n");
@@ -175,10 +179,8 @@ void play_track(int pl_idx, int tr_idx, GString* result) {
     GArray* tracks;
 
     /* First get the playlist */
-    playlist_lock();
     pl = playlist_get(pl_idx-1);
     if (!pl) {
-        playlist_unlock();
         g_string_assign(result, "- invalid playlist\n");
         return;
     }
@@ -193,7 +195,6 @@ void play_track(int pl_idx, int tr_idx, GString* result) {
     tr = g_array_index(tracks, sp_track*, tr_idx-1);
 
     tracks_unlock();
-    playlist_unlock();
 
     if (!tr) {
         g_string_assign(result, "- invalid track number\n");
