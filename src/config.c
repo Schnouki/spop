@@ -65,8 +65,8 @@ static void config_ready() {
 }
 
 /* Read mandatory options from the config file */
-int config_get_bool(const char* name) {
-    int value;
+gboolean config_get_bool(const char* name) {
+    gboolean value;
 
     int res = config_get_bool_opt(name, &value);
     if (res != CONFIG_FOUND) {
@@ -100,7 +100,7 @@ const char* config_get_string(const char* name) {
 }
 
 /* Read optional options from the config file */
-config_result config_get_bool_opt(const char* name, int* value) {
+config_result config_get_bool_opt(const char* name, gboolean* value) {
     int res;
 
     config_ready();

@@ -14,6 +14,7 @@
  * spop. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <glib.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -43,10 +44,14 @@ int g_debug = 0;
 int real_main() {
     const char* username;
     const char* password;
+    gboolean high_bitrate;
 
     /* Read username and password */
     username = config_get_string("spotify_username");
     password = config_get_string("spotify_password");
+
+    if (config_get_bool_opt("high_bitrate", &high_bitrate) == CONFIG_NOT_FOUND)
+        high_bitrate = TRUE;
 
     /* Init essential stuff */
     g_thread_init(NULL);
@@ -55,6 +60,7 @@ int real_main() {
     plugins_init();
 
     /* Init login */
+    session_init(high_bitrate);
     session_login(username, password);
 
     /* Init various subsystems */

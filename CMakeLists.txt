@@ -19,7 +19,7 @@ project(spop C)
 find_package(PkgConfig)
 
 # Check for libspotify or libopenspotify
-pkg_check_modules(SPOTIFY libspotify>=0.0.3)
+pkg_check_modules(SPOTIFY libspotify>=0.0.4)
 if(NOT SPOTIFY_FOUND)
   pkg_check_modules(SPOTIFY REQUIRED libopenspotify)
   add_definitions(-DOPENSPOTIFY)

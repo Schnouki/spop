@@ -22,7 +22,7 @@
 
 /* Init functions */
 void playlist_init();
-void session_init();
+void session_init(gboolean high_bitrate);
 
 /* Functions used from commands or callbacks */
 int playlists_len();

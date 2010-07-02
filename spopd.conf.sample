@@ -8,6 +8,9 @@
 spotify_username = "USERNAME";
 spotify_password = "PASSWORD";
 
+# Prefer high bitrate (320k instead of 160k). This is the default.
+#high_bitrate = true;
+
 # Audio plugin -- right now, only OSS is available
 audio_output = "oss";
 

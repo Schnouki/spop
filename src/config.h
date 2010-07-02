@@ -17,6 +17,8 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#include <glib.h>
+
 typedef enum {
     CONFIG_FOUND,
     CONFIG_NOT_FOUND,
@@ -24,12 +26,12 @@ typedef enum {
 
 
 /* Read mandatory options */
-int config_get_bool(const char* name);
+gboolean config_get_bool(const char* name);
 int config_get_int(const char* name);
 const char* config_get_string(const char* name);
 
 /* Read optional options */
-config_result config_get_bool_opt(const char* name, int* value);
+config_result config_get_bool_opt(const char* name, gboolean* value);
 config_result config_get_int_opt(const char* name, int* value);
 config_result config_get_string_opt(const char* name, const char** value);
 

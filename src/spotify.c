@@ -80,7 +80,7 @@ void playlist_init() {
     sp_playlistcontainer_add_callbacks(g_container, &g_container_callbacks, NULL);
 }
 
-void session_init() {
+void session_init(gboolean high_bitrate) {
     sp_error error;
     sp_session_config config;
 
@@ -106,6 +106,18 @@ void session_init() {
                 sp_error_message(error));
         exit(1);
     }
+
+    /* Set bitrate */
+    if (high_bitrate) {
+        if (g_debug)
+            fprintf(stderr, "Setting preferred bitrate to high.\n");
+        sp_session_preferred_bitrate(g_session, SP_BITRATE_320k);
+    }
+    else {
+        if (g_debug)
+            fprintf(stderr, "Setting preferred bitrate to low.\n");
+        sp_session_preferred_bitrate(g_session, SP_BITRATE_160k);
+    }
 }
 
 
@@ -123,7 +135,10 @@ sp_playlist* playlist_get(int nb) {
 void session_login(const char* username, const char* password) {
     sp_error error;
 
-    if (g_session == NULL) session_init();
+    if (!g_session) {
+        fprintf(stderr, "Session is not ready.\n");
+        exit(1);
+    }
 
     error = sp_session_login(g_session, username, password);
     if (error != SP_ERROR_OK) {
@@ -136,7 +151,7 @@ void session_login(const char* username, const char* password) {
 void session_events_loop() {
     struct timespec ts;
 
-    if (g_session == NULL) {
+    if (!g_session) {
         fprintf(stderr, "No session\n");
         exit(1);
     }
