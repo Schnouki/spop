@@ -32,9 +32,6 @@
 static sp_playlistcontainer* g_container;
 static gboolean g_container_loaded = FALSE;
 
-static GHashTable* g_playlist_tracks;
-static GStaticRWLock g_playlist_tracks_lock = G_STATIC_RW_LOCK_INIT;
-
 static sp_session* g_session = NULL;
 static int g_eventloop_timeout = 0;
 static sem_t g_notify_sem;
@@ -49,19 +46,10 @@ extern const size_t g_appkey_size;
  *** Callbacks structures ***
  ****************************/
 static sp_playlistcontainer_callbacks g_container_callbacks = {
-    &cb_playlist_added,
-    &cb_playlist_removed,
+    NULL,
+    NULL,
     NULL,
     &cb_container_loaded
-};
-static sp_playlist_callbacks g_playlist_callbacks = {
-    &cb_tracks_added,
-    &cb_tracks_removed,
-    &cb_tracks_moved,
-    NULL,
-    NULL,
-    NULL,
-    NULL
 };
 static sp_session_callbacks g_session_callbacks = {
     &cb_logged_in,
@@ -120,11 +108,6 @@ void session_init() {
     }
 }
 
-void tracks_init() {
-    g_static_rw_lock_writer_lock(&g_playlist_tracks_lock);
-    g_playlist_tracks = g_hash_table_new(NULL, NULL);
-    g_static_rw_lock_writer_unlock(&g_playlist_tracks_lock);
-}
 
 /**************************************************
  *** Functions used from commands and callbacks ***
@@ -206,30 +189,21 @@ void session_play(gboolean play) {
 }
 
 GArray* tracks_get_playlist(sp_playlist* pl) {
-    return g_hash_table_lookup(g_playlist_tracks, pl);
-}
-
-void tracks_add_playlist(sp_playlist* pl) {
     GArray* tracks;
-    int nb;
+    sp_track* tr;
+    int i, n;
 
-    /* Number of tracks */
-    nb = sp_playlist_num_tracks(pl);
-    
-    /* Get or create array */
-    g_static_rw_lock_writer_lock(&g_playlist_tracks_lock);
-    tracks = g_hash_table_lookup(g_playlist_tracks, pl);
-    if (tracks == NULL) {
-        tracks = g_array_sized_new(FALSE, TRUE, sizeof(sp_track*), nb);
-        g_hash_table_insert(g_playlist_tracks, pl, tracks);
+    if (!sp_playlist_is_loaded(pl))
+        return NULL;
+
+    n = sp_playlist_num_tracks(pl);
+    tracks = g_array_sized_new(FALSE, FALSE, sizeof(sp_track*), n);
+    for (i=0; i < n; i++) {
+        tr = sp_playlist_track(pl, i);
+        g_array_append_val(tracks, tr);
     }
-    g_static_rw_lock_writer_unlock(&g_playlist_tracks_lock);
-}
 
-void tracks_remove_playlist(sp_playlist* pl) {
-    g_static_rw_lock_writer_lock(&g_playlist_tracks_lock);
-    g_hash_table_remove(g_playlist_tracks, pl);
-    g_static_rw_lock_writer_unlock(&g_playlist_tracks_lock);
+    return tracks;
 }
 
 void track_get_data(sp_track* track, const char** name, GString** artist, GString** album, GString** link, int* min, int* sec) {
@@ -311,13 +285,6 @@ void logged_in() {
     sem_post(&g_logged_in_sem);
 }
 
-void tracks_lock() {
-    g_static_rw_lock_reader_lock(&g_playlist_tracks_lock);
-}
-void tracks_unlock() {
-    g_static_rw_lock_reader_unlock(&g_playlist_tracks_lock);
-}
-
 
 /******************************************
  *** Callbacks, not to be used directly ***
@@ -326,20 +293,6 @@ void cb_container_loaded(sp_playlistcontainer* pc, void* data) {
     if (g_debug)
         fprintf(stderr, "Container loaded.\n");
     g_container_loaded = TRUE;
-}
-void cb_playlist_added(sp_playlistcontainer* pc, sp_playlist* playlist, int position, void* userdata) {
-    if (g_debug)
-        fprintf(stderr, "Adding playlist %d.\n", position);
-
-    sp_playlist_add_callbacks(playlist, &g_playlist_callbacks, NULL);
-    tracks_add_playlist(playlist);
-}
-void cb_playlist_removed(sp_playlistcontainer* pc, sp_playlist* playlist, int position, void* userdata) {
-    if (g_debug)
-        fprintf(stderr, "Removing playlist %d.\n", position);
-
-    sp_playlist_remove_callbacks(playlist, &g_playlist_callbacks, NULL);
-    tracks_remove_playlist(playlist);
 }
 
 void cb_logged_in(sp_session* session, sp_error error) {
@@ -386,83 +339,4 @@ void cb_end_of_track(sp_session* session) {
     if (g_debug)
         fprintf(stderr, "End of track.\n");
     queue_next();
-}
-
-void cb_tracks_added(sp_playlist* pl, sp_track* const* tracks, int num_tracks, int position, void* userdata) {
-    GArray* ta;
-    int i;
-
-    /* Get tracks array */
-    g_static_rw_lock_writer_lock(&g_playlist_tracks_lock);
-    ta = g_hash_table_lookup(g_playlist_tracks, pl);
-    if (!ta) {
-        fprintf(stderr, "Can't find tracks array\n");
-        exit(1);
-    }
-
-    /* Insert tracks in array */
-    for (i=0; i < num_tracks; i++)
-        g_array_insert_val(ta, position+i, tracks[i]);
-
-    g_static_rw_lock_writer_unlock(&g_playlist_tracks_lock);
-
-    if (g_debug)
-        fprintf(stderr, "Added %d tracks at position %d.\n", num_tracks, position);
-}
-void cb_tracks_removed(sp_playlist* pl, const int* tracks, int num_tracks, void* userdata) {
-    GArray* ta;
-    int i;
-
-    /* Get tracks array */
-    g_static_rw_lock_writer_lock(&g_playlist_tracks_lock);
-    ta = g_hash_table_lookup(g_playlist_tracks, pl);
-    if (ta == NULL) {
-        fprintf(stderr, "Can't find tracks array\n");
-        exit(1);
-    }
-
-    /* Remove tracks from array */
-    for (i=num_tracks-1; i >= 0; i--)
-        g_array_remove_index(ta, tracks[i]);
-
-    g_static_rw_lock_writer_unlock(&g_playlist_tracks_lock);
-
-    if (g_debug)
-        fprintf(stderr, "Removed %d tracks.\n", num_tracks);
-}
-void cb_tracks_moved(sp_playlist* pl, const int* tracks, int num_tracks, int new_position, void* userdata) {
-    GArray* ta;
-    GArray* tmp;
-    sp_track* track;
-    int i;
-
-    /* Get tracks array */
-    g_static_rw_lock_writer_lock(&g_playlist_tracks_lock);
-    ta = g_hash_table_lookup(g_playlist_tracks, pl);
-    if (ta == NULL) {
-        fprintf(stderr, "Can't find tracks array\n");
-        exit(1);
-    }
-
-    /* Array of tracks to be moved */
-    tmp = g_array_sized_new(FALSE, TRUE, sizeof(sp_track*), num_tracks);
-    for (i=0; i < num_tracks; i++) {
-        track = g_array_index(ta, sp_track*, tracks[i]);
-        g_array_insert_val(tmp, i, track);
-    }
-
-    /* Insert tracks at their new position */
-    g_array_insert_vals(ta, new_position, tmp->data, num_tracks);
-
-    /* Remove tracks from tracks array */
-    for (i=num_tracks-1; i >= 0; i--)
-        g_array_remove_index(ta, num_tracks + tracks[i]);
-
-    g_static_rw_lock_writer_unlock(&g_playlist_tracks_lock);
-
-    /* Free tmp array */
-    g_array_free(tmp, TRUE);
-
-    if (g_debug)
-        fprintf(stderr, "Moved %d tracks to position %d.\n", num_tracks, new_position);
 }

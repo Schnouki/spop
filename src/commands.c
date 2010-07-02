@@ -66,7 +66,6 @@ void list_tracks(int idx, GString* result) {
     sp_playlist* pl;
     sp_track* track;
     GArray* tracks;
-    int tracks_nb;
     int i;
 
     bool track_available;
@@ -83,26 +82,22 @@ void list_tracks(int idx, GString* result) {
         return;
     }
     
-    /* Tracks number */
-    tracks_lock();
-    tracks_nb = sp_playlist_num_tracks(pl);
-
-    /* If the playlist is empty, just add a newline (an empty string would mean "error") */
-    if (tracks_nb == 0) {
-        tracks_unlock();
-        g_string_assign(result, "\n");
+    /* Get the tracks array */
+    tracks = tracks_get_playlist(pl);
+    if (!tracks) {
+        g_string_assign(result, "- playlist not laoded yet\n");
         return;
     }
 
-    /* Get the tracks array */
-    tracks = tracks_get_playlist(pl);
-    if (tracks == NULL) {
-        fprintf(stderr, "Can't find tracks array.\n");
-        exit(1);
+    /* If the playlist is empty, just add a newline (an empty string would mean "error") */
+    if (tracks->len == 0) {
+        g_string_assign(result, "\n");
+        g_array_free(tracks, TRUE);
+        return;
     }
 
     /* For each track, add a line to the result string */
-    for (i=0; i < tracks_nb; i++) {
+    for (i=0; i < tracks->len; i++) {
         track = g_array_index(tracks, sp_track*, i);
         if (!sp_track_is_loaded(track)) continue;
 
@@ -117,7 +112,7 @@ void list_tracks(int idx, GString* result) {
         g_string_free(track_album, TRUE);
         g_string_free(track_link, TRUE);
     }
-    tracks_unlock();
+    g_array_free(tracks, TRUE);
 }
 
 
@@ -186,20 +181,19 @@ void play_track(int pl_idx, int tr_idx, GString* result) {
     }
 
     /* Then get the track itself */
-    tracks_lock();
     tracks = tracks_get_playlist(pl);
     if (!tracks) {
-        fprintf(stderr, "Can't find tracks array.\n");
-        exit(1);
-    }
-    tr = g_array_index(tracks, sp_track*, tr_idx-1);
-
-    tracks_unlock();
-
-    if (!tr) {
-        g_string_assign(result, "- invalid track number\n");
+        g_string_assign(result, "- playlist not loaded yet.\n");
         return;
     }
+    if ((tr_idx <= 0) || (tr_idx > tracks->len)) {
+        g_string_assign(result, "- invalid track number\n");
+        g_array_free(tracks, TRUE);
+        return;
+    }
+
+    tr = g_array_index(tracks, sp_track*, tr_idx-1);
+    g_array_free(tracks, TRUE);
 
     /* Load it and play it */
     queue_set_track(tr);

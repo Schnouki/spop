@@ -23,7 +23,6 @@
 /* Init functions */
 void playlist_init();
 void session_init();
-void tracks_init();
 
 /* Functions used from commands or callbacks */
 int playlists_len();
@@ -46,16 +45,8 @@ void track_get_data(sp_track* track, const char** name, GString** artist, GStrin
 gboolean container_loaded();
 void logged_in();
 
-void tracks_lock();
-void tracks_unlock();
-
 /* Callbacks */
 void cb_container_loaded(sp_playlistcontainer* pc, void* data);
-void cb_playlist_added(sp_playlistcontainer* pc, sp_playlist* playlist, int position, void* userdata);
-void cb_playlist_removed(sp_playlistcontainer* pc, sp_playlist* playlist, int position, void* userdata);
-void cb_tracks_added(sp_playlist* pl, sp_track* const* tracks, int num_tracks, int position, void* userdata);
-void cb_tracks_removed(sp_playlist* pl, const int* tracks, int num_tracks, void* userdata);
-void cb_tracks_moved(sp_playlist* pl, const int* tracks, int num_tracks, int new_position, void* userdata);
 
 void cb_logged_in(sp_session* session, sp_error error);
 void cb_logged_out(sp_session* session);

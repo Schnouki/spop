@@ -61,10 +61,9 @@ void queue_set_playlist(sp_playlist* pl) {
     if (g_debug)
         fprintf(stderr, "Setting playlist %p as queue.\n", pl);
 
-    tracks_lock();
     tracks = tracks_get_playlist(pl);
     if (!tracks) {
-        fprintf(stderr, "Can't find tracks array.\n");
+        fprintf(stderr, "Playlist not loaded.\n");
         exit(1);
     }
 
@@ -74,9 +73,9 @@ void queue_set_playlist(sp_playlist* pl) {
 
     for (i=0; i < tracks->len; i++)
         g_queue_push_tail(&g_queue, g_array_index(tracks, sp_track*, i));
+    g_array_free(tracks, TRUE);
 
     g_static_rw_lock_writer_unlock(&g_queue_lock);
-    tracks_unlock();
 }
 void queue_add_playlist(sp_playlist* pl) {
     GArray* tracks;
@@ -85,10 +84,9 @@ void queue_add_playlist(sp_playlist* pl) {
     if (g_debug)
         fprintf(stderr, "Adding playlist %p to queue.\n", pl);
 
-    tracks_lock();
     tracks = tracks_get_playlist(pl);
     if (!tracks) {
-        fprintf(stderr, "Can't find tracks array.\n");
+        fprintf(stderr, "Playlist not loaded.\n");
         exit(1);
     }
 
@@ -96,9 +94,9 @@ void queue_add_playlist(sp_playlist* pl) {
 
     for (i=0; i < tracks->len; i++)
         g_queue_push_tail(&g_queue, g_array_index(tracks, sp_track*, i));
+    g_array_free(tracks, TRUE);
 
     g_static_rw_lock_writer_unlock(&g_queue_lock);
-    tracks_unlock();
 }
 
 void queue_remove_tracks(int idx, int nb) {
