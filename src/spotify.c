@@ -30,7 +30,7 @@
  *** Global variables ***
  ************************/
 static sp_playlistcontainer* g_container;
-static sem_t g_container_loaded_sem;
+static gboolean g_container_loaded = FALSE;
 
 static GArray* g_playlists;
 static GStaticRWLock g_playlist_lock = G_STATIC_RW_LOCK_INIT;
@@ -84,9 +84,6 @@ static sp_session_callbacks g_session_callbacks = {
  *** Init functions ***
  **********************/
 void playlist_init() {
-    /* Semaphore used to determine if the playlist container is loaded */
-    sem_init(&g_container_loaded_sem, 0, 0);
-
     /* Init the playlists sequence */
     g_static_rw_lock_writer_lock(&g_playlist_lock);
     g_playlists = g_array_new(FALSE, TRUE, sizeof(sp_playlist*));
@@ -321,9 +318,8 @@ void track_get_data(sp_track* track, const char** name, GString** artist, GStrin
 /*************************
  *** Utility functions ***
  *************************/
-void container_ready() {
-    sem_wait(&g_container_loaded_sem);
-    sem_post(&g_container_loaded_sem);
+gboolean container_loaded() {
+    return g_container_loaded;
 }
 void logged_in() {
     sem_wait(&g_logged_in_sem);
@@ -352,6 +348,9 @@ void cb_container_loaded(sp_playlistcontainer* pc, void* data) {
     int i, np;
     sp_playlist* pl;
 
+    if (g_debug)
+        fprintf(stderr, "Container loaded, now loading playlists.\n");
+
     np = sp_playlistcontainer_num_playlists(pc);
     if (np == -1) {
         fprintf(stderr, "Could not determine the number of playlists\n");
@@ -365,9 +364,9 @@ void cb_container_loaded(sp_playlistcontainer* pc, void* data) {
         pl = sp_playlistcontainer_playlist(pc, i);
         g_array_insert_val(g_playlists, i, pl);
     }
-    g_static_rw_lock_writer_unlock(&g_playlist_lock);
 
-    sem_post(&g_container_loaded_sem);
+    g_container_loaded = TRUE;
+    g_static_rw_lock_writer_unlock(&g_playlist_lock);
 }
 void cb_playlist_added(sp_playlistcontainer* pc, sp_playlist* playlist, int position, void* userdata) {
     if (g_debug)

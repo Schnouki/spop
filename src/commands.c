@@ -32,9 +32,10 @@ void list_playlists(GString* result) {
     int i, n, t;
     sp_playlist* pl;
 
-    if (g_debug)
-        fprintf(stderr, "Waiting for container...\n");
-    container_ready();
+    if (!container_loaded()) {
+        g_string_assign(result, "- playlists container not loaded yet\n");
+        return;
+    }
 
     playlist_lock();
     n = playlists_len();

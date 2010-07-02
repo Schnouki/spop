@@ -45,7 +45,7 @@ void tracks_remove_playlist(sp_playlist* pl);
 void track_get_data(sp_track* track, const char** name, GString** artist, GString** album, GString** link, int* min, int* sec);
 
 /* Utility functions */
-void container_ready();
+gboolean container_loaded();
 void logged_in();
 
 void playlist_lock();
