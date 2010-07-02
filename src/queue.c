@@ -40,9 +40,14 @@ void queue_set_track(sp_track* track) {
         fprintf(stderr, "Setting track %p as queue.\n", track);
 
     g_static_rw_lock_writer_lock(&g_queue_lock);
+
+    session_unload();
+    g_status = STOPPED;
     g_queue_clear(&g_queue);
     g_current_track = -1;
+
     g_queue_push_tail(&g_queue, track);
+
     g_static_rw_lock_writer_unlock(&g_queue_lock);
 }
 void queue_add_track(sp_track* track) {
@@ -68,6 +73,9 @@ void queue_set_playlist(sp_playlist* pl) {
     }
 
     g_static_rw_lock_writer_lock(&g_queue_lock);
+
+    session_unload();
+    g_status = STOPPED;
     g_queue_clear(&g_queue);
     g_current_track = -1;
 
