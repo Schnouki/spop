@@ -202,6 +202,59 @@ void play_track(int pl_idx, int tr_idx, GString* result) {
     status(result);
 }
 
+void add_playlist(int idx, GString* result) {
+    sp_playlist* pl;
+    int tot;
+
+    /* First get the playlist */
+    pl = playlist_get(idx-1);
+
+    if (!pl) {
+        g_string_assign(result, "- invalid playlist\n");
+        return;
+    }
+
+    /* Load it */
+    queue_add_playlist(pl);
+
+    queue_get_status(NULL, NULL, &tot);
+    g_string_printf(result, "Total tracks: %d\n", tot);
+}
+
+void add_track(int pl_idx, int tr_idx, GString* result) {
+    sp_playlist* pl;
+    sp_track* tr;
+    GArray* tracks;
+    int tot;
+
+    /* First get the playlist */
+    pl = playlist_get(pl_idx-1);
+    if (!pl) {
+        g_string_assign(result, "- invalid playlist\n");
+        return;
+    }
+
+    /* Then get the track itself */
+    tracks = tracks_get_playlist(pl);
+    if (!tracks) {
+        g_string_assign(result, "- playlist not loaded yet.\n");
+        return;
+    }
+    if ((tr_idx <= 0) || (tr_idx > tracks->len)) {
+        g_string_assign(result, "- invalid track number\n");
+        g_array_free(tracks, TRUE);
+        return;
+    }
+
+    tr = g_array_index(tracks, sp_track*, tr_idx-1);
+
+    /* Load it */
+    queue_add_track(tr);
+
+    queue_get_status(NULL, NULL, &tot);
+    g_string_printf(result, "Total tracks: %d\n", tot);
+}
+
 void play(GString* result) {
     queue_play();
     status(result);
