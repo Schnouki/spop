@@ -251,7 +251,7 @@ void interface_handle_command(gchar** command, GString* result) {
         else
             play_track(arg1, arg2, result);
     }
-    else if (strcmp(cmd, "toggle") == 0)
+    else if ((strcmp(cmd, "toggle") == 0) || (strcmp(cmd, "pause") == 0))
         toggle(result);
     else if (strcmp(cmd, "stop") == 0)
         stop(result);
@@ -283,7 +283,7 @@ void interface_handle_command(gchar** command, GString* result) {
         /* Is there something to add ?... */
         gchar* needle = "\n";
         gchar* pos = g_strrstr_len(result->str, result->len-1, needle);
-        if (pos && (pos < &(result->str[result->len])) && (pos[1] != '+') && (pos[1] != '-'))
+        if (!pos || (pos && (pos < &(result->str[result->len])) && (pos[1] != '+') && (pos[1] != '-')))
             g_string_append(result, "+ OK\n");
     }
 }
