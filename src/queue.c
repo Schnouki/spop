@@ -336,7 +336,7 @@ void queue_prev() {
     g_static_rw_lock_writer_unlock(&g_queue_lock);
 }
 
-void queue_set(int idx) {
+void queue_goto(int idx) {
     g_static_rw_lock_writer_lock(&g_queue_lock);
 
     if (g_debug)

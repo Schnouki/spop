@@ -39,7 +39,7 @@ GArray* queue_tracks();
 
 void queue_next();
 void queue_prev();
-void queue_set(int idx);
+void queue_goto(int idx);
 
 gboolean queue_get_shuffle();
 void queue_set_shuffle(gboolean shuffle);
