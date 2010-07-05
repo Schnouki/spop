@@ -15,7 +15,6 @@
  */
 
 #include <glib.h>
-#include <libconfig.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -25,116 +24,60 @@
 static GStaticMutex config_mutex = G_STATIC_MUTEX_INIT;
 
 /* Data structure representing the configuration file */
-static config_t config_file;
-static int config_loaded = 0;
+static GKeyFile* g_config_file = NULL;
 
 /* Internal function: initialize the data structure and load the config file */
 static void config_ready() {
-    int res;
     gchar* cfg_path;
+    GError* err;
 
     g_static_mutex_lock(&config_mutex);
 
-    if (config_loaded) {
+    if (g_config_file) {
         /* Ready to use the config file */
         g_static_mutex_unlock(&config_mutex);
         return;
     }
 
-    /* Time to get everything ready */
-    config_init(&config_file);
+    /* Not ready yet: load the configuration file */
+    g_config_file = g_key_file_new();
+    if (!g_config_file) {
+        fprintf(stderr, "Could not allocate a data structure for reading the configuration file.\n");
+        exit(1);
+    }
 
     /* Name of the configuration file. TODO: read path from command-line option. */
     cfg_path = g_build_filename(g_get_user_config_dir(), g_get_prgname(), "spopd.conf", NULL);
-    res = config_read_file(&config_file, cfg_path);
+
+    if (!g_key_file_load_from_file(g_config_file, cfg_path, G_KEY_FILE_NONE, &err)) {
+        fprintf(stderr, "Can't read configuration file: %s\n", err->message);
+        exit(1);
+    }
     g_free(cfg_path);
-    if (res == CONFIG_TRUE) {
-        /* Success! */
-        g_static_mutex_unlock(&config_mutex);
-        return;
-    }
-    else {
-        /* Failure: try to get an explanation */
-        config_error_t err = config_error_type(&config_file);
-        if (err == CONFIG_ERR_FILE_IO)
-            fprintf(stderr, "Could not read the configuration file.\n");
-        else {
-            fprintf(stderr, "Parse error while reading the configuration file\nIn %s, line %d:\n%s\n",
-                    config_error_file(&config_file), config_error_line(&config_file), config_error_text(&config_file));
-        }
-        g_static_mutex_unlock(&config_mutex);
-        exit(1);
-    }
-}
-
-/* Read mandatory options from the config file */
-gboolean config_get_bool(const char* name) {
-    gboolean value;
-
-    int res = config_get_bool_opt(name, &value);
-    if (res != CONFIG_FOUND) {
-        fprintf(stderr, "Missing configuration value: %s\n", name);
-        exit(1);
-    }
-
-    return value;
-}
-int config_get_int(const char* name) {
-    int value;
-
-    int res = config_get_int_opt(name, &value);
-    if (res != CONFIG_FOUND) {
-        fprintf(stderr, "Missing configuration value: %s\n", name);
-        exit(1);
-    }
-
-    return value;
-}
-const char* config_get_string(const char* name) {
-    const char* value;
-
-    int res = config_get_string_opt(name, &value);
-    if (res != CONFIG_FOUND) {
-        fprintf(stderr, "Missing configuration value: %s\n", name);
-        exit(1);
-    }
-
-    return value;
-}
-
-/* Read optional options from the config file */
-config_result config_get_bool_opt(const char* name, gboolean* value) {
-    int res;
-
-    config_ready();
-
-    g_static_mutex_lock(&config_mutex);
-    res = config_lookup_bool(&config_file, name, value);
     g_static_mutex_unlock(&config_mutex);
-
-    return (res == CONFIG_TRUE) ? CONFIG_FOUND : CONFIG_NOT_FOUND;
 }
 
-config_result config_get_int_opt(const char* name, int* value) {
-    int res;
+/* Read options from the config file. To avoid repetitions, this is put in an ugly macro :) */
+#define CONFIG_GET_FCT(rtype, dsptype, read_fct, fct_name)              \
+    rtype fct_name(const char* name) {                                  \
+        rtype value;                                                    \
+        GError* err = NULL;                                             \
+        config_ready();                                                 \
+        value = read_fct(g_config_file, g_get_prgname(), name, &err);   \
+        if (err != NULL) {                                              \
+            fprintf(stderr, "Error while reading " dsptype " \"%s\" in configuration file: %s\n", name, err->message); \
+            exit(1);                                                    \
+        }                                                               \
+        return value;                                                   \
+    }                                                                   \
+    rtype fct_name##_opt(const char* name, rtype def_value) {           \
+        config_ready();                                                 \
+        if (g_key_file_has_key(g_config_file, g_get_prgname(), name, NULL)) \
+            return fct_name(name);                                      \
+        else                                                            \
+            return def_value;                                           \
+    }
 
-    config_ready();
-
-    g_static_mutex_lock(&config_mutex);
-    res = config_lookup_int(&config_file, name, value);
-    g_static_mutex_unlock(&config_mutex);
-
-    return (res == CONFIG_TRUE) ? CONFIG_FOUND : CONFIG_NOT_FOUND;
-}
-
-config_result config_get_string_opt(const char* name, const char** value) {
-    int res;
-
-    config_ready();
-
-    g_static_mutex_lock(&config_mutex);
-    res = config_lookup_string(&config_file, name, value);
-    g_static_mutex_unlock(&config_mutex);
-
-    return (res == CONFIG_TRUE) ? CONFIG_FOUND : CONFIG_NOT_FOUND;
-}
+CONFIG_GET_FCT(gboolean,    "boolean", g_key_file_get_boolean, config_get_bool)
+CONFIG_GET_FCT(int,         "integer", g_key_file_get_integer, config_get_int)
+CONFIG_GET_FCT(const char*, "string",  g_key_file_get_string,  config_get_string)

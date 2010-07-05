@@ -31,9 +31,9 @@ int config_get_int(const char* name);
 const char* config_get_string(const char* name);
 
 /* Read optional options */
-config_result config_get_bool_opt(const char* name, gboolean* value);
-config_result config_get_int_opt(const char* name, int* value);
-config_result config_get_string_opt(const char* name, const char** value);
+gboolean config_get_bool_opt(const char* name, gboolean def_value);
+int config_get_int_opt(const char* name, int def_value);
+const char* config_get_string_opt(const char* name, const char* def_value);
 
 
 #endif

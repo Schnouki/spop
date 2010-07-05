@@ -55,8 +55,7 @@ int real_main() {
     username = config_get_string("spotify_username");
     password = config_get_string("spotify_password");
 
-    if (config_get_bool_opt("high_bitrate", &high_bitrate) == CONFIG_NOT_FOUND)
-        high_bitrate = TRUE;
+    high_bitrate = config_get_bool_opt("high_bitrate", TRUE);
 
     /* Init plugins */
     plugins_init();

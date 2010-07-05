@@ -47,10 +47,8 @@ void interface_init() {
     struct sockaddr_in addr;
     GError* err;
 
-    if (config_get_string_opt("listen_address", &ip_addr) != CONFIG_FOUND)
-        ip_addr = "127.0.0.1";
-    if (config_get_int_opt("listen_port", &port) != CONFIG_FOUND)
-        port = 6602;
+    ip_addr = config_get_string_opt("listen_address", "127.0.0.1");
+    port = config_get_int_opt("listen_port", 6602);
 
     /* Create the socket */
     g_sockfd = socket(AF_INET, SOCK_STREAM, 0);

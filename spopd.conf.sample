@@ -5,17 +5,18 @@
 # be sure to keep it in a safe place, with reasonable read permissions
 # (something like "chmod 0600 spopd.conf" should be safe).
 
-spotify_username = "USERNAME";
-spotify_password = "PASSWORD";
+[spop]
+spotify_username = USERNAME
+spotify_password = PASSWORD
 
 # Prefer high bitrate (320k instead of 160k). This is the default.
-#high_bitrate = true;
+#high_bitrate = true
 
 # Audio plugin -- right now, only OSS is available
-audio_output = "oss";
+audio_output = oss
 
 # Address and port on which spopd should listen for commands.
 # Use 0.0.0.0 to listen on all the available interfaces.
 # Default is port 6602 on 127.0.0.1.
-#listen_address = "127.0.0.1"; 
-#listen_port = 6602;
+#listen_address = 127.0.0.1
+#listen_port = 6602
