@@ -32,9 +32,9 @@ static int g_current_track = -1;
 static queue_status g_status = STOPPED;
 
 
-/**********************************
- *** Queue management functions ***
- **********************************/
+/************************
+ *** Queue management ***
+ ************************/
 void queue_set_track(sp_track* track) {
     if (g_debug)
         fprintf(stderr, "Setting track %p as queue.\n", track);
@@ -43,9 +43,11 @@ void queue_set_track(sp_track* track) {
 
     session_unload();
     g_status = STOPPED;
+    g_queue_foreach(&g_queue, cb_queue_track_release, NULL);
     g_queue_clear(&g_queue);
     g_current_track = -1;
 
+    sp_track_add_ref(track);
     g_queue_push_tail(&g_queue, track);
 
     g_static_rw_lock_writer_unlock(&g_queue_lock);
@@ -55,12 +57,14 @@ void queue_add_track(sp_track* track) {
         fprintf(stderr, "Adding track %p to queue.\n", track);
 
     g_static_rw_lock_writer_lock(&g_queue_lock);
+    sp_track_add_ref(track);
     g_queue_push_tail(&g_queue, track);
     g_static_rw_lock_writer_unlock(&g_queue_lock);
 }
 
 void queue_set_playlist(sp_playlist* pl) {
     GArray* tracks;
+    sp_track* track;
     int i;
 
     if (g_debug)
@@ -76,17 +80,22 @@ void queue_set_playlist(sp_playlist* pl) {
 
     session_unload();
     g_status = STOPPED;
+    g_queue_foreach(&g_queue, cb_queue_track_release, NULL);
     g_queue_clear(&g_queue);
     g_current_track = -1;
 
-    for (i=0; i < tracks->len; i++)
-        g_queue_push_tail(&g_queue, g_array_index(tracks, sp_track*, i));
+    for (i=0; i < tracks->len; i++) {
+        track = g_array_index(tracks, sp_track*, i);
+        sp_track_add_ref(track);
+        g_queue_push_tail(&g_queue, track);
+    }
     g_array_free(tracks, TRUE);
 
     g_static_rw_lock_writer_unlock(&g_queue_lock);
 }
 void queue_add_playlist(sp_playlist* pl) {
     GArray* tracks;
+    sp_track* track;
     int i;
 
     if (g_debug)
@@ -100,8 +109,11 @@ void queue_add_playlist(sp_playlist* pl) {
 
     g_static_rw_lock_writer_lock(&g_queue_lock);
 
-    for (i=0; i < tracks->len; i++)
-        g_queue_push_tail(&g_queue, g_array_index(tracks, sp_track*, i));
+    for (i=0; i < tracks->len; i++) {
+        track = g_array_index(tracks, sp_track*, i);
+        sp_track_add_ref(track);
+        g_queue_push_tail(&g_queue, track);
+    }
     g_array_free(tracks, TRUE);
 
     g_static_rw_lock_writer_unlock(&g_queue_lock);
@@ -125,7 +137,7 @@ void queue_remove_tracks(int idx, int nb) {
             nb = len - idx;
 
         for (i=0; i < nb; i++)
-            g_queue_pop_nth(&g_queue, idx);
+            sp_track_release(g_queue_pop_nth(&g_queue, idx));
 
         /* Was the current track removed too? */
         if (g_current_track >= idx) {
@@ -140,9 +152,9 @@ void queue_remove_tracks(int idx, int nb) {
 }
 
 
-/******************************
- *** Play status management ***
- ******************************/
+/***************************
+ *** Playback management ***
+ ***************************/
 void queue_play() {
     sp_track* track;
     int len;
@@ -241,6 +253,10 @@ void queue_toggle() {
     g_static_rw_lock_writer_unlock(&g_queue_lock);
 }
 
+
+/***********************************
+ *** Information about the queue ***
+ ***********************************/
 queue_status queue_get_status(sp_track** current_track, int* current_track_number, int* total_tracks) {
     queue_status s;
 
@@ -287,6 +303,10 @@ GArray* queue_tracks() {
     return tracks;
 }
 
+
+/***************************
+ *** Move into the queue ***
+ ***************************/
 void queue_next() {
     g_static_rw_lock_writer_lock(&g_queue_lock);
 
@@ -360,4 +380,18 @@ void queue_goto(int idx) {
     }
 
     g_static_rw_lock_writer_unlock(&g_queue_lock);
+}
+
+
+/*******************************
+ *** Playback mode managment ***
+ *******************************/
+/* TODO */
+
+
+/************************************************************
+ *** Callback functions, to be called from a foreach loop ***
+ ************************************************************/
+void cb_queue_track_release(gpointer data, gpointer user_data) {
+    sp_track_release((sp_track*) data);
 }

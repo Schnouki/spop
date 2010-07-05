@@ -22,6 +22,7 @@
 
 typedef enum { STOPPED, PLAYING, PAUSED } queue_status;
 
+/* Queue management */
 void queue_set_track(sp_track* track);
 void queue_add_track(sp_track* track);
 
@@ -30,21 +31,28 @@ void queue_add_playlist(sp_playlist* pl);
 
 void queue_remove_tracks(int idx, int nb);
 
+/* Playback management */
 void queue_play();
 void queue_stop();
 void queue_toggle();
 
+/* Information about the queue */
 queue_status queue_get_status(sp_track** current_track, int* current_track_number, int* total_tracks);
 GArray* queue_tracks();
 
+/* Move into the queue */
 void queue_next();
 void queue_prev();
 void queue_goto(int idx);
 
+/* Playback mode */
 gboolean queue_get_shuffle();
 void queue_set_shuffle(gboolean shuffle);
 
 gboolean queue_get_repeat();
 void queue_set_repeat(gboolean repeat);
+
+/* Callback functions, not to be used directly */
+void cb_queue_track_release(gpointer data, gpointer user_data);
 
 #endif
