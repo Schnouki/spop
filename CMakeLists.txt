@@ -18,13 +18,9 @@ project(spop C)
 
 find_package(PkgConfig)
 
-# Check for libspotify or libopenspotify
+# Check for libspotify
 pkg_check_modules(SPOTIFY libspotify>=0.0.4)
-if(NOT SPOTIFY_FOUND)
-  pkg_check_modules(SPOTIFY REQUIRED libopenspotify)
-  add_definitions(-DOPENSPOTIFY)
-endif(NOT SPOTIFY_FOUND)
- string(REPLACE ";" " " SPOTIFY_CFLAGS "${SPOTIFY_CFLAGS}")
+string(REPLACE ";" " " SPOTIFY_CFLAGS "${SPOTIFY_CFLAGS}")
 
 # Check for required libraries
 pkg_check_modules(GLIB2 REQUIRED glib-2.0)

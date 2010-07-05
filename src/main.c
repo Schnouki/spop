@@ -30,13 +30,7 @@ static const char* copyright_notice =
     "This program comes with ABSOLUTELY NO WARRANTY.\n"
     "This is free software, and you are welcome to redistribute it under certain conditions.\n"
     "See the COPYING file bundled with this program for details.\n"
-    "Powered by "
-#ifdef OPENSPOTIFY
-    "libopenspotify"
-#else
-    "SPOTIFY(R) CORE"
-#endif
-    "\n\n";
+    "Powered by SPOTIFY(R) CORE\n\n";
 
 int g_run_as_daemon = 1;
 int g_debug = 0;
