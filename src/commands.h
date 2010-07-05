@@ -22,6 +22,7 @@
 /* Commands */
 void list_playlists(GString* result);
 void list_tracks(int idx, GString* result);
+void list_queue(GString* result);
 
 void status(GString* result);
 
@@ -38,5 +39,8 @@ void stop(GString* result);
 void goto_next(GString* result);
 void goto_prev(GString* result);
 void goto_nb(GString* result, int nb);
+
+/* Helper functions */
+void format_tracks_array(GArray* tracks, GString* dst);
 
 #endif

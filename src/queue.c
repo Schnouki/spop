@@ -263,6 +263,30 @@ queue_status queue_get_status(sp_track** current_track, int* current_track_numbe
     return s;
 }
 
+GArray* queue_tracks() {
+    GArray* tracks;
+    sp_track* tr;
+    int i, n;
+
+    g_static_rw_lock_reader_lock(&g_queue_lock);
+
+    n = g_queue_get_length(&g_queue);
+    tracks = g_array_sized_new(FALSE, FALSE, sizeof(sp_track*), n);
+    if (!tracks) {
+        fprintf(stderr, "Can't allocate array of %d tracks.\n", n);
+        exit(1);
+    }
+
+    for (i=0; i < n; i++) {
+        tr = g_queue_peek_nth(&g_queue, i);
+        g_array_append_val(tracks, tr);
+    }
+
+    g_static_rw_lock_reader_unlock(&g_queue_lock);
+
+    return tracks;
+}
+
 void queue_next() {
     g_static_rw_lock_writer_lock(&g_queue_lock);
 

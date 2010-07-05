@@ -35,6 +35,7 @@ void queue_stop();
 void queue_toggle();
 
 queue_status queue_get_status(sp_track** current_track, int* current_track_number, int* total_tracks);
+GArray* queue_tracks();
 
 void queue_next();
 void queue_prev();

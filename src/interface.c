@@ -233,6 +233,8 @@ void interface_handle_command(gchar** command, GString* result) {
         else
             list_tracks(arg1, result);
     }
+    else if (strcmp(cmd, "qls") == 0)
+        list_queue(result);
     else if (strcmp(cmd, "add") == 0) {
         if (arg1 == -1) {
             g_string_assign(result, "- missing argument");
