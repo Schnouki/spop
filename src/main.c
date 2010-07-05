@@ -46,15 +46,17 @@ int real_main() {
     const char* password;
     gboolean high_bitrate;
 
+    /* Init essential stuff */
+    g_set_application_name("spop " SPOP_VERSION);
+    g_set_prgname("spop");
+    g_thread_init(NULL);
+
     /* Read username and password */
     username = config_get_string("spotify_username");
     password = config_get_string("spotify_password");
 
     if (config_get_bool_opt("high_bitrate", &high_bitrate) == CONFIG_NOT_FOUND)
         high_bitrate = TRUE;
-
-    /* Init essential stuff */
-    g_thread_init(NULL);
 
     /* Init plugins */
     plugins_init();

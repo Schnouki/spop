@@ -31,6 +31,7 @@ static int config_loaded = 0;
 /* Internal function: initialize the data structure and load the config file */
 static void config_ready() {
     int res;
+    gchar* cfg_path;
 
     g_static_mutex_lock(&config_mutex);
 
@@ -43,8 +44,10 @@ static void config_ready() {
     /* Time to get everything ready */
     config_init(&config_file);
 
-    /* TODO: proper path detection & command-line configuration option for the filename */
-    res = config_read_file(&config_file, "spopd.conf");
+    /* Name of the configuration file. TODO: read path from command-line option. */
+    cfg_path = g_build_filename(g_get_user_config_dir(), g_get_prgname(), "spopd.conf", NULL);
+    res = config_read_file(&config_file, cfg_path);
+    g_free(cfg_path);
     if (res == CONFIG_TRUE) {
         /* Success! */
         g_static_mutex_unlock(&config_mutex);
@@ -54,7 +57,7 @@ static void config_ready() {
         /* Failure: try to get an explanation */
         config_error_t err = config_error_type(&config_file);
         if (err == CONFIG_ERR_FILE_IO)
-            fprintf(stderr, "I/O error while reading the configuration file\n");
+            fprintf(stderr, "Could not read the configuration file.\n");
         else {
             fprintf(stderr, "Parse error while reading the configuration file\nIn %s, line %d:\n%s\n",
                     config_error_file(&config_file), config_error_line(&config_file), config_error_text(&config_file));

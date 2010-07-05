@@ -1,9 +1,5 @@
-# App key and configuration file are private
+# App key is private
 appkey.c
-*.conf
-
-# Temp files
-tmp
 
 # Build directory
 build/

@@ -87,6 +87,7 @@ void playlist_init() {
 void session_init(gboolean high_bitrate) {
     sp_error error;
     sp_session_config config;
+    gchar* cache_path;
 
     /* Semaphore used to notify main thread to process new events */
     sem_init(&g_notify_sem, 0, 0);
@@ -94,11 +95,13 @@ void session_init(gboolean high_bitrate) {
     /* Semaphore used to wait until logged in */
     sem_init(&g_logged_in_sem, 0, 0);
 
-    /* libspotify session config
-       TODO: change settings and cache path to a real path... */
+    /* Cache path */
+    cache_path = g_build_filename(g_get_user_cache_dir(), g_get_prgname(), NULL);
+
+    /* libspotify session config */
     config.api_version = SPOTIFY_API_VERSION;
-    config.cache_location = "tmp";
-    config.settings_location = "tmp";
+    config.cache_location = cache_path;
+    config.settings_location = cache_path;
     config.application_key = g_appkey;
     config.application_key_size = g_appkey_size;
     config.user_agent = "spop " SPOP_VERSION;
@@ -223,6 +226,10 @@ GArray* tracks_get_playlist(sp_playlist* pl) {
 
     n = sp_playlist_num_tracks(pl);
     tracks = g_array_sized_new(FALSE, FALSE, sizeof(sp_track*), n);
+    if (!tracks) {
+        fprintf(stderr, "Can't allocate array of %d tracks.\n", n);
+        exit(1);
+    }
     for (i=0; i < n; i++) {
         tr = sp_playlist_track(pl, i);
         g_array_append_val(tracks, tr);
