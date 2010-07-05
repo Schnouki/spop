@@ -120,7 +120,7 @@ void status(GString* result) {
     sp_track* track;
     int track_nb, total_tracks;
     queue_status qs;
-    int track_min, track_sec;
+    int track_min, track_sec, pos_min, pos_sec;
     const char* track_name;
     GString* track_artist = NULL;
     GString* track_album = NULL;
@@ -139,11 +139,14 @@ void status(GString* result) {
         g_string_append_printf(result, "Current track: %d\n", track_nb+1);
 
         track_get_data(track, &track_name, &track_artist, &track_album, &track_link, &track_min, &track_sec);
+        pos_sec = session_play_time();
+        pos_min = pos_sec / 60;
+        pos_sec %= 60;
 
         g_string_append_printf(result, "Artist: %s\nTitle: %s\nAlbum: %s\n",
                                track_artist->str, track_name, track_album->str);
-        g_string_append_printf(result, "Duration: %d:%02d\nURI: %s\n",
-                               track_min, track_sec, track_link->str);
+        g_string_append_printf(result, "Duration: %d:%02d\nPosition: %d:%02d\nURI: %s\n",
+                               track_min, track_sec, pos_min, pos_sec, track_link->str);
         g_string_free(track_artist, TRUE);
         g_string_free(track_album, TRUE);
         g_string_free(track_link, TRUE);

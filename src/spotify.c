@@ -37,6 +37,10 @@ static int g_eventloop_timeout = 0;
 static sem_t g_notify_sem;
 static sem_t g_logged_in_sem;
 
+static unsigned int g_audio_time = 0;
+static unsigned int g_audio_samples = 0;
+static unsigned int g_audio_rate = 44100;
+
 /* Application key -- defined in appkey.c */
 extern const uint8_t g_appkey[];
 extern const size_t g_appkey_size;
@@ -190,6 +194,8 @@ void session_load(sp_track* track) {
 
 void session_unload() {
     sp_session_player_unload(g_session);
+    g_audio_samples = 0;
+    g_audio_time = 0;
 }
 
 void session_play(gboolean play) {
@@ -201,6 +207,10 @@ void session_play(gboolean play) {
                 sp_error_message(error));
         exit(1);
     }
+}
+
+int session_play_time() {
+    return g_audio_time + (g_audio_samples / g_audio_rate);
 }
 
 GArray* tracks_get_playlist(sp_playlist* pl) {
@@ -342,7 +352,18 @@ void cb_notify_main_thread(sp_session* session) {
     sem_post(&g_notify_sem);
 }
 int cb_music_delivery(sp_session* session, const sp_audioformat* format, const void* frames, int num_frames) {
-    return g_audio_delivery_func(format, frames, num_frames);
+    int n =  g_audio_delivery_func(format, frames, num_frames);
+
+    if (format->sample_rate == g_audio_rate) {
+        g_audio_samples += n;
+    }
+    else if (n > 0) {
+        g_audio_time += g_audio_samples / g_audio_rate;
+        g_audio_samples = n;
+        g_audio_rate = format->sample_rate;
+    }
+
+    return n;
 }
 void cb_play_token_lost(sp_session* session) {
     fprintf(stderr, "Play token lost.\n");
