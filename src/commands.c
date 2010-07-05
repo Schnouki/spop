@@ -284,7 +284,6 @@ void format_tracks_array(GArray* tracks, GString* dst) {
     /* If the playlist is empty, just add a newline (an empty string would mean "error") */
     if (tracks->len == 0) {
         g_string_assign(dst, "\n");
-        g_array_free(tracks, TRUE);
         return;
     }
 
