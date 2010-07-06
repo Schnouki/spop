@@ -22,6 +22,8 @@
 
 typedef enum { STOPPED, PLAYING, PAUSED } queue_status;
 
+void queue_init();
+
 /* Queue management */
 void queue_set_track(sp_track* track);
 void queue_add_track(sp_track* track);
@@ -39,6 +41,10 @@ void queue_toggle();
 /* Information about the queue */
 queue_status queue_get_status(sp_track** current_track, int* current_track_number, int* total_tracks);
 GArray* queue_tracks();
+
+/* Notify clients that something changed */
+void queue_notify();
+void queue_wait();
 
 /* Move into the queue */
 void queue_next();

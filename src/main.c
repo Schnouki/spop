@@ -23,6 +23,7 @@
 #include "config.h"
 #include "interface.h"
 #include "plugin.h"
+#include "queue.h"
 #include "spotify.h"
 
 static const char* copyright_notice = 
@@ -59,6 +60,7 @@ int real_main() {
     session_login(username, password);
 
     /* Init various subsystems */
+    queue_init();
     playlist_init();
     interface_init();
 

@@ -31,6 +31,24 @@ static GStaticRWLock g_queue_lock = G_STATIC_RW_LOCK_INIT;
 static int g_current_track = -1;
 static queue_status g_status = STOPPED;
 
+static GCond* g_queue_notify_cond = NULL;
+static GMutex* g_queue_notify_mutex = NULL;
+
+
+void queue_init() {
+    g_queue_notify_cond = g_cond_new();
+    if (!g_queue_notify_cond) {
+        fprintf(stderr, "Can't create new GCond.\n");
+        exit(1);
+    }
+
+    g_queue_notify_mutex = g_mutex_new();
+    if (!g_queue_notify_mutex) {
+        fprintf(stderr, "Can't create new mutex.\n");
+        exit(1);
+    }
+}
+
 
 /************************
  *** Queue management ***
@@ -51,6 +69,8 @@ void queue_set_track(sp_track* track) {
     g_queue_push_tail(&g_queue, track);
 
     g_static_rw_lock_writer_unlock(&g_queue_lock);
+
+    queue_notify();
 }
 void queue_add_track(sp_track* track) {
     if (g_debug)
@@ -60,6 +80,8 @@ void queue_add_track(sp_track* track) {
     sp_track_add_ref(track);
     g_queue_push_tail(&g_queue, track);
     g_static_rw_lock_writer_unlock(&g_queue_lock);
+
+    queue_notify();
 }
 
 void queue_set_playlist(sp_playlist* pl) {
@@ -92,6 +114,8 @@ void queue_set_playlist(sp_playlist* pl) {
     g_array_free(tracks, TRUE);
 
     g_static_rw_lock_writer_unlock(&g_queue_lock);
+
+    queue_notify();
 }
 void queue_add_playlist(sp_playlist* pl) {
     GArray* tracks;
@@ -117,6 +141,8 @@ void queue_add_playlist(sp_playlist* pl) {
     g_array_free(tracks, TRUE);
 
     g_static_rw_lock_writer_unlock(&g_queue_lock);
+
+    queue_notify();
 }
 
 void queue_remove_tracks(int idx, int nb) {
@@ -149,6 +175,8 @@ void queue_remove_tracks(int idx, int nb) {
     }
 
     g_static_rw_lock_writer_unlock(&g_queue_lock);
+
+    queue_notify();
 }
 
 
@@ -182,6 +210,7 @@ void queue_play() {
             session_load(track);
             session_play(TRUE);
             g_status = PLAYING;
+            queue_notify();
         }
         else if (g_debug)
             fprintf(stderr, "Nothing to play (empty queue).\n");
@@ -192,6 +221,7 @@ void queue_play() {
             fprintf(stderr, "Resuming playback.\n");
         session_play(TRUE);
         g_status = PLAYING;
+        queue_notify();
         break;
 
     case PLAYING:
@@ -213,6 +243,7 @@ void queue_stop() {
             fprintf(stderr, "Stopping playback.\n");
         session_unload();
         g_status = STOPPED;
+        queue_notify();
         break;
 
     case STOPPED:
@@ -249,6 +280,8 @@ void queue_toggle() {
         queue_play();
         return;
     }
+
+    queue_notify();
 
     g_static_rw_lock_writer_unlock(&g_queue_lock);
 }
@@ -304,6 +337,22 @@ GArray* queue_tracks() {
 }
 
 
+/*********************************************
+ *** Notify clients that something changed ***
+ *********************************************/
+void queue_notify() {
+    g_mutex_lock(g_queue_notify_mutex);
+    g_cond_broadcast(g_queue_notify_cond);
+    g_mutex_unlock(g_queue_notify_mutex);
+}
+
+void queue_wait() {
+    g_mutex_lock(g_queue_notify_mutex);
+    g_cond_wait(g_queue_notify_cond, g_queue_notify_mutex);
+    g_mutex_unlock(g_queue_notify_mutex);
+}
+
+
 /***************************
  *** Move into the queue ***
  ***************************/
@@ -329,6 +378,8 @@ void queue_next() {
     }
 
     g_static_rw_lock_writer_unlock(&g_queue_lock);
+
+    queue_notify();
 }
 
 void queue_prev() {
@@ -354,10 +405,19 @@ void queue_prev() {
     }
 
     g_static_rw_lock_writer_unlock(&g_queue_lock);
+
+    queue_notify();
 }
 
 void queue_goto(int idx) {
     g_static_rw_lock_writer_lock(&g_queue_lock);
+
+    if (idx == g_current_track) {
+        if (g_debug)
+            fprintf(stderr, "New track == current_track: doing nothing.\n");
+        g_static_rw_lock_writer_unlock(&g_queue_lock);
+        return;
+    }
 
     if (g_debug)
         fprintf(stderr, "Switching to track %d.\n", idx);
@@ -380,6 +440,8 @@ void queue_goto(int idx) {
     }
 
     g_static_rw_lock_writer_unlock(&g_queue_lock);
+
+    queue_notify();
 }
 
 

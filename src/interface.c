@@ -292,6 +292,8 @@ void interface_handle_command(gchar** command, GString* result) {
     }
     else if (strcmp(cmd, "status") == 0)
         status(result);
+    else if (strcmp(cmd, "idle") == 0)
+        idle(result);
     else if (strcmp(cmd, "quit") == 0) {
         exit(0);
     }

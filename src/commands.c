@@ -135,6 +135,16 @@ void status(GString* result) {
     }
 }
 
+
+void idle(GString* result) {
+    /* Wait for something to change... */
+    queue_wait();
+
+    /* ... then send new data */
+    status(result);
+}
+
+
 void play_playlist(int idx, GString* result) {
     sp_playlist* pl;
 
