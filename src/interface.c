@@ -34,11 +34,6 @@ static GThread* g_if_t;
 
 const char proto_greetings[] = "spop " SPOP_VERSION "\n";
 
-/* Prototypes of the internal functions defined here */
-void* interface_thread(void* data);
-void interface_handle_client(GIOChannel* channel, GString* buffer);
-void interface_handle_command(gchar** command, GString* result);
-
 /* Functions called directly from spop */
 void interface_init() {
     const char* ip_addr;
@@ -79,7 +74,7 @@ void interface_init() {
 
     /* Create the interface thread */
     g_if_t = g_thread_create(interface_thread, NULL, FALSE, &err);
-    if (g_if_t == NULL) {
+    if (!g_if_t) {
         fprintf(stderr, "Can't create interface thread: %s\n", err->message);
         exit(1);
     }
@@ -93,9 +88,8 @@ void* interface_thread(void* data) {
     struct sockaddr_in client_addr;
     socklen_t sin_size;
     int client;
-    GIOChannel* channel;
-    GString* buffer;
-    GError* chan_err = NULL;
+    int* client_ptr = NULL;
+    GError* err = NULL;
 
     while (1) {
         sin_size = sizeof(struct sockaddr_in);
@@ -106,41 +100,54 @@ void* interface_thread(void* data) {
         }
 
         if (g_debug)
-            fprintf(stderr, "Connection from (%s, %d)\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+            fprintf(stderr, "[%d] Connection from (%s, %d)\n", client, inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 
-        /* Handle the client */
-        channel = g_io_channel_unix_new(client);
-        buffer = g_string_sized_new(1024);
-        interface_handle_client(channel, buffer);
-        g_string_free(buffer, TRUE);
-        if (g_io_channel_shutdown(channel, TRUE, &chan_err) != G_IO_STATUS_NORMAL) {
-            fprintf(stderr, "Can't shutdown IO channel: %s\n", chan_err->message);
+        /* Handle the client in a new thread */
+        client_ptr = (int*) malloc(sizeof(int));
+        if (!client_ptr) {
+            fprintf(stderr, "Can't allocate a single int.\n");
             exit(1);
         }
-        g_io_channel_unref(channel);
-        close(client);
-        if (g_debug)
-            fprintf(stderr, "Connection closed.\n");
+        *client_ptr = client;
+        g_thread_create(interface_handle_client, (gpointer) client_ptr, FALSE, &err);
+        if (err) {
+            fprintf(stderr, "Can't create client thread: %s\n", err->message);
+            exit(1);
+        }
+        client_ptr = NULL;
     }
 
     return NULL;
 }
 
-/* Handle communications with the client */
-void interface_handle_client(GIOChannel* channel, GString* buffer) {
+/* Handle communications with the client. This function is run in its own thread. */
+void* interface_handle_client(void* data) {
+    GIOChannel* channel = NULL;
+    GString* buffer = NULL;
     GError* err = NULL;
     GIOStatus status;
     gchar** command;
     GString* result;
+    int client;
+
+    client = *((int*) data);
+    free(data);
+    channel = g_io_channel_unix_new(client);
    
     /* Send greetings to the client */
     if (g_io_channel_write_chars(channel, proto_greetings, -1, NULL, &err) != G_IO_STATUS_NORMAL) {
-        fprintf(stderr, "Can't write to IO channel: %s\n", err->message);
-        return;
+        fprintf(stderr, "[%d] Can't write to IO channel: %s\n", client, err->message);
+        goto client_clean;
     }
     if (g_io_channel_flush(channel, &err) != G_IO_STATUS_NORMAL) {
-        fprintf(stderr, "Can't flush IO channel: %s\n", err->message);
-        return;
+        fprintf(stderr, "[%d] Can't flush IO channel: %s\n", client, err->message);
+        goto client_clean;
+    }
+
+    buffer = g_string_sized_new(1024);
+    if (!buffer) {
+        fprintf(stderr, "[%d] Can't allocate buffer.\n", client);
+        goto client_clean;
     }
 
     /* Read commands */
@@ -148,17 +155,17 @@ void interface_handle_client(GIOChannel* channel, GString* buffer) {
         status = g_io_channel_read_line_string(channel, buffer, NULL, &err);
         if (status == G_IO_STATUS_EOF) {
             if (g_debug) {
-                fprintf(stderr, "Connection reset by peer.\n");
-                return;
+                fprintf(stderr, "[%d] Connection reset by peer.\n", client);
+                goto client_clean;
             }
         }
         else if (status != G_IO_STATUS_NORMAL) {
-            fprintf(stderr, "Can't read from IO channel: %s\n", err->message);
-            return;
+            fprintf(stderr, "[%d] Can't read from IO channel: %s\n", client, err->message);
+            goto client_clean;
         }
 
         if (g_debug)
-            fprintf(stderr, "Received command: %s", buffer->str);
+            fprintf(stderr, "[%d] Received command: %s", client, buffer->str);
 
         /* Extract commands */
         command = g_strsplit(g_strstrip(buffer->str), " ", 0);
@@ -173,16 +180,32 @@ void interface_handle_client(GIOChannel* channel, GString* buffer) {
         g_string_free(result, TRUE);
         g_strfreev(command);
         if (status != G_IO_STATUS_NORMAL) {
-            fprintf(stderr, "Can't write to IO channel: %s\n", err->message);
-            return;
+            fprintf(stderr, "[%d] Can't write to IO channel: %s\n", client, err->message);
+            goto client_clean;
         }
         if (g_io_channel_flush(channel, &err) != G_IO_STATUS_NORMAL) {
-            fprintf(stderr, "Can't flush IO channel: %s\n", err->message);
-            return;
+            fprintf(stderr, "[%d] Can't flush IO channel: %s\n", client, err->message);
+            goto client_clean;
         }
     }
+
+ client_clean:
+    if (buffer)
+        g_string_free(buffer, TRUE);
+    err = NULL;
+    if (g_io_channel_shutdown(channel, TRUE, &err) != G_IO_STATUS_NORMAL) {
+        fprintf(stderr, "[%d] Can't shutdown IO channel: %s\n", client, err->message);
+        return NULL;
+    }
+    g_io_channel_unref(channel);
+    close(client);
+    if (g_debug)
+        fprintf(stderr, "[%d] Connection closed.\n", client);
+
+    return NULL;
 }
 
+/* Parse the command and execute it */
 void interface_handle_command(gchar** command, GString* result) {
     int len;
     gchar* cmd;
