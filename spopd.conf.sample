@@ -12,7 +12,12 @@ spotify_password = PASSWORD
 # Prefer high bitrate (320k instead of 160k). This is the default.
 #high_bitrate = true
 
-# Audio plugin -- right now, only OSS is available
+# Audio plugin -- right now, only two plugins are available:
+# - ao: uses libao, a simple and very portable library. Recommended for people
+#   who use ALSA, a sound server (Pulse Audio, aRts, etc.), or a platform that
+#   does not support OSS (Windows, MacOS X).
+# - oss: uses OSS, which is very simple and highly reliable. Recommended for
+#   people who use OSS as their main sound system (Linux with OSSv4, *BSD).
 audio_output = oss
 
 # Address and port on which spopd should listen for commands.

@@ -19,7 +19,7 @@ project(spop C)
 find_package(PkgConfig)
 
 # Check for libspotify
-pkg_check_modules(SPOTIFY libspotify>=0.0.4)
+pkg_check_modules(SPOTIFY REQUIRED libspotify>=0.0.4)
 string(REPLACE ";" " " SPOTIFY_CFLAGS "${SPOTIFY_CFLAGS}")
 
 # Check for required libraries
@@ -27,6 +27,10 @@ pkg_check_modules(GLIB2 REQUIRED glib-2.0)
 string(REPLACE ";" " " GLIB2_CFLAGS "${GLIB2_CFLAGS}")
 pkg_check_modules(GTHREAD2 REQUIRED gthread-2.0)
 string(REPLACE ";" " " GTHREAD2_CFLAGS "${GTHREAD2_CFLAGS}")
+
+# Check for optional libraries
+pkg_check_modules(AO ao)
+string(REPLACE ";" " " AO_CFLAGS "${AO_CFLAGS}")
 
 # spop daemon
 set(SPOPD
@@ -52,10 +56,23 @@ set(AUDIO_OSS
 )
 add_library(spop_audio_oss MODULE ${AUDIO_OSS})
 
+# libao audio plugin
+if(AO_FOUND)
+  set(AUDIO_AO
+    src/ao.c
+  )
+  add_library(spop_audio_ao MODULE ${AUDIO_AO})
+  set_target_properties(spop_audio_ao PROPERTIES
+    COMPILE_FLAGS "${AO_CFLAGS} ${GTHREAD2_CFLAGS}"
+  )
+  target_link_libraries(spop_audio_ao ${AO_LIBRARIES} ${GTHREAD2_LIBRARIES})
+endif(AO_FOUND)
+
 # common to all source files
 set(SRC
   ${SPOPD}
   ${AUDIO_OSS}
+  ${AUDIO_AO}
 )
 set_source_files_properties(${SRC}
   COMPILE_FLAGS "-O2 -Wall -Werror"
