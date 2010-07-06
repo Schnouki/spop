@@ -18,6 +18,7 @@
 #include <libspotify/api.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "spop.h"
 #include "queue.h"
@@ -49,11 +50,21 @@ void queue_init() {
     }
 }
 
+gboolean track_available(sp_track* track) {
+    while (!sp_track_is_loaded(track)) { usleep(10000); }
+    return sp_track_is_available(track);
+}
+
 
 /************************
  *** Queue management ***
  ************************/
 void queue_set_track(sp_track* track) {
+    if (!track_available(track)) {
+        fprintf(stderr, "Track is not available.\n");
+        return;
+    }
+
     if (g_debug)
         fprintf(stderr, "Setting track %p as queue.\n", track);
 
@@ -73,6 +84,11 @@ void queue_set_track(sp_track* track) {
     queue_notify();
 }
 void queue_add_track(sp_track* track) {
+    if (!track_available(track)) {
+        fprintf(stderr, "Track is not available.\n");
+        return;
+    }
+
     if (g_debug)
         fprintf(stderr, "Adding track %p to queue.\n", track);
 
@@ -108,8 +124,10 @@ void queue_set_playlist(sp_playlist* pl) {
 
     for (i=0; i < tracks->len; i++) {
         track = g_array_index(tracks, sp_track*, i);
-        sp_track_add_ref(track);
-        g_queue_push_tail(&g_queue, track);
+        if (track_available(track)) {
+            sp_track_add_ref(track);
+            g_queue_push_tail(&g_queue, track);
+        }
     }
     g_array_free(tracks, TRUE);
 
@@ -135,8 +153,10 @@ void queue_add_playlist(sp_playlist* pl) {
 
     for (i=0; i < tracks->len; i++) {
         track = g_array_index(tracks, sp_track*, i);
-        sp_track_add_ref(track);
-        g_queue_push_tail(&g_queue, track);
+        if (track_available(track)) {
+            sp_track_add_ref(track);
+            g_queue_push_tail(&g_queue, track);
+        }
     }
     g_array_free(tracks, TRUE);
 
