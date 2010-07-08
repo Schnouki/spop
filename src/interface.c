@@ -154,13 +154,13 @@ void* interface_handle_client(void* data) {
     while (1) {
         status = g_io_channel_read_line_string(channel, buffer, NULL, &err);
         if (status == G_IO_STATUS_EOF) {
-            if (g_debug) {
+            if (g_debug)
                 fprintf(stderr, "[%d] Connection reset by peer.\n", client);
-                goto client_clean;
-            }
+            goto client_clean;
         }
         else if (status != G_IO_STATUS_NORMAL) {
-            fprintf(stderr, "[%d] Can't read from IO channel: %s\n", client, err->message);
+            if (g_debug)
+                fprintf(stderr, "[%d] Can't read from IO channel: %s\n", client, err->message);
             goto client_clean;
         }
 
@@ -192,11 +192,7 @@ void* interface_handle_client(void* data) {
  client_clean:
     if (buffer)
         g_string_free(buffer, TRUE);
-    err = NULL;
-    if (g_io_channel_shutdown(channel, TRUE, &err) != G_IO_STATUS_NORMAL) {
-        fprintf(stderr, "[%d] Can't shutdown IO channel: %s\n", client, err->message);
-        return NULL;
-    }
+    g_io_channel_shutdown(channel, TRUE, NULL);
     g_io_channel_unref(channel);
     close(client);
     if (g_debug)
