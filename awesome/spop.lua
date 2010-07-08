@@ -26,7 +26,7 @@ end
 function command(s)
    local conn = socket.connect(server, port)
    if conn then
-      conn:send(s .. "\n")
+      conn:send(s .. "\nbye\n")
       conn:close()
    end
 end

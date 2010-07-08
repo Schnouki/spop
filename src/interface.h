@@ -23,6 +23,6 @@ void interface_init();
 /* Internal functions used to manage the network interface */
 void* interface_thread(void* data);
 void* interface_handle_client(void* data);
-void interface_handle_command(gchar** command, GString* result);
+gboolean interface_handle_command(gchar** command, GString* result);
 
 #endif

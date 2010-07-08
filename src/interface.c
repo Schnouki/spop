@@ -129,6 +129,7 @@ void* interface_handle_client(void* data) {
     gchar** command;
     GString* result;
     int client;
+    gboolean keep_alive = TRUE;
 
     client = *((int*) data);
     free(data);
@@ -151,7 +152,7 @@ void* interface_handle_client(void* data) {
     }
 
     /* Read commands */
-    while (1) {
+    while (keep_alive) {
         status = g_io_channel_read_line_string(channel, buffer, NULL, &err);
         if (status == G_IO_STATUS_EOF) {
             if (g_debug)
@@ -173,7 +174,7 @@ void* interface_handle_client(void* data) {
         /* Parse and run the command, send its result to the IO channel */
         result = g_string_sized_new(1024);
         g_string_assign(result, "");
-        interface_handle_command(command, result);
+        keep_alive = interface_handle_command(command, result);
         status = g_io_channel_write_chars(channel, result->str, -1, NULL, &err);
 
         /* Free allocated memory and deal with errors */
@@ -202,7 +203,7 @@ void* interface_handle_client(void* data) {
 }
 
 /* Parse the command and execute it */
-void interface_handle_command(gchar** command, GString* result) {
+gboolean interface_handle_command(gchar** command, GString* result) {
     int len;
     gchar* cmd;
     gchar* endptr;
@@ -212,7 +213,7 @@ void interface_handle_command(gchar** command, GString* result) {
     /* Number of items in the command array */
     len = g_strv_length(command);
     if (len == 0)
-        return;
+        return TRUE;
 
     cmd = command[0];
     if (g_debug) fprintf(stderr, "Command: [%s]", cmd);
@@ -225,7 +226,7 @@ void interface_handle_command(gchar** command, GString* result) {
             if (g_debug)
                 fprintf(stderr, "Invalid argument: %s\n", command[1]);
             g_string_assign(result, "- invalid argument 1\n");
-            return;
+            return TRUE;
         }
         if (g_debug) fprintf(stderr, ", arg1: %d", arg1);
     }
@@ -236,7 +237,7 @@ void interface_handle_command(gchar** command, GString* result) {
             if (g_debug)
                 fprintf(stderr, "Invalid argument: %s\n", command[2]);
             g_string_assign(result, "- invalid argument 2\n");
-            return;
+            return TRUE;
         }
         if (g_debug) fprintf(stderr, ", arg2: %d", arg2);
     }
@@ -255,7 +256,7 @@ void interface_handle_command(gchar** command, GString* result) {
     else if (strcmp(cmd, "add") == 0) {
         if (arg1 == -1) {
             g_string_assign(result, "- missing argument");
-            return;
+            return TRUE;
         }
         else if (arg2 == -1)
             add_playlist(arg1, result);
@@ -281,7 +282,7 @@ void interface_handle_command(gchar** command, GString* result) {
     else if (strcmp(cmd, "goto") == 0) {
         if (arg1 == -1) {
             g_string_assign(result, "- missing argument\n");
-            return;
+            return TRUE;
         }
         else
             goto_nb(result, arg1);
@@ -290,12 +291,15 @@ void interface_handle_command(gchar** command, GString* result) {
         status(result);
     else if (strcmp(cmd, "idle") == 0)
         idle(result);
-    else if (strcmp(cmd, "quit") == 0) {
+    else if (strcmp(cmd, "quit") == 0)
         exit(0);
+    else if (strcmp(cmd, "bye") == 0) {
+        g_string_assign(result, "+ OK Bye bye!\n");
+        return FALSE;
     }
     else {
         g_string_assign(result, "- unknown command\n");
-        return;
+        return TRUE;
     }
 
     if (result->len == 0)
@@ -307,4 +311,5 @@ void interface_handle_command(gchar** command, GString* result) {
         if (!pos || (pos && (pos < &(result->str[result->len])) && (pos[1] != '+') && (pos[1] != '-')))
             g_string_append(result, "+ OK\n");
     }
+    return TRUE;
 }
