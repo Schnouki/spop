@@ -215,6 +215,20 @@ void session_play(gboolean play) {
     cb_notify_main_thread(NULL);
 }
 
+void session_seek(int pos) {
+    sp_error error;
+
+    error = sp_session_player_seek(g_session, pos*1000);
+    if (error != SP_ERROR_OK)
+        fprintf(stderr, "Seek failed: %s\n", sp_error_message(error));
+    else {
+        g_audio_time = pos;
+        g_audio_samples = 0;
+    }
+
+    cb_notify_main_thread(NULL);
+}
+
 int session_play_time() {
     return g_audio_time + (g_audio_samples / g_audio_rate);
 }

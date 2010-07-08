@@ -255,7 +255,7 @@ gboolean interface_handle_command(gchar** command, GString* result) {
         list_queue(result);
     else if (strcmp(cmd, "add") == 0) {
         if (arg1 == -1) {
-            g_string_assign(result, "- missing argument");
+            g_string_assign(result, "- missing argument\n");
             return TRUE;
         }
         else if (arg2 == -1)
@@ -270,6 +270,14 @@ gboolean interface_handle_command(gchar** command, GString* result) {
             play_playlist(arg1, result);
         else
             play_track(arg1, arg2, result);
+    }
+    else if (strcmp(cmd, "seek") == 0) {
+        if (arg1 == -1) {
+            g_string_assign(result, "- missing argument\n");
+            return TRUE;
+        }
+        else
+            seek(arg1, result);
     }
     else if ((strcmp(cmd, "toggle") == 0) || (strcmp(cmd, "pause") == 0))
         toggle(result);

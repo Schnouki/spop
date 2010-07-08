@@ -262,6 +262,10 @@ void toggle(GString* result) {
     queue_toggle();
     status(result);
 }
+void seek(int pos, GString* result) {
+    queue_seek(pos);
+    status(result);
+}
 
 void goto_next(GString* result) {
     queue_next();

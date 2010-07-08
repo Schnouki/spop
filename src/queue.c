@@ -313,6 +313,35 @@ void queue_toggle() {
     g_static_rec_mutex_unlock(&g_queue_mutex);
 }
 
+void queue_seek(int pos) {
+    sp_track* track;
+    int dur;
+
+    g_static_rec_mutex_lock(&g_queue_mutex);
+
+    switch(g_status) {
+    case PLAYING:
+    case PAUSED:
+        track = g_queue_peek_nth(&g_queue, g_current_track);
+        dur = sp_track_duration(track) / 1000;
+
+        if (dur <= 0)
+            fprintf(stderr, "Can't get track duration.\n");
+        else if ((pos < 0) || ((pos) >= dur))
+            fprintf(stderr, "Can't seek: value is out of range.\n");
+        else {        
+            session_seek(pos);
+            queue_notify();
+        }
+        break;
+    case STOPPED:
+        if (g_debug)
+            fprintf(stderr, "Seek: stopped, doing nothing.\n");
+    }
+
+    g_static_rec_mutex_unlock(&g_queue_mutex);
+}
+
 
 /***********************************
  *** Information about the queue ***

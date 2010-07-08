@@ -36,6 +36,7 @@ void add_track(int pl_idx, int tr_idx, GString* result);
 void play(GString* result);
 void toggle(GString* result);
 void stop(GString* result);
+void seek(int pos, GString* result);
 
 void goto_next(GString* result);
 void goto_prev(GString* result);
