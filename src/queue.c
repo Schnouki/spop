@@ -28,7 +28,7 @@
  *** Global variables ***
  ************************/
 static GQueue g_queue = G_QUEUE_INIT;
-static GStaticRWLock g_queue_lock = G_STATIC_RW_LOCK_INIT;
+static GStaticRecMutex g_queue_mutex = G_STATIC_REC_MUTEX_INIT;
 static int g_current_track = -1;
 static queue_status g_status = STOPPED;
 
@@ -68,7 +68,7 @@ void queue_set_track(sp_track* track) {
     if (g_debug)
         fprintf(stderr, "Setting track %p as queue.\n", track);
 
-    g_static_rw_lock_writer_lock(&g_queue_lock);
+    g_static_rec_mutex_lock(&g_queue_mutex);
 
     session_unload();
     g_status = STOPPED;
@@ -79,7 +79,7 @@ void queue_set_track(sp_track* track) {
     sp_track_add_ref(track);
     g_queue_push_tail(&g_queue, track);
 
-    g_static_rw_lock_writer_unlock(&g_queue_lock);
+    g_static_rec_mutex_unlock(&g_queue_mutex);
 
     queue_notify();
 }
@@ -92,10 +92,10 @@ void queue_add_track(sp_track* track) {
     if (g_debug)
         fprintf(stderr, "Adding track %p to queue.\n", track);
 
-    g_static_rw_lock_writer_lock(&g_queue_lock);
+    g_static_rec_mutex_lock(&g_queue_mutex);
     sp_track_add_ref(track);
     g_queue_push_tail(&g_queue, track);
-    g_static_rw_lock_writer_unlock(&g_queue_lock);
+    g_static_rec_mutex_unlock(&g_queue_mutex);
 
     queue_notify();
 }
@@ -114,7 +114,7 @@ void queue_set_playlist(sp_playlist* pl) {
         exit(1);
     }
 
-    g_static_rw_lock_writer_lock(&g_queue_lock);
+    g_static_rec_mutex_lock(&g_queue_mutex);
 
     session_unload();
     g_status = STOPPED;
@@ -131,7 +131,7 @@ void queue_set_playlist(sp_playlist* pl) {
     }
     g_array_free(tracks, TRUE);
 
-    g_static_rw_lock_writer_unlock(&g_queue_lock);
+    g_static_rec_mutex_unlock(&g_queue_mutex);
 
     queue_notify();
 }
@@ -149,7 +149,7 @@ void queue_add_playlist(sp_playlist* pl) {
         exit(1);
     }
 
-    g_static_rw_lock_writer_lock(&g_queue_lock);
+    g_static_rec_mutex_lock(&g_queue_mutex);
 
     for (i=0; i < tracks->len; i++) {
         track = g_array_index(tracks, sp_track*, i);
@@ -160,7 +160,7 @@ void queue_add_playlist(sp_playlist* pl) {
     }
     g_array_free(tracks, TRUE);
 
-    g_static_rw_lock_writer_unlock(&g_queue_lock);
+    g_static_rec_mutex_unlock(&g_queue_mutex);
 
     queue_notify();
 }
@@ -175,7 +175,7 @@ void queue_remove_tracks(int idx, int nb) {
     if ((idx < 0) || (nb < 0))
         return;
 
-    g_static_rw_lock_writer_lock(&g_queue_lock);
+    g_static_rec_mutex_lock(&g_queue_mutex);
     len = g_queue_get_length(&g_queue);
 
     if (idx < len) {
@@ -194,7 +194,7 @@ void queue_remove_tracks(int idx, int nb) {
         }
     }
 
-    g_static_rw_lock_writer_unlock(&g_queue_lock);
+    g_static_rec_mutex_unlock(&g_queue_mutex);
 
     queue_notify();
 }
@@ -207,7 +207,7 @@ void queue_play() {
     sp_track* track;
     int len;
 
-    g_static_rw_lock_writer_lock(&g_queue_lock);
+    g_static_rec_mutex_lock(&g_queue_mutex);
     len = g_queue_get_length(&g_queue);
 
     switch(g_status) {
@@ -250,11 +250,11 @@ void queue_play() {
         break;
     }
 
-    g_static_rw_lock_writer_unlock(&g_queue_lock);
+    g_static_rec_mutex_unlock(&g_queue_mutex);
 }
 
 void queue_stop() {
-    g_static_rw_lock_writer_lock(&g_queue_lock);
+    g_static_rec_mutex_lock(&g_queue_mutex);
 
     switch(g_status) {
     case PLAYING:
@@ -272,11 +272,11 @@ void queue_stop() {
         break;
     }
 
-    g_static_rw_lock_writer_unlock(&g_queue_lock);
+    g_static_rec_mutex_unlock(&g_queue_mutex);
 }
 
 void queue_toggle() {
-    g_static_rw_lock_writer_lock(&g_queue_lock);
+    g_static_rec_mutex_lock(&g_queue_mutex);
 
     switch(g_status) {
     case PLAYING:
@@ -296,14 +296,14 @@ void queue_toggle() {
     case STOPPED:
         if (g_debug)
             fprintf(stderr, "Toggle: was stopped, will now start playing.\n");
-        g_static_rw_lock_writer_unlock(&g_queue_lock);
+        g_static_rec_mutex_unlock(&g_queue_mutex);
         queue_play();
         return;
     }
 
     queue_notify();
 
-    g_static_rw_lock_writer_unlock(&g_queue_lock);
+    g_static_rec_mutex_unlock(&g_queue_mutex);
 }
 
 
@@ -313,7 +313,7 @@ void queue_toggle() {
 queue_status queue_get_status(sp_track** current_track, int* current_track_number, int* total_tracks) {
     queue_status s;
 
-    g_static_rw_lock_reader_lock(&g_queue_lock);
+    g_static_rec_mutex_lock(&g_queue_mutex);
 
     if (current_track) {
         *current_track = NULL;
@@ -327,7 +327,7 @@ queue_status queue_get_status(sp_track** current_track, int* current_track_numbe
 
     s = g_status;
 
-    g_static_rw_lock_reader_unlock(&g_queue_lock);
+    g_static_rec_mutex_unlock(&g_queue_mutex);
 
     return s;
 }
@@ -337,7 +337,7 @@ GArray* queue_tracks() {
     sp_track* tr;
     int i, n;
 
-    g_static_rw_lock_reader_lock(&g_queue_lock);
+    g_static_rec_mutex_lock(&g_queue_mutex);
 
     n = g_queue_get_length(&g_queue);
     tracks = g_array_sized_new(FALSE, FALSE, sizeof(sp_track*), n);
@@ -351,7 +351,7 @@ GArray* queue_tracks() {
         g_array_append_val(tracks, tr);
     }
 
-    g_static_rw_lock_reader_unlock(&g_queue_lock);
+    g_static_rec_mutex_unlock(&g_queue_mutex);
 
     return tracks;
 }
@@ -377,7 +377,9 @@ void queue_wait() {
  *** Move into the queue ***
  ***************************/
 void queue_next() {
-    g_static_rw_lock_writer_lock(&g_queue_lock);
+    if (g_debug) fprintf(stderr, "Entering queue_next()\n");
+
+    g_static_rec_mutex_lock(&g_queue_mutex);
 
     if (g_debug)
         fprintf(stderr, "Switching to next track.\n");
@@ -397,13 +399,13 @@ void queue_next() {
             session_play(TRUE);
     }
 
-    g_static_rw_lock_writer_unlock(&g_queue_lock);
+    g_static_rec_mutex_unlock(&g_queue_mutex);
 
     queue_notify();
 }
 
 void queue_prev() {
-    g_static_rw_lock_writer_lock(&g_queue_lock);
+    g_static_rec_mutex_lock(&g_queue_mutex);
 
     if (g_debug)
         fprintf(stderr, "Switching to previous track.\n");
@@ -424,18 +426,18 @@ void queue_prev() {
             session_play(TRUE);
     }
 
-    g_static_rw_lock_writer_unlock(&g_queue_lock);
+    g_static_rec_mutex_unlock(&g_queue_mutex);
 
     queue_notify();
 }
 
 void queue_goto(int idx) {
-    g_static_rw_lock_writer_lock(&g_queue_lock);
+    g_static_rec_mutex_lock(&g_queue_mutex);
 
     if (idx == g_current_track) {
         if (g_debug)
             fprintf(stderr, "New track == current_track: doing nothing.\n");
-        g_static_rw_lock_writer_unlock(&g_queue_lock);
+        g_static_rec_mutex_unlock(&g_queue_mutex);
         return;
     }
 
@@ -459,7 +461,7 @@ void queue_goto(int idx) {
             session_play(TRUE);
     }
 
-    g_static_rw_lock_writer_unlock(&g_queue_lock);
+    g_static_rec_mutex_unlock(&g_queue_mutex);
 
     queue_notify();
 }
