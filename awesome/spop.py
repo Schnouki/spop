@@ -45,6 +45,9 @@ class SpopListener(object):
             self.notif.set_timeout(8000)
             self.notif.set_urgency(pynotify.URGENCY_LOW)
 
+        # Escape string before sending it to libnotify
+        msg = msg.replace("&", "&amp;")
+
         self.notif.update(summary=NOTIF_SUMMARY, message=msg)
         self.notif.show()
 
@@ -56,6 +59,7 @@ class SpopListener(object):
 
         # Escape string before sending it to Awesome
         msg = msg.replace("\"", "\\\"")
+        msg = msg.replace("&", "&amp;")
         self.awesome_client("tb_spop.text = \"%s \"\n" % msg)
 
     def read_status(self, sock, notif=True):
@@ -71,7 +75,10 @@ class SpopListener(object):
             if line.startswith("- ") or line.startswith("+ "):
                 break
             
-            (name, val) = line.split(": ")
+            try:
+                (name, val) = line.split(": ", 1)
+            except:
+                continue
             
             if name == "Status":
                 if val == "stopped":
