@@ -36,6 +36,8 @@ static GMutex* g_queue_notify_mutex = NULL;
 
 
 void queue_init() {
+    if (g_debug) fprintf(stderr, "Entering queue_init()\n");
+
     g_queue_notify_cond = g_cond_new();
     if (!g_queue_notify_cond) {
         fprintf(stderr, "Can't create new GCond.\n");
@@ -54,6 +56,8 @@ void queue_init() {
  *** Queue management ***
  ************************/
 void queue_set_track(sp_track* track) {
+    if (g_debug) fprintf(stderr, "Entering queue_set_track()\n");
+
     sp_track_add_ref(track);
     if (!sp_track_is_loaded(track)) {
         sp_track_release(track);
@@ -106,6 +110,8 @@ void queue_add_track(sp_track* track) {
 }
 
 void queue_set_playlist(sp_playlist* pl) {
+    if (g_debug) fprintf(stderr, "Entering queue_set_playlist()\n");
+
     GArray* tracks;
     sp_track* track;
     int i;
@@ -135,6 +141,8 @@ void queue_set_playlist(sp_playlist* pl) {
     queue_notify();
 }
 void queue_add_playlist(sp_playlist* pl) {
+    if (g_debug) fprintf(stderr, "Entering queue_add_playlist()\n");
+
     GArray* tracks;
     sp_track* track;
     int i;
@@ -163,6 +171,8 @@ void queue_add_playlist(sp_playlist* pl) {
 }
 
 void queue_clear() {
+    if (g_debug) fprintf(stderr, "Entering queue_clear()\n");
+
     g_static_rec_mutex_lock(&g_queue_mutex);
 
     queue_stop();
@@ -175,6 +185,8 @@ void queue_clear() {
 }
 
 void queue_remove_tracks(int idx, int nb) {
+    if (g_debug) fprintf(stderr, "Entering queue_remove_tracks()\n");
+
     int len;
     int i;
 
@@ -213,6 +225,8 @@ void queue_remove_tracks(int idx, int nb) {
  *** Playback management ***
  ***************************/
 void queue_play() {
+    if (g_debug) fprintf(stderr, "Entering queue_play()\n");
+
     sp_track* track;
     int len;
 
@@ -263,6 +277,8 @@ void queue_play() {
 }
 
 void queue_stop() {
+    if (g_debug) fprintf(stderr, "Entering queue_stop()\n");
+
     g_static_rec_mutex_lock(&g_queue_mutex);
 
     switch(g_status) {
@@ -285,6 +301,8 @@ void queue_stop() {
 }
 
 void queue_toggle() {
+    if (g_debug) fprintf(stderr, "Entering queue_toggle()\n");
+
     g_static_rec_mutex_lock(&g_queue_mutex);
 
     switch(g_status) {
@@ -314,6 +332,8 @@ void queue_toggle() {
 }
 
 void queue_seek(int pos) {
+    if (g_debug) fprintf(stderr, "Entering queue_seek()\n");
+
     sp_track* track;
     int dur;
 
@@ -347,6 +367,8 @@ void queue_seek(int pos) {
  *** Information about the queue ***
  ***********************************/
 queue_status queue_get_status(sp_track** current_track, int* current_track_number, int* total_tracks) {
+    if (g_debug) fprintf(stderr, "Entering queue_get_status()\n");
+
     queue_status s;
 
     g_static_rec_mutex_lock(&g_queue_mutex);
@@ -370,6 +392,8 @@ queue_status queue_get_status(sp_track** current_track, int* current_track_numbe
 }
 
 GArray* queue_tracks() {
+    if (g_debug) fprintf(stderr, "Entering queue_tracks()\n");
+
     GArray* tracks;
     sp_track* tr;
     int i, n;
@@ -398,12 +422,16 @@ GArray* queue_tracks() {
  *** Notify clients that something changed ***
  *********************************************/
 void queue_notify() {
+    if (g_debug) fprintf(stderr, "Entering queue_notify()\n");
+
     g_mutex_lock(g_queue_notify_mutex);
     g_cond_broadcast(g_queue_notify_cond);
     g_mutex_unlock(g_queue_notify_mutex);
 }
 
 void queue_wait() {
+    if (g_debug) fprintf(stderr, "Entering queue_wait()\n");
+
     g_mutex_lock(g_queue_notify_mutex);
     g_cond_wait(g_queue_notify_cond, g_queue_notify_mutex);
     g_mutex_unlock(g_queue_notify_mutex);
@@ -426,6 +454,7 @@ void queue_next() {
 }
 
 void queue_prev() {
+    if (g_debug) fprintf(stderr, "Entering queue_prev()\n");
 
     if (g_debug)
         fprintf(stderr, "Switching to previous track.\n");
@@ -437,6 +466,8 @@ void queue_prev() {
 }
 
 void queue_goto(int idx) {
+    if (g_debug) fprintf(stderr, "Entering queue_goto()\n");
+
     g_static_rec_mutex_lock(&g_queue_mutex);
 
     if (idx == g_current_track) {

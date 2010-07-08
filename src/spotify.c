@@ -185,6 +185,8 @@ void session_events_loop() {
 }
 
 void session_load(sp_track* track) {
+    if (g_debug) fprintf(stderr, "Entering session_load()\n");
+
     sp_error error;
     
     error = sp_session_player_load(g_session, track);
@@ -197,6 +199,8 @@ void session_load(sp_track* track) {
 }
 
 void session_unload() {
+    if (g_debug) fprintf(stderr, "Entering session_unload()\n");
+
     sp_session_player_unload(g_session);
     cb_notify_main_thread(NULL);
     g_audio_samples = 0;
@@ -204,6 +208,8 @@ void session_unload() {
 }
 
 void session_play(gboolean play) {
+    if (g_debug) fprintf(stderr, "Entering session_play()\n");
+
     sp_error error;
 
     error = sp_session_player_play(g_session, play);
@@ -216,6 +222,8 @@ void session_play(gboolean play) {
 }
 
 void session_seek(int pos) {
+    if (g_debug) fprintf(stderr, "Entering session_seek(%d)\n", pos);
+
     sp_error error;
 
     error = sp_session_player_seek(g_session, pos*1000);
@@ -394,6 +402,7 @@ void cb_message_to_user(sp_session* session, const char* message) {
 }
 void cb_notify_main_thread(sp_session* session) {
     /* Wake up main thread using a semaphore */
+    if (g_debug) fprintf(stderr, "Notifying main thread.\n");
     sem_post(&g_notify_sem);
 }
 int cb_music_delivery(sp_session* session, const sp_audioformat* format, const void* frames, int num_frames) {
@@ -417,6 +426,8 @@ void cb_log_message(sp_session* session, const char* data) {
     fprintf(stderr, data);
 }
 void cb_end_of_track(sp_session* session) {
+    if (g_debug) fprintf(stderr, "Entering cb_end_of_track()\n");
+
     if (g_debug)
         fprintf(stderr, "End of track.\n");
     queue_next();
