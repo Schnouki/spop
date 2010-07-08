@@ -31,6 +31,7 @@ void queue_add_track(sp_track* track);
 void queue_set_playlist(sp_playlist* pl);
 void queue_add_playlist(sp_playlist* pl);
 
+void queue_clear();
 void queue_remove_tracks(int idx, int nb);
 
 /* Playback management */

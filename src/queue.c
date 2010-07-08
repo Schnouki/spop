@@ -18,7 +18,6 @@
 #include <libspotify/api.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 
 #include "spop.h"
 #include "queue.h"
@@ -50,18 +49,21 @@ void queue_init() {
     }
 }
 
-gboolean track_available(sp_track* track) {
-    while (!sp_track_is_loaded(track)) { usleep(10000); }
-    return sp_track_is_available(track);
-}
-
 
 /************************
  *** Queue management ***
  ************************/
 void queue_set_track(sp_track* track) {
-    if (!track_available(track)) {
-        fprintf(stderr, "Track is not available.\n");
+    sp_track_add_ref(track);
+    if (!sp_track_is_loaded(track)) {
+        sp_track_release(track);
+        if (g_debug) fprintf(stderr, "Track not loaded.\n");
+        return;
+    }
+
+    if (!sp_track_is_available(track)) {
+        sp_track_release(track);
+        if (g_debug) fprintf(stderr, "Track is not available.\n");
         return;
     }
 
@@ -70,13 +72,7 @@ void queue_set_track(sp_track* track) {
 
     g_static_rec_mutex_lock(&g_queue_mutex);
 
-    session_unload();
-    g_status = STOPPED;
-    g_queue_foreach(&g_queue, cb_queue_track_release, NULL);
-    g_queue_clear(&g_queue);
-    g_current_track = -1;
-
-    sp_track_add_ref(track);
+    queue_clear();
     g_queue_push_tail(&g_queue, track);
 
     g_static_rec_mutex_unlock(&g_queue_mutex);
@@ -84,8 +80,18 @@ void queue_set_track(sp_track* track) {
     queue_notify();
 }
 void queue_add_track(sp_track* track) {
-    if (!track_available(track)) {
-        fprintf(stderr, "Track is not available.\n");
+    if (g_debug) fprintf(stderr, "Entering queue_add_track()\n");
+
+    sp_track_add_ref(track);
+    if (!sp_track_is_loaded(track)) {
+        sp_track_release(track);
+        if (g_debug) fprintf(stderr, "Track not loaded.\n");
+        return;
+    }
+
+    if (!sp_track_is_available(track)) {
+        sp_track_release(track);
+        if (g_debug) fprintf(stderr, "Track is not available.\n");
         return;
     }
 
@@ -93,7 +99,6 @@ void queue_add_track(sp_track* track) {
         fprintf(stderr, "Adding track %p to queue.\n", track);
 
     g_static_rec_mutex_lock(&g_queue_mutex);
-    sp_track_add_ref(track);
     g_queue_push_tail(&g_queue, track);
     g_static_rec_mutex_unlock(&g_queue_mutex);
 
@@ -111,23 +116,17 @@ void queue_set_playlist(sp_playlist* pl) {
     tracks = tracks_get_playlist(pl);
     if (!tracks) {
         fprintf(stderr, "Playlist not loaded.\n");
-        exit(1);
+        return;
     }
 
     g_static_rec_mutex_lock(&g_queue_mutex);
 
-    session_unload();
-    g_status = STOPPED;
-    g_queue_foreach(&g_queue, cb_queue_track_release, NULL);
-    g_queue_clear(&g_queue);
-    g_current_track = -1;
+    queue_clear();
 
     for (i=0; i < tracks->len; i++) {
         track = g_array_index(tracks, sp_track*, i);
-        if (track_available(track)) {
-            sp_track_add_ref(track);
+        if (sp_track_is_loaded(track) && sp_track_is_available(track))
             g_queue_push_tail(&g_queue, track);
-        }
     }
     g_array_free(tracks, TRUE);
 
@@ -146,19 +145,29 @@ void queue_add_playlist(sp_playlist* pl) {
     tracks = tracks_get_playlist(pl);
     if (!tracks) {
         fprintf(stderr, "Playlist not loaded.\n");
-        exit(1);
+        return;
     }
 
     g_static_rec_mutex_lock(&g_queue_mutex);
 
     for (i=0; i < tracks->len; i++) {
         track = g_array_index(tracks, sp_track*, i);
-        if (track_available(track)) {
-            sp_track_add_ref(track);
+        if (sp_track_is_loaded(track) && sp_track_is_available(track))
             g_queue_push_tail(&g_queue, track);
-        }
     }
     g_array_free(tracks, TRUE);
+
+    g_static_rec_mutex_unlock(&g_queue_mutex);
+
+    queue_notify();
+}
+
+void queue_clear() {
+    g_static_rec_mutex_lock(&g_queue_mutex);
+
+    queue_stop();
+    g_queue_foreach(&g_queue, cb_queue_track_release, NULL);
+    g_queue_clear(&g_queue);
 
     g_static_rec_mutex_unlock(&g_queue_mutex);
 
@@ -296,9 +305,7 @@ void queue_toggle() {
     case STOPPED:
         if (g_debug)
             fprintf(stderr, "Toggle: was stopped, will now start playing.\n");
-        g_static_rec_mutex_unlock(&g_queue_mutex);
         queue_play();
-        return;
     }
 
     queue_notify();
@@ -316,9 +323,10 @@ queue_status queue_get_status(sp_track** current_track, int* current_track_numbe
     g_static_rec_mutex_lock(&g_queue_mutex);
 
     if (current_track) {
-        *current_track = NULL;
         if (g_current_track >= 0)
             *current_track = g_queue_peek_nth(&g_queue, g_current_track);
+        else
+            *current_track = NULL;
     }
     if (current_track_number)
         *current_track_number = g_current_track;
@@ -379,55 +387,23 @@ void queue_wait() {
 void queue_next() {
     if (g_debug) fprintf(stderr, "Entering queue_next()\n");
 
-    g_static_rec_mutex_lock(&g_queue_mutex);
-
     if (g_debug)
         fprintf(stderr, "Switching to next track.\n");
 
-    g_current_track += 1;
-    if (g_current_track >= g_queue_get_length(&g_queue)) {
-        if (g_debug)
-            fprintf(stderr, "Last track reached, stopping playback.\n");
-        g_current_track = -1;
-        g_status = STOPPED;
-    }
-
-    session_unload();
-    if (g_status != STOPPED) {
-        session_load(g_queue_peek_nth(&g_queue, g_current_track));
-        if (g_status == PLAYING)
-            session_play(TRUE);
-    }
-
+    g_static_rec_mutex_lock(&g_queue_mutex);
+    queue_goto(g_current_track + 1);
     g_static_rec_mutex_unlock(&g_queue_mutex);
-
     queue_notify();
 }
 
 void queue_prev() {
-    g_static_rec_mutex_lock(&g_queue_mutex);
 
     if (g_debug)
         fprintf(stderr, "Switching to previous track.\n");
 
-    if (g_current_track == 0) {
-        if (g_debug)
-            fprintf(stderr, "First track reached, stopping playback.\n");
-        g_current_track = -1;
-        g_status = STOPPED;
-    }
-    else if (g_current_track > 0)
-        g_current_track -= 1;
-
-    session_unload();
-    if (g_status != STOPPED) {
-        session_load(g_queue_peek_nth(&g_queue, g_current_track));
-        if (g_status == PLAYING)
-            session_play(TRUE);
-    }
-
+    g_static_rec_mutex_lock(&g_queue_mutex);
+    queue_goto(g_current_track - 1);
     g_static_rec_mutex_unlock(&g_queue_mutex);
-
     queue_notify();
 }
 
@@ -444,21 +420,19 @@ void queue_goto(int idx) {
     if (g_debug)
         fprintf(stderr, "Switching to track %d.\n", idx);
 
-    if ((idx >= 0) && (idx < g_queue_get_length(&g_queue))) {
-        g_current_track = idx;
+    queue_stop();
+
+    if (idx < 0) {
+        if (g_debug) fprintf(stderr, "Reached beginning of queue, stopping playback.\n");
+        g_current_track = -1;
+    }
+    else if (idx >= g_queue_get_length(&g_queue)) {
+        if (g_debug) fprintf(stderr, "Reached end of queue, stopping playback.\n");
+        g_current_track = -1;
     }
     else {
-        if (g_debug)
-            fprintf(stderr, "Invalid track number, stopping playback.\n");
-        g_current_track = -1;
-        g_status = STOPPED;
-    }
-
-    session_unload();
-    if (g_status != STOPPED) {
-        session_load(g_queue_peek_nth(&g_queue, g_current_track));
-        if (g_status == PLAYING)
-            session_play(TRUE);
+        g_current_track = idx;
+        queue_play();
     }
 
     g_static_rec_mutex_unlock(&g_queue_mutex);

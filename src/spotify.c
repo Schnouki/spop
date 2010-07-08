@@ -19,7 +19,6 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 
 #include "spop.h"
 #include "plugin.h"
@@ -232,6 +231,7 @@ GArray* tracks_get_playlist(sp_playlist* pl) {
     }
     for (i=0; i < n; i++) {
         tr = sp_playlist_track(pl, i);
+        sp_track_add_ref(tr);
         g_array_append_val(tracks, tr);
     }
 
@@ -245,6 +245,13 @@ void track_get_data(sp_track* track, const char** name, GString** artist, GStrin
     int dur;
     int i;
     int nb_art = 0;
+    const char* s;
+
+    sp_track_add_ref(track);
+    if (!sp_track_is_loaded(track)) {
+        sp_track_release(track);
+        return;
+    }
 
     /* Begin loading everything */
     if (name) {
@@ -258,11 +265,14 @@ void track_get_data(sp_track* track, const char** name, GString** artist, GStrin
             exit(1);
         }
 
-        for (i=0; i < nb_art; i++)
+        for (i=0; i < nb_art; i++) {
             art[i] = sp_track_artist(track, i);
+            sp_artist_add_ref(art[i]);
+        }
     }
     if (album) {
         alb = sp_track_album(track);
+        sp_album_add_ref(alb);
     }
     if (link) {
         lnk = sp_link_create_from_track(track, 0);
@@ -288,20 +298,30 @@ void track_get_data(sp_track* track, const char** name, GString** artist, GStrin
     /* Now create destination strings */
     if (artist) {
         for (i=0; i < nb_art; i++) {
-            while (!sp_artist_is_loaded(art[i])) { usleep(10000); }
+            if (sp_artist_is_loaded(art[i]))
+                s = sp_artist_name(art[i]);
+            else
+                s = "[artist not loaded]";
+
             if (i == 0) {
-                *artist = g_string_new(sp_artist_name(art[i]));
+                *artist = g_string_new(s);
             }
             else {
                 g_string_append(*artist, ", ");
-                g_string_append(*artist, sp_artist_name(art[i]));
+                g_string_append(*artist, s);
             }
+            sp_artist_release(art[i]);
         }
     }
     if (album) {
-        while (!sp_album_is_loaded(alb)) { usleep(10000); }
-        *album = g_string_new(sp_album_name(alb));
+        if (sp_album_is_loaded(alb))
+            *album = g_string_new(sp_album_name(alb));
+        else
+            *album = g_string_new("[album not loaded]");
+        sp_album_release(alb);
     }
+
+    sp_track_release(track);
 }
 
 
