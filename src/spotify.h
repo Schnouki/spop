@@ -18,7 +18,7 @@
 #define SPOTIFY_H
 
 #include <glib.h>
-#include <libspotify/api.h>
+#include "libspotify.h"
 
 /* Init functions */
 void playlist_init();

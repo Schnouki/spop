@@ -21,6 +21,7 @@
 #include <stdlib.h>
 
 #include "spop.h"
+#include "libspotify.h"
 #include "plugin.h"
 #include "queue.h"
 #include "spotify.h"

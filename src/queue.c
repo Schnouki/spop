@@ -15,11 +15,11 @@
  */
 
 #include <glib.h>
-#include <libspotify/api.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "spop.h"
+#include "libspotify.h"
 #include "queue.h"
 #include "spotify.h"
 
