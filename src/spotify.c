@@ -192,10 +192,12 @@ void session_load(sp_track* track) {
                 sp_error_message(error));
         exit(1);
     }
+    cb_notify_main_thread(NULL);
 }
 
 void session_unload() {
     sp_session_player_unload(g_session);
+    cb_notify_main_thread(NULL);
     g_audio_samples = 0;
     g_audio_time = 0;
 }
@@ -209,6 +211,7 @@ void session_play(gboolean play) {
                 sp_error_message(error));
         exit(1);
     }
+    cb_notify_main_thread(NULL);
 }
 
 int session_play_time() {
