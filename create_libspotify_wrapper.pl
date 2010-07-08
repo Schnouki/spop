@@ -49,8 +49,10 @@ print DST_C <<HDR_C_END;
 $copyright_notice
 #include <glib.h>
 #include <libspotify/api.h>
+#include <stdio.h>
 
-static GStaticMutex g_sp_mutex = G_STATIC_MUTEX_INIT;
+static GStaticRecMutex g_sp_mutex = G_STATIC_REC_MUTEX_INIT;
+extern int g_debug;
 
 HDR_C_END
 
@@ -77,9 +79,11 @@ foreach (<SRC>) {
     if ($rtype eq "void") {
         print DST_C <<FUNC_END;
 $rtype __safe_$fname($fargs) {
-    g_static_mutex_lock(&g_sp_mutex);
+    if (g_debug) fprintf(stderr, "Entering __safe_$fname()\\n");
+    g_static_rec_mutex_lock(&g_sp_mutex);
     $fname($iargs);
-    g_static_mutex_unlock(&g_sp_mutex);
+    g_static_rec_mutex_unlock(&g_sp_mutex);
+    if (g_debug) fprintf(stderr, "Leaving __safe_$fname()\\n");
 }
 
 FUNC_END
@@ -94,9 +98,11 @@ HDR_END
         print DST_C <<FUNC_END;
 $rtype __safe_$fname($fargs) {
     $rtype __ret;
-    g_static_mutex_lock(&g_sp_mutex);
+    if (g_debug) fprintf(stderr, "Entering __safe_$fname()\\n");
+    g_static_rec_mutex_lock(&g_sp_mutex);
     __ret = $fname($iargs);
-    g_static_mutex_unlock(&g_sp_mutex);
+    g_static_rec_mutex_unlock(&g_sp_mutex);
+    if (g_debug) fprintf(stderr, "Leaving __safe_$fname()\\n");
     return __ret;
 }
 

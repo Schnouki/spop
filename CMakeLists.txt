@@ -35,7 +35,8 @@ string(REPLACE ";" " " AO_CFLAGS "${AO_CFLAGS}")
 # Create libspotify thread-safe wrapper
 add_custom_command(OUTPUT "${CMAKE_SOURCE_DIR}/src/libspotify.h" "${CMAKE_SOURCE_DIR}/src/libspotify_wrapper.c"
   COMMAND "${CMAKE_SOURCE_DIR}/create_libspotify_wrapper.pl" ARGS "${SPOTIFY_INCLUDEDIR}/libspotify/api.h"
-  WORKING_DIR "${CMAKE_SOURCE_DIR}"
+  DEPENDS "${CMAKE_SOURCE_DIR}/create_libspotify_wrapper.pl" "${SPOTIFY_INCLUDEDIR}/libspotify/api.h"
+  WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
 ) # src/libspotify_wrapper.c
 
 # spop daemon
