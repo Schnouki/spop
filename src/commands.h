@@ -26,6 +26,7 @@ void list_queue(GString* result);
 
 void status(GString* result);
 void repeat(GString* result);
+void shuffle(GString* result);
 
 void play_playlist(int idx, GString* result);
 void play_track(int pl_idx, int tr_idx, GString* result);

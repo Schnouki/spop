@@ -120,9 +120,14 @@ void status(GString* result) {
     g_string_append(result, "Mode: ");
     if (queue_get_repeat()) {
         g_string_append(result, "repeat");
+        if (queue_get_shuffle())
+            g_string_append(result, " shuffle");
     }
     else {
-        g_string_append(result, "normal");
+        if (queue_get_shuffle())
+            g_string_append(result, "shuffle");
+        else
+            g_string_append(result, "normal");
     }
     g_string_append(result, "\n");
 
@@ -147,6 +152,12 @@ void status(GString* result) {
 void repeat(GString* result) {
     gboolean r = queue_get_repeat();
     queue_set_repeat(TRUE, !r);
+    status(result);
+}
+
+void shuffle(GString* result) {
+    gboolean s = queue_get_shuffle();
+    queue_set_shuffle(TRUE, !s);
     status(result);
 }
 

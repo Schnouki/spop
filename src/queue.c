@@ -32,6 +32,7 @@ static int g_current_track = -1;
 static queue_status g_status = STOPPED;
 
 static gboolean g_repeat = FALSE;
+static gboolean g_shuffle = FALSE;
 
 
 /************************
@@ -426,6 +427,14 @@ void queue_goto(gboolean notif, int idx) {
 /*******************************
  *** Playback mode managment ***
  *******************************/
+gboolean queue_get_shuffle() {
+    return g_shuffle;
+}
+void queue_set_shuffle(gboolean notif, gboolean shuffle) {
+    g_shuffle = shuffle;
+    if (notif) queue_notify();
+}
+
 gboolean queue_get_repeat() {
     return g_repeat;
 }

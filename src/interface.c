@@ -339,6 +339,8 @@ gboolean interface_handle_command(gchar** command, GString* result, gboolean* mu
     }
     else if (strcmp(cmd, "repeat") == 0)
         repeat(result);
+    else if (strcmp(cmd, "shuffle") == 0)
+        shuffle(result);
     else if (strcmp(cmd, "quit") == 0)
         exit(0);
     else if (strcmp(cmd, "bye") == 0) {
