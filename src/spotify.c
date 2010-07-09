@@ -406,5 +406,5 @@ void cb_end_of_track(sp_session* session) {
 
     if (g_debug)
         fprintf(stderr, "End of track.\n");
-    queue_next();
+    queue_next(TRUE);
 }

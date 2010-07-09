@@ -136,15 +136,6 @@ void status(GString* result) {
 }
 
 
-void idle(GString* result) {
-    /* Wait for something to change... */
-    queue_wait();
-
-    /* ... then send new data */
-    status(result);
-}
-
-
 void play_playlist(int idx, GString* result) {
     sp_playlist* pl;
 
@@ -157,8 +148,8 @@ void play_playlist(int idx, GString* result) {
     }
 
     /* Load it and play it */
-    queue_set_playlist(pl);
-    queue_play();
+    queue_set_playlist(FALSE, pl);
+    queue_play(TRUE);
 
     status(result);
 }
@@ -191,8 +182,8 @@ void play_track(int pl_idx, int tr_idx, GString* result) {
     g_array_free(tracks, TRUE);
 
     /* Load it and play it */
-    queue_set_track(tr);
-    queue_play();
+    queue_set_track(FALSE, tr);
+    queue_play(TRUE);
 
     status(result);
 }
@@ -210,7 +201,7 @@ void add_playlist(int idx, GString* result) {
     }
 
     /* Load it */
-    queue_add_playlist(pl);
+    queue_add_playlist(TRUE, pl);
 
     queue_get_status(NULL, NULL, &tot);
     g_string_printf(result, "Total tracks: %d\n", tot);
@@ -244,22 +235,22 @@ void add_track(int pl_idx, int tr_idx, GString* result) {
     tr = g_array_index(tracks, sp_track*, tr_idx-1);
 
     /* Load it */
-    queue_add_track(tr);
+    queue_add_track(TRUE, tr);
 
     queue_get_status(NULL, NULL, &tot);
     g_string_printf(result, "Total tracks: %d\n", tot);
 }
 
 void play(GString* result) {
-    queue_play();
+    queue_play(TRUE);
     status(result);
 }
 void stop(GString* result) {
-    queue_stop();
+    queue_stop(TRUE);
     status(result);
 }
 void toggle(GString* result) {
-    queue_toggle();
+    queue_toggle(TRUE);
     status(result);
 }
 void seek(int pos, GString* result) {
@@ -268,15 +259,15 @@ void seek(int pos, GString* result) {
 }
 
 void goto_next(GString* result) {
-    queue_next();
+    queue_next(TRUE);
     status(result);
 }
 void goto_prev(GString* result) {
-    queue_prev();
+    queue_prev(TRUE);
     status(result);
 }
 void goto_nb(GString* result, int nb) {
-    queue_goto(nb-1);
+    queue_goto(TRUE, nb-1);
     status(result);
 }
 

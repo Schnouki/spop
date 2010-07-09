@@ -31,6 +31,8 @@
 
 const char proto_greetings[] = "spop " SPOP_VERSION "\n";
 
+static GList* g_idle = NULL;
+
 /* Functions called directly from spop */
 void interface_init() {
     const char* ip_addr;
@@ -153,6 +155,7 @@ gboolean interface_client_event(GIOChannel* source, GIOCondition condition, gpoi
     GString* result;
     int client;
     gboolean keep_alive = TRUE;
+    gboolean must_idle = FALSE;
 
     client = g_io_channel_unix_get_fd(source);
 
@@ -195,16 +198,25 @@ gboolean interface_client_event(GIOChannel* source, GIOCondition condition, gpoi
     /* Parse and run the command, send its result to the IO channel */
     result = g_string_sized_new(1024);
     g_string_assign(result, "");
-    keep_alive = interface_handle_command(command, result);
-    status = g_io_channel_write_chars(source, result->str, -1, NULL, &err);
-
-    /* Free allocated memory and deal with errors */
-    g_string_free(result, TRUE);
+    keep_alive = interface_handle_command(command, result, &must_idle);
     g_strfreev(command);
-    if (status != G_IO_STATUS_NORMAL) {
-        fprintf(stderr, "[%d] Can't write to IO channel: %s\n", client, err->message);
-        goto ice_client_clean;
+
+    /* "idle" command? */
+    if (must_idle) {
+        /* Add to list of idle channels */
+        g_idle = g_list_prepend(g_idle, source);
+        g_string_free(result, TRUE);
     }
+    else {
+        /* Write the command result to the channel */
+        status = g_io_channel_write_chars(source, result->str, -1, NULL, &err);
+        g_string_free(result, TRUE);
+        if (status != G_IO_STATUS_NORMAL) {
+            fprintf(stderr, "[%d] Can't write to IO channel: %s\n", client, err->message);
+            goto ice_client_clean;
+        }
+    }
+
     if (g_io_channel_flush(source, &err) != G_IO_STATUS_NORMAL) {
         fprintf(stderr, "[%d] Can't flush IO channel: %s\n", client, err->message);
         goto ice_client_clean;
@@ -216,6 +228,7 @@ gboolean interface_client_event(GIOChannel* source, GIOCondition condition, gpoi
  ice_client_clean:
     if (buffer)
         g_string_free(buffer, TRUE);
+    g_idle = g_list_remove(g_idle, source);
     g_io_channel_shutdown(source, TRUE, NULL);
     g_io_channel_unref(source);
     close(client);
@@ -226,7 +239,7 @@ gboolean interface_client_event(GIOChannel* source, GIOCondition condition, gpoi
 }
 
 /* Parse the command and execute it */
-gboolean interface_handle_command(gchar** command, GString* result) {
+gboolean interface_handle_command(gchar** command, GString* result, gboolean* must_idle) {
     int len;
     gchar* cmd;
     gchar* endptr;
@@ -320,8 +333,10 @@ gboolean interface_handle_command(gchar** command, GString* result) {
     }
     else if (strcmp(cmd, "status") == 0)
         status(result);
-    else if (strcmp(cmd, "idle") == 0)
-        idle(result);
+    else if (strcmp(cmd, "idle") == 0) {
+        *must_idle = TRUE;
+        return TRUE;
+    }
     else if (strcmp(cmd, "quit") == 0)
         exit(0);
     else if (strcmp(cmd, "bye") == 0) {
@@ -343,4 +358,43 @@ gboolean interface_handle_command(gchar** command, GString* result) {
             g_string_append(result, "+ OK\n");
     }
     return TRUE;
+}
+
+/* Notify clients that issued the "idle" command */
+void interface_notify_idle() {
+    GString* str = g_string_sized_new(1024);
+    status(str);
+    g_string_append(str, "+ OK\n");
+
+    g_list_foreach(g_idle, interface_notify_idle_chan, str);
+    g_list_free(g_idle);
+    g_idle = NULL;
+
+    g_string_free(str, TRUE);
+}
+
+void interface_notify_idle_chan(gpointer data, gpointer user_data) {
+    GIOChannel* chan = data;
+    GString* str = user_data;
+    GIOStatus status;
+    GError* err = NULL;
+    int client = g_io_channel_unix_get_fd(chan);
+
+    status = g_io_channel_write_chars(chan, str->str, -1, NULL, &err);
+    if (status != G_IO_STATUS_NORMAL) {
+        fprintf(stderr, "[%d] Can't write to IO channel: %s\n", client, err->message);
+        goto inic_client_clean;
+    }
+    if (g_io_channel_flush(chan, &err) != G_IO_STATUS_NORMAL) {
+        fprintf(stderr, "[%d] Can't flush IO channel: %s\n", client, err->message);
+        goto inic_client_clean;
+    }
+    return;
+
+ inic_client_clean:
+    g_io_channel_shutdown(chan, TRUE, NULL);
+    g_io_channel_unref(chan);
+    close(client);
+    if (g_debug)
+        fprintf(stderr, "[%d] Connection closed.\n", client);
 }

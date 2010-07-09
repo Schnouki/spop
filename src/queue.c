@@ -20,6 +20,7 @@
 #include <stdlib.h>
 
 #include "spop.h"
+#include "interface.h"
 #include "queue.h"
 #include "spotify.h"
 
@@ -38,7 +39,7 @@ void queue_init() {
 /************************
  *** Queue management ***
  ************************/
-void queue_set_track(sp_track* track) {
+void queue_set_track(gboolean notif, sp_track* track) {
     if (g_debug) fprintf(stderr, "Entering queue_set_track()\n");
 
     sp_track_add_ref(track);
@@ -57,12 +58,12 @@ void queue_set_track(sp_track* track) {
     if (g_debug)
         fprintf(stderr, "Setting track %p as queue.\n", track);
 
-    queue_clear();
+    queue_clear(FALSE);
     g_queue_push_tail(&g_queue, track);
 
-    queue_notify();
+    if (notif) queue_notify();
 }
-void queue_add_track(sp_track* track) {
+void queue_add_track(gboolean notif, sp_track* track) {
     if (g_debug) fprintf(stderr, "Entering queue_add_track()\n");
 
     sp_track_add_ref(track);
@@ -83,10 +84,10 @@ void queue_add_track(sp_track* track) {
 
     g_queue_push_tail(&g_queue, track);
 
-    queue_notify();
+    if (notif) queue_notify();
 }
 
-void queue_set_playlist(sp_playlist* pl) {
+void queue_set_playlist(gboolean notif, sp_playlist* pl) {
     if (g_debug) fprintf(stderr, "Entering queue_set_playlist()\n");
 
     GArray* tracks;
@@ -102,7 +103,7 @@ void queue_set_playlist(sp_playlist* pl) {
         return;
     }
 
-    queue_clear();
+    queue_clear(FALSE);
 
     for (i=0; i < tracks->len; i++) {
         track = g_array_index(tracks, sp_track*, i);
@@ -111,9 +112,9 @@ void queue_set_playlist(sp_playlist* pl) {
     }
     g_array_free(tracks, TRUE);
 
-    queue_notify();
+    if (notif) queue_notify();
 }
-void queue_add_playlist(sp_playlist* pl) {
+void queue_add_playlist(gboolean notif, sp_playlist* pl) {
     if (g_debug) fprintf(stderr, "Entering queue_add_playlist()\n");
 
     GArray* tracks;
@@ -136,20 +137,20 @@ void queue_add_playlist(sp_playlist* pl) {
     }
     g_array_free(tracks, TRUE);
 
-    queue_notify();
+    if (notif) queue_notify();
 }
 
-void queue_clear() {
+void queue_clear(gboolean notif) {
     if (g_debug) fprintf(stderr, "Entering queue_clear()\n");
 
-    queue_stop();
+    queue_stop(FALSE);
     g_queue_foreach(&g_queue, cb_queue_track_release, NULL);
     g_queue_clear(&g_queue);
 
-    queue_notify();
+    if (notif) queue_notify();
 }
 
-void queue_remove_tracks(int idx, int nb) {
+void queue_remove_tracks(gboolean notif, int idx, int nb) {
     if (g_debug) fprintf(stderr, "Entering queue_remove_tracks()\n");
 
     int len;
@@ -179,14 +180,14 @@ void queue_remove_tracks(int idx, int nb) {
         }
     }
 
-    queue_notify();
+    if (notif) queue_notify();
 }
 
 
 /***************************
  *** Playback management ***
  ***************************/
-void queue_play() {
+void queue_play(gboolean notif) {
     if (g_debug) fprintf(stderr, "Entering queue_play()\n");
 
     sp_track* track;
@@ -214,7 +215,7 @@ void queue_play() {
             session_load(track);
             session_play(TRUE);
             g_status = PLAYING;
-            queue_notify();
+            if (notif) queue_notify();
         }
         else if (g_debug)
             fprintf(stderr, "Nothing to play (empty queue).\n");
@@ -225,7 +226,7 @@ void queue_play() {
             fprintf(stderr, "Resuming playback.\n");
         session_play(TRUE);
         g_status = PLAYING;
-        queue_notify();
+        if (notif) queue_notify();
         break;
 
     case PLAYING:
@@ -235,7 +236,7 @@ void queue_play() {
     }
 }
 
-void queue_stop() {
+void queue_stop(gboolean notif) {
     if (g_debug) fprintf(stderr, "Entering queue_stop()\n");
 
     switch(g_status) {
@@ -245,7 +246,7 @@ void queue_stop() {
             fprintf(stderr, "Stopping playback.\n");
         session_unload();
         g_status = STOPPED;
-        queue_notify();
+        if (notif) queue_notify();
         break;
 
     case STOPPED:
@@ -255,7 +256,7 @@ void queue_stop() {
     }
 }
 
-void queue_toggle() {
+void queue_toggle(gboolean notif) {
     if (g_debug) fprintf(stderr, "Entering queue_toggle()\n");
 
     switch(g_status) {
@@ -276,10 +277,10 @@ void queue_toggle() {
     case STOPPED:
         if (g_debug)
             fprintf(stderr, "Toggle: was stopped, will now start playing.\n");
-        queue_play();
+        queue_play(FALSE);
     }
 
-    queue_notify();
+    if (notif) queue_notify();
 }
 
 void queue_seek(int pos) {
@@ -298,10 +299,8 @@ void queue_seek(int pos) {
             fprintf(stderr, "Can't get track duration.\n");
         else if ((pos < 0) || ((pos) >= dur))
             fprintf(stderr, "Can't seek: value is out of range.\n");
-        else {        
+        else
             session_seek(pos);
-            queue_notify();
-        }
         break;
     case STOPPED:
         if (g_debug)
@@ -361,38 +360,36 @@ GArray* queue_tracks() {
  *** Notify clients that something changed ***
  *********************************************/
 void queue_notify() {
-    /*if (g_debug) fprintf(stderr, "Entering queue_notify()\n");*/
-}
+    if (g_debug) fprintf(stderr, "Entering queue_notify()\n");
 
-void queue_wait() {
-    /*if (g_debug) fprintf(stderr, "Entering queue_wait()\n");*/
+    interface_notify_idle();
 }
 
 
 /***************************
  *** Move into the queue ***
  ***************************/
-void queue_next() {
+void queue_next(gboolean notif) {
     if (g_debug) fprintf(stderr, "Entering queue_next()\n");
 
     if (g_debug)
         fprintf(stderr, "Switching to next track.\n");
 
-    queue_goto(g_current_track + 1);
+    queue_goto(FALSE, g_current_track + 1);
     queue_notify();
 }
 
-void queue_prev() {
+void queue_prev(gboolean notif) {
     if (g_debug) fprintf(stderr, "Entering queue_prev()\n");
 
     if (g_debug)
         fprintf(stderr, "Switching to previous track.\n");
 
-    queue_goto(g_current_track - 1);
-    queue_notify();
+    queue_goto(FALSE, g_current_track - 1);
+    if (notif) queue_notify();
 }
 
-void queue_goto(int idx) {
+void queue_goto(gboolean notif, int idx) {
     if (g_debug) fprintf(stderr, "Entering queue_goto()\n");
 
     if (idx == g_current_track) {
@@ -404,7 +401,7 @@ void queue_goto(int idx) {
     if (g_debug)
         fprintf(stderr, "Switching to track %d.\n", idx);
 
-    queue_stop();
+    queue_stop(FALSE);
 
     if (idx < 0) {
         if (g_debug) fprintf(stderr, "Reached beginning of queue, stopping playback.\n");
@@ -416,10 +413,10 @@ void queue_goto(int idx) {
     }
     else {
         g_current_track = idx;
-        queue_play();
+        queue_play(FALSE);
     }
 
-    queue_notify();
+    if (notif) queue_notify();
 }
 
 
