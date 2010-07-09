@@ -44,7 +44,8 @@ void track_get_data(sp_track* track, const char** name, GString** artist, GStrin
 gboolean container_loaded();
 
 /* Events management */
-gboolean session_event(gpointer data);
+gboolean session_libspotify_event(gpointer data);
+gboolean session_next_track_event(gpointer data);
 
 /* Callbacks */
 void cb_container_loaded(sp_playlistcontainer* pc, void* data);

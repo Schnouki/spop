@@ -372,7 +372,7 @@ void queue_next(gboolean notif) {
         fprintf(stderr, "Switching to next track.\n");
 
     queue_goto(FALSE, g_current_track + 1);
-    queue_notify();
+    if (notif) queue_notify();
 }
 
 void queue_prev(gboolean notif) {

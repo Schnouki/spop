@@ -325,7 +325,7 @@ gboolean container_loaded() {
 /*************************
  *** Events management ***
  *************************/
-gboolean session_event(gpointer data) {
+gboolean session_libspotify_event(gpointer data) {
     static guint evid = 0;
     int timeout;
 
@@ -339,10 +339,18 @@ gboolean session_event(gpointer data) {
     } while (timeout == 0);
 
     /* Add next timeout */
-    evid = g_timeout_add(timeout, session_event, NULL);
+    evid = g_timeout_add(timeout, session_libspotify_event, NULL);
 
     if (g_debug)
         fprintf(stderr, "Next session timeout in %d ms with evid %d.\n", timeout, evid);
+
+    return FALSE;
+}
+gboolean session_next_track_event(gpointer data) {
+    if (g_debug)
+        fprintf(stderr, "Got next_track event.\n");
+
+    queue_next(TRUE);
 
     return FALSE;
 }
@@ -383,7 +391,7 @@ void cb_message_to_user(sp_session* session, const char* message) {
 }
 void cb_notify_main_thread(sp_session* session) {
     if (g_debug) fprintf(stderr, "Notifying main thread.\n");
-    g_idle_add_full(G_PRIORITY_DEFAULT, session_event, NULL, NULL);
+    g_idle_add_full(G_PRIORITY_DEFAULT, session_libspotify_event, NULL, NULL);
 }
 int cb_music_delivery(sp_session* session, const sp_audioformat* format, const void* frames, int num_frames) {
     int n =  g_audio_delivery_func(format, frames, num_frames);
@@ -410,5 +418,5 @@ void cb_end_of_track(sp_session* session) {
 
     if (g_debug)
         fprintf(stderr, "End of track.\n");
-    queue_next(TRUE);
+    g_idle_add_full(G_PRIORITY_DEFAULT, session_next_track_event, NULL, NULL);
 }
