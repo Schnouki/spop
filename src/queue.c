@@ -31,9 +31,7 @@ static GQueue g_queue = G_QUEUE_INIT;
 static int g_current_track = -1;
 static queue_status g_status = STOPPED;
 
-void queue_init() {
-    if (g_debug) fprintf(stderr, "Entering queue_init()\n");
-}
+static gboolean g_repeat = FALSE;
 
 
 /************************
@@ -388,6 +386,8 @@ void queue_prev(gboolean notif) {
 void queue_goto(gboolean notif, int idx) {
     if (g_debug) fprintf(stderr, "Entering queue_goto()\n");
 
+    int len = g_queue_get_length(&g_queue);
+
     if (idx == g_current_track) {
         if (g_debug)
             fprintf(stderr, "New track == current_track: doing nothing.\n");
@@ -399,11 +399,18 @@ void queue_goto(gboolean notif, int idx) {
 
     queue_stop(FALSE);
 
+    if (g_repeat) {
+        if (idx < 0) idx = len - 1;
+        else if (idx >= len) idx = 0;
+        if (g_debug)
+            fprintf(stderr, "Repeat mode: switching to track %d.\n", idx);
+    }
+
     if (idx < 0) {
         if (g_debug) fprintf(stderr, "Reached beginning of queue, stopping playback.\n");
         g_current_track = -1;
     }
-    else if (idx >= g_queue_get_length(&g_queue)) {
+    else if (idx >= len) {
         if (g_debug) fprintf(stderr, "Reached end of queue, stopping playback.\n");
         g_current_track = -1;
     }
@@ -419,7 +426,13 @@ void queue_goto(gboolean notif, int idx) {
 /*******************************
  *** Playback mode managment ***
  *******************************/
-/* TODO */
+gboolean queue_get_repeat() {
+    return g_repeat;
+}
+void queue_set_repeat(gboolean notif, gboolean repeat) {
+    g_repeat = repeat;
+    if (notif) queue_notify();
+}
 
 
 /************************************************************

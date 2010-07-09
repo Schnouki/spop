@@ -117,6 +117,15 @@ void status(GString* result) {
 
     g_string_append_printf(result, "\nTotal tracks: %d\n", total_tracks);
 
+    g_string_append(result, "Mode: ");
+    if (queue_get_repeat()) {
+        g_string_append(result, "repeat");
+    }
+    else {
+        g_string_append(result, "normal");
+    }
+    g_string_append(result, "\n");
+
     if (qs != STOPPED) {
         g_string_append_printf(result, "Current track: %d\n", track_nb+1);
 
@@ -135,6 +144,11 @@ void status(GString* result) {
     }
 }
 
+void repeat(GString* result) {
+    gboolean r = queue_get_repeat();
+    queue_set_repeat(TRUE, !r);
+    status(result);
+}
 
 void play_playlist(int idx, GString* result) {
     sp_playlist* pl;

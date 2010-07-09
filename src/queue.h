@@ -22,8 +22,6 @@
 
 typedef enum { STOPPED, PLAYING, PAUSED } queue_status;
 
-void queue_init();
-
 /* Queue management */
 void queue_set_track(gboolean notif, sp_track* track);
 void queue_add_track(gboolean notif, sp_track* track);

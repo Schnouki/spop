@@ -62,7 +62,6 @@ int real_main() {
     session_login(username, password);
 
     /* Init various subsystems */
-    queue_init();
     interface_init();
 
     /* Event loop */

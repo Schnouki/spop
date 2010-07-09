@@ -337,6 +337,8 @@ gboolean interface_handle_command(gchar** command, GString* result, gboolean* mu
         *must_idle = TRUE;
         return TRUE;
     }
+    else if (strcmp(cmd, "repeat") == 0)
+        repeat(result);
     else if (strcmp(cmd, "quit") == 0)
         exit(0);
     else if (strcmp(cmd, "bye") == 0) {
