@@ -295,8 +295,10 @@ gboolean interface_handle_command(gchar** command, GString* result, gboolean* mu
         repeat(result);
     else if (strcmp(cmd, "shuffle") == 0)
         shuffle(result);
-    else if (strcmp(cmd, "quit") == 0)
+    else if (strcmp(cmd, "quit") == 0) {
+        g_message("Got a quit command, exiting...");
         exit(0);
+    }
     else if (strcmp(cmd, "bye") == 0) {
         g_string_assign(result, "+ OK Bye bye!\n");
         return FALSE;
