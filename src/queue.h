@@ -48,11 +48,12 @@ void queue_notify();
 /* Move into the queue */
 void queue_next(gboolean notif);
 void queue_prev(gboolean notif);
-void queue_goto(gboolean notif, int idx);
+void queue_goto(gboolean notif, int idx, gboolean reset_shuffle_first);
 
 /* Playback mode */
 gboolean queue_get_shuffle();
 void queue_set_shuffle(gboolean notif, gboolean shuffle);
+void queue_setup_shuffle();
 
 gboolean queue_get_repeat();
 void queue_set_repeat(gboolean notif, gboolean repeat);

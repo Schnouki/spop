@@ -33,6 +33,8 @@ static queue_status g_status = STOPPED;
 
 static gboolean g_repeat = FALSE;
 static gboolean g_shuffle = FALSE;
+static int g_prime;
+static int g_shuffle_first;
 
 
 /************************
@@ -59,6 +61,8 @@ void queue_set_track(gboolean notif, sp_track* track) {
 
     queue_clear(FALSE);
     g_queue_push_tail(&g_queue, track);
+    if (g_shuffle) queue_setup_shuffle();
+    g_shuffle_first = -1;
 
     if (notif) queue_notify();
 }
@@ -82,6 +86,8 @@ void queue_add_track(gboolean notif, sp_track* track) {
         fprintf(stderr, "Adding track %p to queue.\n", track);
 
     g_queue_push_tail(&g_queue, track);
+    if (g_shuffle) queue_setup_shuffle();
+    g_shuffle_first = g_current_track;
 
     if (notif) queue_notify();
 }
@@ -111,6 +117,9 @@ void queue_set_playlist(gboolean notif, sp_playlist* pl) {
     }
     g_array_free(tracks, TRUE);
 
+    if (g_shuffle) queue_setup_shuffle();
+    g_shuffle_first = -1;
+
     if (notif) queue_notify();
 }
 void queue_add_playlist(gboolean notif, sp_playlist* pl) {
@@ -135,6 +144,9 @@ void queue_add_playlist(gboolean notif, sp_playlist* pl) {
             g_queue_push_tail(&g_queue, track);
     }
     g_array_free(tracks, TRUE);
+
+    if (g_shuffle) queue_setup_shuffle();
+    g_shuffle_first = g_current_track;
 
     if (notif) queue_notify();
 }
@@ -179,6 +191,9 @@ void queue_remove_tracks(gboolean notif, int idx, int nb) {
         }
     }
 
+    if (g_shuffle) queue_setup_shuffle();
+    g_shuffle_first = g_current_track;
+
     if (notif) queue_notify();
 }
 
@@ -197,8 +212,10 @@ void queue_play(gboolean notif) {
     switch(g_status) {
     case STOPPED:
         if (len > 0) {
-            if (g_current_track < 0)
-                g_current_track = 0;
+            if (g_shuffle && (g_shuffle_first == -1))
+                g_shuffle_first = g_current_track = g_random_int_range(0, len);
+            else if (g_current_track < 0)
+                    g_current_track = 0;
             else if (g_current_track >= len)
                 g_current_track = len-1;
 
@@ -367,24 +384,53 @@ void queue_notify() {
 void queue_next(gboolean notif) {
     if (g_debug) fprintf(stderr, "Entering queue_next()\n");
 
+    int n;
+
     if (g_debug)
         fprintf(stderr, "Switching to next track.\n");
 
-    queue_goto(FALSE, g_current_track + 1);
+    if (g_shuffle) {
+        if (g_current_track == -1)
+            n = g_shuffle_first;
+        else {
+            n = (g_current_track + g_prime) % g_queue_get_length(&g_queue);
+            if ((n == g_shuffle_first) && !g_repeat)
+                n = -1;
+        }
+    }
+    else
+        n = g_current_track + 1;
+
+    queue_goto(FALSE, n, FALSE);
     if (notif) queue_notify();
 }
 
 void queue_prev(gboolean notif) {
     if (g_debug) fprintf(stderr, "Entering queue_prev()\n");
 
+    int n;
+
     if (g_debug)
         fprintf(stderr, "Switching to previous track.\n");
 
-    queue_goto(FALSE, g_current_track - 1);
+    if (g_shuffle) {
+        if (g_current_track == -1)
+            n = (g_shuffle_first - g_prime) % g_queue_get_length(&g_queue);
+        else {
+            if ((g_current_track == g_shuffle_first) && !g_repeat)
+                n = -1;
+            else
+                n = (g_current_track - g_prime) % g_queue_get_length(&g_queue);
+        }
+    }
+    else
+        n = g_current_track - 1;
+
+    queue_goto(FALSE, n, FALSE);
     if (notif) queue_notify();
 }
 
-void queue_goto(gboolean notif, int idx) {
+void queue_goto(gboolean notif, int idx, gboolean reset_shuffle_first) {
     if (g_debug) fprintf(stderr, "Entering queue_goto()\n");
 
     int len = g_queue_get_length(&g_queue);
@@ -417,6 +463,8 @@ void queue_goto(gboolean notif, int idx) {
     }
     else {
         g_current_track = idx;
+        if (reset_shuffle_first)
+            g_shuffle_first = idx;
         queue_play(FALSE);
     }
 
@@ -432,7 +480,65 @@ gboolean queue_get_shuffle() {
 }
 void queue_set_shuffle(gboolean notif, gboolean shuffle) {
     g_shuffle = shuffle;
+    if (g_shuffle) queue_setup_shuffle();
+    g_shuffle_first = g_current_track;
     if (notif) queue_notify();
+}
+
+gboolean is_prime(int n) {
+    int i;
+
+    if (n <= 1) return FALSE;
+    else if (n <= 100) {
+        switch (n) {
+        case 2: case 3: case 5: case 7: case 11: case 13: case 17: case 19:
+        case 23: case 29: case 31: case 37: case 41: case 43: case 47:
+        case 53: case 59: case 61: case 67: case 71: case 73: case 79:
+        case 83: case 89: case 97: return TRUE;
+        default: return FALSE;
+        }
+    }
+    else {
+        if ((n % 2) == 0) return FALSE;
+        for (i=3; i*i <= n; i += 2)
+            if ((n%i) == 0)
+                return FALSE;
+        return TRUE;
+    }
+}
+void queue_setup_shuffle() {
+    /* Use the method described on http://en.wikipedia.org/wiki/Full_cycle */
+    int len = g_queue_get_length(&g_queue);
+    int incr = -1;
+    int n, r;
+
+    if (len == 0) return;
+
+    if (g_debug)
+        fprintf(stderr, "Finding new shuffle parameters...\n");
+    
+    if (len <= 3) {
+        n = 5;
+    }
+
+    r = g_random_int_range(3, len);
+    n = r;
+    do {
+        n += incr;
+        if (n == 2) {
+            n = r;
+            incr = 1;
+        }
+        while (!is_prime(n)) {
+            n += incr;
+        }
+        fprintf(stderr, "%d is prime\n", n);
+    } while ((len % n) == 0);
+
+    if (g_debug)
+        fprintf(stderr, "New shuffle parameters: len=%d, prime=%d.\n", len, n);
+
+    g_prime = n;
 }
 
 gboolean queue_get_repeat() {
