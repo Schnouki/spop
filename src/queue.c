@@ -315,8 +315,6 @@ void queue_seek(int pos) {
 queue_status queue_get_status(sp_track** current_track, int* current_track_number, int* total_tracks) {
     if (g_debug) fprintf(stderr, "Entering queue_get_status()\n");
 
-    queue_status s;
-
     if (current_track) {
         if (g_current_track >= 0)
             *current_track = g_queue_peek_nth(&g_queue, g_current_track);
@@ -328,9 +326,7 @@ queue_status queue_get_status(sp_track** current_track, int* current_track_numbe
     if (total_tracks)
         *total_tracks = g_queue_get_length(&g_queue);
 
-    s = g_status;
-
-    return s;
+    return g_status;
 }
 
 GArray* queue_tracks() {

@@ -75,10 +75,7 @@ class SpopListener(object):
             if line.startswith("- ") or line.startswith("+ "):
                 break
             
-            try:
-                (name, val) = line.split(": ", 1)
-            except:
-                continue
+            (name, val) = line.split(": ", 1)
             
             if name == "Status":
                 if val == "stopped":

@@ -326,20 +326,24 @@ gboolean container_loaded() {
  *** Events management ***
  *************************/
 gboolean session_event(gpointer data) {
+    static guint evid = 0;
     int timeout;
 
     if (g_debug)
-        fprintf(stderr, "Got session event.\n");
+        fprintf(stderr, "Got session event, evid=%d.\n", evid);
+
+    g_source_remove(evid);
 
     do {
         sp_session_process_events(g_session, &timeout);
     } while (timeout == 0);
 
     /* Add next timeout */
-    if (g_debug)
-        fprintf(stderr, "Next session timeout in %d ms.\n", timeout);
+    evid = g_timeout_add(timeout, session_event, NULL);
 
-    g_timeout_add(timeout, session_event, NULL);
+    if (g_debug)
+        fprintf(stderr, "Next session timeout in %d ms with evid %d.\n", timeout, evid);
+
     return FALSE;
 }
 
