@@ -41,8 +41,6 @@ static int g_shuffle_first;
  *** Queue management ***
  ************************/
 void queue_set_track(gboolean notif, sp_track* track) {
-    if (g_debug) fprintf(stderr, "Entering queue_set_track()\n");
-
     sp_track_add_ref(track);
     if (!sp_track_is_loaded(track)) {
         sp_track_release(track);
@@ -67,8 +65,6 @@ void queue_set_track(gboolean notif, sp_track* track) {
     if (notif) queue_notify();
 }
 void queue_add_track(gboolean notif, sp_track* track) {
-    if (g_debug) fprintf(stderr, "Entering queue_add_track()\n");
-
     sp_track_add_ref(track);
     if (!sp_track_is_loaded(track)) {
         sp_track_release(track);
@@ -93,8 +89,6 @@ void queue_add_track(gboolean notif, sp_track* track) {
 }
 
 void queue_set_playlist(gboolean notif, sp_playlist* pl) {
-    if (g_debug) fprintf(stderr, "Entering queue_set_playlist()\n");
-
     GArray* tracks;
     sp_track* track;
     int i;
@@ -123,8 +117,6 @@ void queue_set_playlist(gboolean notif, sp_playlist* pl) {
     if (notif) queue_notify();
 }
 void queue_add_playlist(gboolean notif, sp_playlist* pl) {
-    if (g_debug) fprintf(stderr, "Entering queue_add_playlist()\n");
-
     GArray* tracks;
     sp_track* track;
     int i;
@@ -152,8 +144,6 @@ void queue_add_playlist(gboolean notif, sp_playlist* pl) {
 }
 
 void queue_clear(gboolean notif) {
-    if (g_debug) fprintf(stderr, "Entering queue_clear()\n");
-
     queue_stop(FALSE);
     g_queue_foreach(&g_queue, cb_queue_track_release, NULL);
     g_queue_clear(&g_queue);
@@ -162,8 +152,6 @@ void queue_clear(gboolean notif) {
 }
 
 void queue_remove_tracks(gboolean notif, int idx, int nb) {
-    if (g_debug) fprintf(stderr, "Entering queue_remove_tracks()\n");
-
     int len;
     int i;
 
@@ -202,8 +190,6 @@ void queue_remove_tracks(gboolean notif, int idx, int nb) {
  *** Playback management ***
  ***************************/
 void queue_play(gboolean notif) {
-    if (g_debug) fprintf(stderr, "Entering queue_play()\n");
-
     sp_track* track;
     int len;
 
@@ -253,8 +239,6 @@ void queue_play(gboolean notif) {
 }
 
 void queue_stop(gboolean notif) {
-    if (g_debug) fprintf(stderr, "Entering queue_stop()\n");
-
     switch(g_status) {
     case PLAYING:
     case PAUSED:
@@ -273,8 +257,6 @@ void queue_stop(gboolean notif) {
 }
 
 void queue_toggle(gboolean notif) {
-    if (g_debug) fprintf(stderr, "Entering queue_toggle()\n");
-
     switch(g_status) {
     case PLAYING:
         if (g_debug)
@@ -300,8 +282,6 @@ void queue_toggle(gboolean notif) {
 }
 
 void queue_seek(int pos) {
-    if (g_debug) fprintf(stderr, "Entering queue_seek()\n");
-
     sp_track* track;
     int dur;
 
@@ -329,8 +309,6 @@ void queue_seek(int pos) {
  *** Information about the queue ***
  ***********************************/
 queue_status queue_get_status(sp_track** current_track, int* current_track_number, int* total_tracks) {
-    if (g_debug) fprintf(stderr, "Entering queue_get_status()\n");
-
     if (current_track) {
         if (g_current_track >= 0)
             *current_track = g_queue_peek_nth(&g_queue, g_current_track);
@@ -346,8 +324,6 @@ queue_status queue_get_status(sp_track** current_track, int* current_track_numbe
 }
 
 GArray* queue_tracks() {
-    if (g_debug) fprintf(stderr, "Entering queue_tracks()\n");
-
     GArray* tracks;
     sp_track* tr;
     int i, n;
@@ -372,8 +348,6 @@ GArray* queue_tracks() {
  *** Notify clients that something changed ***
  *********************************************/
 void queue_notify() {
-    if (g_debug) fprintf(stderr, "Entering queue_notify()\n");
-
     interface_notify_idle();
 }
 
@@ -382,8 +356,6 @@ void queue_notify() {
  *** Move into the queue ***
  ***************************/
 void queue_next(gboolean notif) {
-    if (g_debug) fprintf(stderr, "Entering queue_next()\n");
-
     int n;
 
     if (g_debug)
@@ -406,8 +378,6 @@ void queue_next(gboolean notif) {
 }
 
 void queue_prev(gboolean notif) {
-    if (g_debug) fprintf(stderr, "Entering queue_prev()\n");
-
     int n;
 
     if (g_debug)
@@ -431,8 +401,6 @@ void queue_prev(gboolean notif) {
 }
 
 void queue_goto(gboolean notif, int idx, gboolean reset_shuffle_first) {
-    if (g_debug) fprintf(stderr, "Entering queue_goto()\n");
-
     int len = g_queue_get_length(&g_queue);
 
     if (idx == g_current_track) {
@@ -532,7 +500,6 @@ void queue_setup_shuffle() {
         while (!is_prime(n)) {
             n += incr;
         }
-        fprintf(stderr, "%d is prime\n", n);
     } while ((len % n) == 0);
 
     if (g_debug)

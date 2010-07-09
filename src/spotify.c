@@ -147,8 +147,6 @@ sp_playlist* playlist_get(int nb) {
 }
 
 void session_load(sp_track* track) {
-    if (g_debug) fprintf(stderr, "Entering session_load()\n");
-
     sp_error error;
     
     error = sp_session_player_load(g_session, track);
@@ -161,8 +159,6 @@ void session_load(sp_track* track) {
 }
 
 void session_unload() {
-    if (g_debug) fprintf(stderr, "Entering session_unload()\n");
-
     sp_session_player_play(g_session, FALSE);
     sp_session_player_unload(g_session);
     cb_notify_main_thread(NULL);
@@ -171,8 +167,6 @@ void session_unload() {
 }
 
 void session_play(gboolean play) {
-    if (g_debug) fprintf(stderr, "Entering session_play()\n");
-
     sp_error error;
 
     error = sp_session_player_play(g_session, play);
@@ -185,8 +179,6 @@ void session_play(gboolean play) {
 }
 
 void session_seek(int pos) {
-    if (g_debug) fprintf(stderr, "Entering session_seek(%d)\n", pos);
-
     sp_error error;
 
     error = sp_session_player_seek(g_session, pos*1000);
@@ -329,9 +321,6 @@ gboolean session_libspotify_event(gpointer data) {
     static guint evid = 0;
     int timeout;
 
-    if (g_debug)
-        fprintf(stderr, "Got session event, evid=%d.\n", evid);
-
     g_source_remove(evid);
 
     do {
@@ -340,9 +329,6 @@ gboolean session_libspotify_event(gpointer data) {
 
     /* Add next timeout */
     evid = g_timeout_add(timeout, session_libspotify_event, NULL);
-
-    if (g_debug)
-        fprintf(stderr, "Next session timeout in %d ms with evid %d.\n", timeout, evid);
 
     return FALSE;
 }
@@ -372,7 +358,7 @@ void cb_logged_in(sp_session* session, sp_error error) {
         exit(1);
     }
     else if (g_debug)
-            fprintf(stderr, "Logged in.\n");
+        fprintf(stderr, "Logged in.\n");
 }
 
 void cb_logged_out(sp_session* session) {
@@ -390,7 +376,6 @@ void cb_message_to_user(sp_session* session, const char* message) {
     printf("Message from Spotify: %s\n", message);
 }
 void cb_notify_main_thread(sp_session* session) {
-    if (g_debug) fprintf(stderr, "Notifying main thread.\n");
     g_idle_add_full(G_PRIORITY_DEFAULT, session_libspotify_event, NULL, NULL);
 }
 int cb_music_delivery(sp_session* session, const sp_audioformat* format, const void* frames, int num_frames) {
@@ -414,8 +399,6 @@ void cb_log_message(sp_session* session, const char* data) {
     fprintf(stderr, data);
 }
 void cb_end_of_track(sp_session* session) {
-    if (g_debug) fprintf(stderr, "Entering cb_end_of_track()\n");
-
     if (g_debug)
         fprintf(stderr, "End of track.\n");
     g_idle_add_full(G_PRIORITY_DEFAULT, session_next_track_event, NULL, NULL);
