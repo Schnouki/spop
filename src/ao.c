@@ -41,28 +41,22 @@ static GQueue* g_full_bufs = NULL;
 static GMutex* g_buf_mutex = NULL;
 static GCond* g_play_cond = NULL;
 
-/* My own perror for libao */
-static void lao_perror(const char* s) {
+/* My own strerror for libao */
+static const char* lao_strerror(void) {
     int ao_err = errno;
-    const char* msg;
 
     switch(ao_err) {
-    case AO_ENODRIVER:   msg = "No corresponding driver"; break;
-    case AO_ENOTFILE:    msg = "This driver is not a file"; break;
-    case AO_ENOTLIVE:    msg = "This driver is not a live output device"; break;
-    case AO_EBADOPTION:  msg = "A valid option key has an invalid value"; break;
-    case AO_EOPENDEVICE: msg = "Cannot open the device"; break;
-    case AO_EOPENFILE:   msg = "Cannot open the file"; break;
-    case AO_EFILEEXISTS: msg = "File exists"; break;
-    case AO_EBADFORMAT:  msg = "Bad format"; break;
+    case AO_ENODRIVER:   return "No corresponding driver";
+    case AO_ENOTFILE:    return "This driver is not a file";
+    case AO_ENOTLIVE:    return "This driver is not a live output device";
+    case AO_EBADOPTION:  return "A valid option key has an invalid value";
+    case AO_EOPENDEVICE: return "Cannot open the device";
+    case AO_EOPENFILE:   return "Cannot open the file";
+    case AO_EFILEEXISTS: return "File exists";
+    case AO_EBADFORMAT:  return "Bad format";
     case AO_EFAIL:
-    default:             msg = "Unknown error";
+    default:             return "Unknown error";
     }
-
-    if (s && (*s != '\0'))
-        fprintf(stderr, "%s: %s.\n", s, msg);
-    else
-        fprintf(stderr, "%s.\n", msg);
 }
 
 /* Audio player thread */
@@ -81,10 +75,8 @@ static void* lao_player(gpointer data) {
             /* There is something to play */
             g_mutex_unlock(g_buf_mutex);
      
-            if (!ao_play(g_ao_dev, buf->buf, buf->size)) {
-                fprintf(stderr, "Error while playing sound with libao.\n");
-                exit(1);
-            }
+            if (!ao_play(g_ao_dev, buf->buf, buf->size))
+                g_error("Error while playing sound with libao.");
 
             g_mutex_lock(g_buf_mutex);
             g_queue_push_tail(g_free_bufs, buf);
@@ -111,45 +103,33 @@ static void lao_setup(const sp_audioformat* format) {
         g_ao_driver = ao_default_driver_id();
 
         g_free_bufs = g_queue_new();
-        if (!g_free_bufs) {
-            fprintf(stderr, "Can't allocate queue of free buffers.\n");
-            exit(1);
-        }
+        if (!g_free_bufs)
+            g_error("Can't allocate queue of free buffers.");
         g_full_bufs = g_queue_new();
-        if (!g_full_bufs) {
-            fprintf(stderr, "Can't allocate queue of full buffers.\n");
-            exit(1);
-        }
+        if (!g_full_bufs)
+            g_error("Can't allocate queue of full buffers.");
 
         bufs = (lao_buf*) malloc(BUFNB*sizeof(lao_buf));
-        if (!bufs) {
-            fprintf(stderr, "Can't allocate buffer structures.\n");
-            exit(1);
-        }
+        if (!bufs)
+            g_error("Can't allocate buffer structures.");
         for (i=0; i < BUFNB; i++) {
             bufs[i].buf = malloc(BUFSIZE);
-            if (!(bufs[i].buf)) {
-                fprintf(stderr, "Can't allocate buffer.\n");
-                exit(1);
-            }
+            if (!(bufs[i].buf))
+                g_error("Can't allocate buffer.");
             g_queue_push_tail(g_free_bufs, &(bufs[i]));
         }
 
         g_buf_mutex = g_mutex_new();
         g_play_cond = g_cond_new();
         
-        if (!g_thread_create(lao_player, NULL, FALSE, &err)) {
-            fprintf(stderr, "Error while creating libao player thread: %s\n", err->message);
-            exit(1);
-        }
+        if (!g_thread_create(lao_player, NULL, FALSE, &err))
+            g_error("Error while creating libao player thread: %s", err->message);
         g_ao_init = TRUE;
     }
 
     /* Set up sample format */
-    if (format->sample_type != SP_SAMPLETYPE_INT16_NATIVE_ENDIAN) {
-        fprintf(stderr, "Unsupported sample type.\n");
-        exit(1);
-    }
+    if (format->sample_type != SP_SAMPLETYPE_INT16_NATIVE_ENDIAN)
+        g_error("Unsupported sample type.");
 
     lao_fmt.bits = 16;
     lao_fmt.rate = format->sample_rate;
@@ -160,10 +140,8 @@ static void lao_setup(const sp_audioformat* format) {
 
     /* Open the device */
     g_ao_dev = ao_open_live(g_ao_driver, &lao_fmt, NULL);
-    if (!g_ao_dev) {
-        lao_perror("Error while opening libao device");
-        exit(1);
-    }
+    if (!g_ao_dev)
+        g_error("Error while opening libao device: %s", lao_strerror());
 }
 
 /* "Public" function, called from a libspotify callback */

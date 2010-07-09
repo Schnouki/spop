@@ -89,30 +89,23 @@ void session_init(gboolean high_bitrate) {
     config.callbacks = &g_session_callbacks;
 
     error = sp_session_init(&config, &g_session);
-    if (error != SP_ERROR_OK) {
-        fprintf(stderr, "Failed to create session: %s\n",
-                sp_error_message(error));
-        exit(1);
-    }
+    if (error != SP_ERROR_OK)
+        g_error("Failed to create session: %s", sp_error_message(error));
 
     /* Set bitrate */
     if (high_bitrate) {
-        if (g_debug)
-            fprintf(stderr, "Setting preferred bitrate to high.\n");
+        g_debug("Setting preferred bitrate to high.");
         sp_session_preferred_bitrate(g_session, SP_BITRATE_320k);
     }
     else {
-        if (g_debug)
-            fprintf(stderr, "Setting preferred bitrate to low.\n");
+        g_debug("Setting preferred bitrate to low.");
         sp_session_preferred_bitrate(g_session, SP_BITRATE_160k);
     }
 
     /* Get the playlists container */
     g_container = sp_session_playlistcontainer(g_session);
-    if (!g_container) {
-        fprintf(stderr, "Could not get the playlist container\n");
-        exit(1);
-    }
+    if (!g_container)
+        g_error("Could not get the playlist container.");
 
     /* Callback to be able to wait until it is loaded */
     sp_playlistcontainer_add_callbacks(g_container, &g_container_callbacks, NULL);
@@ -121,17 +114,12 @@ void session_init(gboolean high_bitrate) {
 void session_login(const char* username, const char* password) {
     sp_error error;
 
-    if (!g_session) {
-        fprintf(stderr, "Session is not ready.\n");
-        exit(1);
-    }
+    if (!g_session)
+        g_error("Session is not ready.");
 
     error = sp_session_login(g_session, username, password);
-    if (error != SP_ERROR_OK) {
-        fprintf(stderr, "Failed to log in: %s\n",
-                sp_error_message(error));
-        exit(1);
-    }
+    if (error != SP_ERROR_OK)
+        g_error("Failed to log in: %s", sp_error_message(error));
 }
 
 
@@ -150,11 +138,9 @@ void session_load(sp_track* track) {
     sp_error error;
     
     error = sp_session_player_load(g_session, track);
-    if (error != SP_ERROR_OK) {
-        fprintf(stderr, "Failed to load track: %s\n",
-                sp_error_message(error));
-        exit(1);
-    }
+    if (error != SP_ERROR_OK)
+        g_error("Failed to load track: %s", sp_error_message(error));
+
     cb_notify_main_thread(NULL);
 }
 
@@ -170,11 +156,9 @@ void session_play(gboolean play) {
     sp_error error;
 
     error = sp_session_player_play(g_session, play);
-    if (error != SP_ERROR_OK) {
-        fprintf(stderr, "Failed to play: %s\n",
-                sp_error_message(error));
-        exit(1);
-    }
+    if (error != SP_ERROR_OK)
+        g_error("Failed to play: %s", sp_error_message(error));
+
     cb_notify_main_thread(NULL);
 }
 
@@ -183,7 +167,7 @@ void session_seek(int pos) {
 
     error = sp_session_player_seek(g_session, pos*1000);
     if (error != SP_ERROR_OK)
-        fprintf(stderr, "Seek failed: %s\n", sp_error_message(error));
+        g_warning("Seek failed: %s", sp_error_message(error));
     else {
         g_audio_time = pos;
         g_audio_samples = 0;
@@ -206,10 +190,9 @@ GArray* tracks_get_playlist(sp_playlist* pl) {
 
     n = sp_playlist_num_tracks(pl);
     tracks = g_array_sized_new(FALSE, FALSE, sizeof(sp_track*), n);
-    if (!tracks) {
-        fprintf(stderr, "Can't allocate array of %d tracks.\n", n);
-        exit(1);
-    }
+    if (!tracks)
+        g_error("Can't allocate array of %d tracks.", n);
+
     for (i=0; i < n; i++) {
         tr = sp_playlist_track(pl, i);
         sp_track_add_ref(tr);
@@ -241,10 +224,8 @@ void track_get_data(sp_track* track, const char** name, GString** artist, GStrin
     if (artist) {
         nb_art = sp_track_num_artists(track);
         art = (sp_artist**) malloc(nb_art * sizeof(sp_artist*));
-        if (!art) {
-            fprintf(stderr, "Can't allocate memory\n");
-            exit(1);
-        }
+        if (!art)
+            g_error("Can't allocate memory.");
 
         for (i=0; i < nb_art; i++) {
             art[i] = sp_track_artist(track, i);
@@ -257,15 +238,13 @@ void track_get_data(sp_track* track, const char** name, GString** artist, GStrin
     }
     if (link) {
         lnk = sp_link_create_from_track(track, 0);
-        if (!lnk) {
-            fprintf(stderr, "Can't get URI from track\n");
-            exit(1);
-        }
+        if (!lnk)
+            g_error("Can't get URI from track.");
+
         *link = g_string_sized_new(1024);
-        if (sp_link_as_string(lnk, (*link)->str, 1024) < 0) {
-            fprintf(stderr, "Can't render URI from link\n");
-            exit(1);
-        }
+        if (sp_link_as_string(lnk, (*link)->str, 1024) < 0)
+            g_error("Can't render URI from link.");
+
         sp_link_release(lnk);
     }
     if (min || sec) {
@@ -333,9 +312,7 @@ gboolean session_libspotify_event(gpointer data) {
     return FALSE;
 }
 gboolean session_next_track_event(gpointer data) {
-    if (g_debug)
-        fprintf(stderr, "Got next_track event.\n");
-
+    g_debug("Got next_track event.");
     queue_next(TRUE);
 
     return FALSE;
@@ -346,34 +323,27 @@ gboolean session_next_track_event(gpointer data) {
  *** Callbacks, not to be used directly ***
  ******************************************/
 void cb_container_loaded(sp_playlistcontainer* pc, void* data) {
-    if (g_debug)
-        fprintf(stderr, "Container loaded.\n");
+    g_debug("Container loaded.");
     g_container_loaded = TRUE;
 }
 
 void cb_logged_in(sp_session* session, sp_error error) {
-    if (error != SP_ERROR_OK) {
-        fprintf(stderr, "Login failed: %s\n",
-                sp_error_message(error));
-        exit(1);
-    }
-    else if (g_debug)
-        fprintf(stderr, "Logged in.\n");
+    if (error != SP_ERROR_OK)
+        g_error("Login failed: %s", sp_error_message(error));
+    else g_message("Logged in.");
 }
 
 void cb_logged_out(sp_session* session) {
-    if (g_debug)
-        fprintf(stderr, "Logged out.\n");
-    exit(1);
+    g_message("Logged out.");
 }
 void cb_metadata_updated(sp_session* session) {
 }
 
 void cb_connection_error(sp_session* session, sp_error error) {
-    fprintf(stderr, "Connection error: %s\n", sp_error_message(error));
+    g_warning("Connection error: %s\n", sp_error_message(error));
 }
 void cb_message_to_user(sp_session* session, const char* message) {
-    printf("Message from Spotify: %s\n", message);
+    g_message("Message from Spotify: %s", message);
 }
 void cb_notify_main_thread(sp_session* session) {
     g_idle_add_full(G_PRIORITY_DEFAULT, session_libspotify_event, NULL, NULL);
@@ -393,13 +363,15 @@ int cb_music_delivery(sp_session* session, const sp_audioformat* format, const v
     return n;
 }
 void cb_play_token_lost(sp_session* session) {
-    fprintf(stderr, "Play token lost.\n");
+    g_warning("Play token lost.");
 }
 void cb_log_message(sp_session* session, const char* data) {
-    fprintf(stderr, data);
+    gchar* c = g_strrstr(data, "\n");
+    if (c)
+        *c = '\0';
+    g_info(data);
 }
 void cb_end_of_track(sp_session* session) {
-    if (g_debug)
-        fprintf(stderr, "End of track.\n");
+    g_debug("End of track.");
     g_idle_add_full(G_PRIORITY_DEFAULT, session_next_track_event, NULL, NULL);
 }

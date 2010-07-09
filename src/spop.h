@@ -25,4 +25,6 @@
 extern int g_run_as_daemon;
 extern int g_debug;
 
+#define g_info(...) g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, __VA_ARGS__)
+
 #endif

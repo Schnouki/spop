@@ -36,6 +36,8 @@ static const char* copyright_notice =
 int g_run_as_daemon = 1;
 int g_debug = 0;
 
+void log_ignore(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data) { }
+
 int real_main() {
     const char* username;
     const char* password;
@@ -47,6 +49,10 @@ int real_main() {
     g_set_prgname("spop");
     g_thread_init(NULL);
     main_loop = g_main_loop_new(NULL, FALSE);
+
+    /* Disable debug messages */
+    if (!g_debug)
+        g_log_set_handler(NULL, G_LOG_LEVEL_DEBUG, log_ignore, NULL);
 
     /* Read username and password */
     username = config_get_string("spotify_username");
@@ -94,19 +100,16 @@ int main(int argc, char** argv) {
         printf(copyright_notice);
 
         if (g_debug)
-            printf("** RUNNING IN DEBUG MODE **\n\n");
+            g_info("Running in debug mode");
     }
     else {
         /* Run in daemon mode: fork to background */
         pid_t pid = fork();
-        if (pid < 0) {
-            fprintf(stderr, "Error while forking process\n");
-            return 1;
-        }
+        if (pid < 0)
+            g_error("Error while forking process");
         else if (pid > 0) {
             /* Parent process */
-            if (g_debug)
-                fprintf(stderr, "spopd forked to background with pid %d\n", pid);
+            g_info("Forked to background with pid %d", pid);
             return 0;
         }
         /* The child process will continue and run the real_main() function */

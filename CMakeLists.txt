@@ -55,6 +55,10 @@ set(AUDIO_OSS
   src/oss.c
 )
 add_library(spop_audio_oss MODULE ${AUDIO_OSS})
+set_target_properties(spop_audio_oss PROPERTIES
+  COMPILE_FLAGS "${GLIB2_CFLAGS}"
+)
+target_link_libraries(spop_audio_oss ${GLIB2_LIBRARIES})
 
 # libao audio plugin
 if(AO_FOUND)

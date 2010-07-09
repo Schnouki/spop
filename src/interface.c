@@ -14,15 +14,15 @@
  * spop. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <arpa/inet.h>
+#include <errno.h>
 #include <glib.h>
+#include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-
-#include <arpa/inet.h>
-#include <netinet/in.h>
 #include <sys/socket.h>
+#include <unistd.h>
 
 #include "spop.h"
 #include "commands.h"
@@ -47,41 +47,30 @@ void interface_init() {
 
     /* Create the socket */
     sock = socket(AF_INET, SOCK_STREAM, 0);
-    if (sock < 0) {
-        perror("Can't create socket");
-        exit(1);
-    }
-    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &_true, sizeof(int)) == -1) {
-        perror("Can't set socket options");
-        exit(1);
-    }
+    if (sock < 0)
+        g_error("Can't create socket: %s", g_strerror(errno));
+    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &_true, sizeof(int)) == -1)
+        g_error("Can't set socket options: %s", g_strerror(errno));
 
     /* Bind the socket */
     bzero(&addr, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
     addr.sin_addr.s_addr = inet_addr(ip_addr);
-    if (bind(sock, (struct sockaddr*) &addr, sizeof(struct sockaddr)) == -1) {
-        perror("Can't bind socket");
-        exit(1);
-    }
+    if (bind(sock, (struct sockaddr*) &addr, sizeof(struct sockaddr)) == -1)
+        g_error("Can't bind socket: %s", g_strerror(errno));
 
     /* Start listening */
-    if (listen(sock, 5) == -1) {
-        perror("Can't listen on socket");
-        exit(1);
-    }
+    if (listen(sock, 5) == -1)
+        g_error("Can't listen on socket: %s", g_strerror(errno));
 
     /* Create an IO channel and add it to the main loop */
     chan = g_io_channel_unix_new(sock);
-    if (!chan) {
-        fprintf(stderr, "Can't create IO channel for the main socket.\n");
-        exit(1);
-    }
+    if (!chan)
+        g_error("Can't create IO channel for the main socket.");
     g_io_add_watch(chan, G_IO_IN|G_IO_PRI|G_IO_ERR|G_IO_HUP|G_IO_NVAL, interface_event, NULL);
 
-    if (g_debug)
-        fprintf(stderr, "Listening on %s:%d\n", ip_addr, port);
+    g_message("Listening on %s:%d", ip_addr, port);
 }
 
 /* Interface event -- accept connections, create IO channels for clients */
@@ -95,40 +84,25 @@ gboolean interface_event(GIOChannel* source, GIOCondition condition, gpointer da
 
     sock = g_io_channel_unix_get_fd(source);
 
-    if (g_debug) {
-        const char* ev;
-        if (condition & G_IO_IN)   ev = "G_IO_IN";
-        if (condition & G_IO_OUT)  ev = "G_IO_OUT";
-        if (condition & G_IO_PRI)  ev = "G_IO_PRI";
-        if (condition & G_IO_ERR)  ev = "G_IO_ERR";
-        if (condition & G_IO_HUP)  ev = "G_IO_HUP";
-        if (condition & G_IO_NVAL) ev = "G_IO_NVAL";
-        fprintf(stderr, "Got interface event: %s\n", ev);
-    }
-
     /* Accept the connection */
     sin_size = sizeof(struct sockaddr_in);
     client = accept(sock, (struct sockaddr*) &client_addr, &sin_size);
-    if (client == -1) {
-        fprintf(stderr, "Can't accept connection");
-        exit(1);
-    }
+    if (client == -1)
+        g_error("Can't accept connection");
 
-    if (g_debug)
-        fprintf(stderr, "[%d] Connection from (%s, %d)\n", client, inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+    g_info("[%d] Connection from (%s, %d)", client, inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 
     /* Create IO channel for the client, send greetings, and add it to the main loop */
     client_chan = g_io_channel_unix_new(client);
-    if (!client_chan) {
-        fprintf(stderr, "[%d] Can't create IO channel for the client socket.\n", client);
-        exit(1);
-    }
+    if (!client_chan)
+        g_error("[%d] Can't create IO channel for the client socket.", client);
+
     if (g_io_channel_write_chars(client_chan, proto_greetings, -1, NULL, &err) != G_IO_STATUS_NORMAL) {
-        fprintf(stderr, "[%d] Can't write to IO channel: %s\n", client, err->message);
+        g_debug("[%d] Can't write to IO channel: %s", client, err->message);
         goto ie_client_clean;
     }
     if (g_io_channel_flush(client_chan, &err) != G_IO_STATUS_NORMAL) {
-        fprintf(stderr, "[%d] Can't flush IO channel: %s\n", client, err->message);
+        g_debug("[%d] Can't flush IO channel: %s", client, err->message);
         goto ie_client_clean;
     }
 
@@ -140,8 +114,7 @@ gboolean interface_event(GIOChannel* source, GIOCondition condition, gpointer da
     g_io_channel_shutdown(client_chan, TRUE, NULL);
     g_io_channel_unref(client_chan);
     close(client);
-    if (g_debug)
-        fprintf(stderr, "[%d] Connection closed.\n", client);
+    g_debug("[%d] Connection closed.", client);
 
     return TRUE;
 }
@@ -159,38 +132,26 @@ gboolean interface_client_event(GIOChannel* source, GIOCondition condition, gpoi
 
     client = g_io_channel_unix_get_fd(source);
 
-    if (g_debug) {
-        const char* ev;
-        if (condition & G_IO_IN)   ev = "G_IO_IN";
-        if (condition & G_IO_OUT)  ev = "G_IO_OUT";
-        if (condition & G_IO_PRI)  ev = "G_IO_PRI";
-        if (condition & G_IO_ERR)  ev = "G_IO_ERR";
-        if (condition & G_IO_HUP)  ev = "G_IO_HUP";
-        if (condition & G_IO_NVAL) ev = "G_IO_NVAL";
-        fprintf(stderr, "[%d] Got client event: %s\n", client, ev);
-    }
-
     buffer = g_string_sized_new(1024);
     if (!buffer) {
-        fprintf(stderr, "[%d] Can't allocate buffer.\n", client);
+        g_warning("[%d] Can't allocate buffer.", client);
         goto ice_client_clean;
     }
 
     /* Read exactly one command  */
     status = g_io_channel_read_line_string(source, buffer, NULL, &err);
     if (status == G_IO_STATUS_EOF) {
-        if (g_debug)
-            fprintf(stderr, "[%d] Connection reset by peer.\n", client);
+        g_debug("[%d] Connection reset by peer.", client);
         goto ice_client_clean;
     }
     else if (status != G_IO_STATUS_NORMAL) {
-        if (g_debug)
-            fprintf(stderr, "[%d] Can't read from IO channel: %s\n", client, err->message);
+        g_debug("[%d] Can't read from IO channel: %s", client, err->message);
         goto ice_client_clean;
     }
 
-    if (g_debug)
-        fprintf(stderr, "[%d] Received command: %s", client, buffer->str);
+    buffer->str[buffer->len-1] = '\0';
+    g_debug("[%d] Received command: %s", client, buffer->str);
+    buffer->str[buffer->len-1] = '\n';
 
     /* Extract commands */
     command = g_strsplit(g_strstrip(buffer->str), " ", 0);
@@ -212,13 +173,13 @@ gboolean interface_client_event(GIOChannel* source, GIOCondition condition, gpoi
         status = g_io_channel_write_chars(source, result->str, -1, NULL, &err);
         g_string_free(result, TRUE);
         if (status != G_IO_STATUS_NORMAL) {
-            fprintf(stderr, "[%d] Can't write to IO channel: %s\n", client, err->message);
+            g_debug("[%d] Can't write to IO channel: %s", client, err->message);
             goto ice_client_clean;
         }
     }
 
     if (g_io_channel_flush(source, &err) != G_IO_STATUS_NORMAL) {
-        fprintf(stderr, "[%d] Can't flush IO channel: %s\n", client, err->message);
+        g_debug("[%d] Can't flush IO channel: %s", client, err->message);
         goto ice_client_clean;
     }
 
@@ -232,8 +193,7 @@ gboolean interface_client_event(GIOChannel* source, GIOCondition condition, gpoi
     g_io_channel_shutdown(source, TRUE, NULL);
     g_io_channel_unref(source);
     close(client);
-    if (g_debug)
-        fprintf(stderr, "[%d] Connection closed.\n", client);
+    g_info("[%d] Connection closed.", client);
 
     return FALSE;
 }
@@ -252,33 +212,27 @@ gboolean interface_handle_command(gchar** command, GString* result, gboolean* mu
         return TRUE;
 
     cmd = command[0];
-    if (g_debug) fprintf(stderr, "Command: [%s]", cmd);
+    g_debug("Command: [%s]", cmd);
 
     /* Parse the 2 optional numeric arguments */
     if (len >= 2) {
         arg1 = strtol(command[1], &endptr, 0);
         if (endptr == command[1]) {
             arg1 = -1;
-            if (g_debug)
-                fprintf(stderr, "Invalid argument: %s\n", command[1]);
+            g_debug("Invalid argument: %s", command[1]);
             g_string_assign(result, "- invalid argument 1\n");
             return TRUE;
         }
-        if (g_debug) fprintf(stderr, ", arg1: %d", arg1);
     }
     if (len >= 3) {
         arg2 = strtol(command[2], &endptr, 0);
         if (endptr == command[2]) {
             arg1 = -1;
-            if (g_debug)
-                fprintf(stderr, "Invalid argument: %s\n", command[2]);
+            g_debug("Invalid argument: %s", command[2]);
             g_string_assign(result, "- invalid argument 2\n");
             return TRUE;
         }
-        if (g_debug) fprintf(stderr, ", arg2: %d", arg2);
     }
-    if (g_debug) fprintf(stderr, "\n");
-
 
     /* Now parse the command... */
     if (strcmp(cmd, "ls") == 0) {
@@ -386,11 +340,11 @@ void interface_notify_idle_chan(gpointer data, gpointer user_data) {
 
     status = g_io_channel_write_chars(chan, str->str, -1, NULL, &err);
     if (status != G_IO_STATUS_NORMAL) {
-        fprintf(stderr, "[%d] Can't write to IO channel: %s\n", client, err->message);
+        g_debug("[%d] Can't write to IO channel: %s", client, err->message);
         goto inic_client_clean;
     }
     if (g_io_channel_flush(chan, &err) != G_IO_STATUS_NORMAL) {
-        fprintf(stderr, "[%d] Can't flush IO channel: %s\n", client, err->message);
+        g_debug("[%d] Can't flush IO channel: %s", client, err->message);
         goto inic_client_clean;
     }
     return;
@@ -399,6 +353,5 @@ void interface_notify_idle_chan(gpointer data, gpointer user_data) {
     g_io_channel_shutdown(chan, TRUE, NULL);
     g_io_channel_unref(chan);
     close(client);
-    if (g_debug)
-        fprintf(stderr, "[%d] Connection closed.\n", client);
+    g_debug("[%d] Connection closed.", client);
 }

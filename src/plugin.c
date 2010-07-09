@@ -35,14 +35,11 @@ void plugins_init() {
     snprintf(lib_name, sizeof(lib_name), "libspop_audio_%s.so", audio_output);
 
     lib_audio = dlopen(lib_name, RTLD_LAZY);
-    if (!lib_audio) {
-        fprintf(stderr, "Can't load audio plugin %s: %s\n", lib_name, dlerror());
-        exit(1);
-    }
+    if (!lib_audio)
+        g_error("Can't load audio plugin %s: %s", lib_name, dlerror());
+
     dlerror(); /* Clear any existing error */
     g_audio_delivery_func = dlsym(lib_audio, "audio_delivery");
-    if ((error = dlerror()) != NULL) {
-        fprintf(stderr, "Can't find symbol in audio plugin: %s\n", error);
-        exit(1);
-    }
+    if ((error = dlerror()) != NULL)
+        g_error("Can't find symbol in audio plugin: %s", error);
 }

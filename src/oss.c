@@ -14,7 +14,9 @@
  * spop. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <errno.h>
 #include <fcntl.h>
+#include <glib.h>
 #include <poll.h>
 #include <sys/soundcard.h>
 #include <stdio.h>
@@ -34,10 +36,8 @@ static size_t g_oss_frame_size;
 static void oss_open() {
     /* Open the device */
     g_oss_fd = open("/dev/dsp", O_WRONLY);
-    if (g_oss_fd == -1) {
-        perror("Can't open OSS device");
-        exit(1);
-    }
+    if (g_oss_fd == -1)
+        g_error("Can't open OSS device: %s", g_strerror(errno));
 
     /* Populate the pollfd struct used by poll() */
     g_pfd.fd = g_oss_fd;
@@ -45,10 +45,8 @@ static void oss_open() {
 }
 
 static void oss_close() {
-    if (close(g_oss_fd) == -1) {
-        perror("Can't close OSS device");
-        exit(1);
-    }
+    if (close(g_oss_fd) == -1)
+        g_error("Can't close OSS device: %s", g_strerror(errno));
     g_oss_fd = -1;
 }
 
@@ -64,8 +62,7 @@ static void oss_setup(const sp_audioformat* format) {
         g_oss_frame_size = sizeof(int16_t) * format->channels;
         break;
     default:
-        fprintf(stderr, "Unknown sample type");
-        exit(1);
+        g_error("Unknown sample type");
     }
 
     /* Now really setup the device. The order of the initialization is the one
@@ -73,35 +70,23 @@ static void oss_setup(const sp_audioformat* format) {
        (http://manuals.opensound.com/developer/callorder.html) */
 
     tmp = format->channels;
-    if (ioctl(g_oss_fd, SNDCTL_DSP_CHANNELS, &tmp) == -1) {
-        perror("Error setting OSS channels");
-        exit(1);
-    }
-    if (tmp != format->channels) {
-        fprintf(stderr, "Could not set OSS channels to %d (set to %d instead)\n", format->channels, tmp);
-        exit(1);
-    }
+    if (ioctl(g_oss_fd, SNDCTL_DSP_CHANNELS, &tmp) == -1)
+        g_error("Error setting OSS channels: %s", g_strerror(errno));
+    if (tmp != format->channels)
+        g_error( "Could not set OSS channels to %d (set to %d instead)", format->channels, tmp);
 
     tmp = sample_type;
-    if (ioctl(g_oss_fd, SNDCTL_DSP_SETFMT, &tmp) == -1) {
-        perror("Error setting OSS sample type");
-        exit(1);
-    }
-    if (tmp != sample_type) {
-        fprintf(stderr, "Could not set OSS sample type to %d (set to %d instead)\n", sample_type, tmp);
-        exit(1);
-    }
+    if (ioctl(g_oss_fd, SNDCTL_DSP_SETFMT, &tmp) == -1)
+        g_error("Error setting OSS sample type: %s", g_strerror(errno));
+    if (tmp != sample_type)
+        g_error("Could not set OSS sample type to %d (set to %d instead)", sample_type, tmp);
 
     tmp = format->sample_rate;
-    if (ioctl(g_oss_fd, SNDCTL_DSP_SPEED, &tmp) == -1) {
-        perror("Error setting OSS sample rate");
-        exit(1);
-    }
+    if (ioctl(g_oss_fd, SNDCTL_DSP_SPEED, &tmp) == -1)
+        g_error("Error setting OSS sample rate: %s", g_strerror(errno));
     /* Sample rate: the OSS doc that differences up to 10% should be accepted */
-    if (((100*abs(format->sample_rate - tmp))/format->sample_rate) > 10) {
-        fprintf(stderr, "Could not set OSS sample rate to %d (set to %d instead)\n", format->sample_rate, tmp);
-        exit(1);
-    }
+    if (((100*abs(format->sample_rate - tmp))/format->sample_rate) > 10)
+        g_error("Could not set OSS sample rate to %d (set to %d instead)", format->sample_rate, tmp);
 }
 
 /* "Public" function, called from a libspotify callback */
@@ -123,10 +108,8 @@ int audio_delivery(const sp_audioformat* format, const void* frames, int num_fra
 
         /* Is the device ready to be written to? */
         ret = poll(&g_pfd, 1, 0);
-        if (ret == -1) {
-            perror("Can't poll OSS device");
-            exit(1);
-        }
+        if (ret == -1)
+            g_error("Can't poll OSS device: %s", g_strerror(errno));
         else if (ret == 0) {
             /* Timeout: no data can be written (it would block), tell libspotify about it */
             return 0;
@@ -134,10 +117,8 @@ int audio_delivery(const sp_audioformat* format, const void* frames, int num_fra
 
         /* Ok, we can write to the device safely */
         ret = write(g_oss_fd, frames, g_oss_frame_size * num_frames);
-        if (ret == -1) {
-            perror("Can't write to OSS device");
-            exit(1);
-        }
+        if (ret == -1)
+            g_error("Can't write to OSS device: %s", g_strerror(errno));
 
         return ret / g_oss_frame_size;
     }

@@ -44,18 +44,17 @@ void queue_set_track(gboolean notif, sp_track* track) {
     sp_track_add_ref(track);
     if (!sp_track_is_loaded(track)) {
         sp_track_release(track);
-        if (g_debug) fprintf(stderr, "Track not loaded.\n");
+        g_debug("Track not loaded.");
         return;
     }
 
     if (!sp_track_is_available(track)) {
         sp_track_release(track);
-        if (g_debug) fprintf(stderr, "Track is not available.\n");
+        g_debug("Track is not available.");
         return;
     }
 
-    if (g_debug)
-        fprintf(stderr, "Setting track %p as queue.\n", track);
+    g_debug("Setting track %p as queue.", track);
 
     queue_clear(FALSE);
     g_queue_push_tail(&g_queue, track);
@@ -68,18 +67,17 @@ void queue_add_track(gboolean notif, sp_track* track) {
     sp_track_add_ref(track);
     if (!sp_track_is_loaded(track)) {
         sp_track_release(track);
-        if (g_debug) fprintf(stderr, "Track not loaded.\n");
+        g_debug("Track not loaded.");
         return;
     }
 
     if (!sp_track_is_available(track)) {
         sp_track_release(track);
-        if (g_debug) fprintf(stderr, "Track is not available.\n");
+        g_debug("Track is not available.");
         return;
     }
 
-    if (g_debug)
-        fprintf(stderr, "Adding track %p to queue.\n", track);
+    g_debug("Adding track %p to queue.", track);
 
     g_queue_push_tail(&g_queue, track);
     if (g_shuffle) queue_setup_shuffle();
@@ -93,12 +91,11 @@ void queue_set_playlist(gboolean notif, sp_playlist* pl) {
     sp_track* track;
     int i;
 
-    if (g_debug)
-        fprintf(stderr, "Setting playlist %p as queue.\n", pl);
+    g_debug("Setting playlist %p as queue.", pl);
 
     tracks = tracks_get_playlist(pl);
     if (!tracks) {
-        fprintf(stderr, "Playlist not loaded.\n");
+        g_info("Playlist not loaded.");
         return;
     }
 
@@ -121,12 +118,11 @@ void queue_add_playlist(gboolean notif, sp_playlist* pl) {
     sp_track* track;
     int i;
 
-    if (g_debug)
-        fprintf(stderr, "Adding playlist %p to queue.\n", pl);
+    g_debug("Adding playlist %p to queue.", pl);
 
     tracks = tracks_get_playlist(pl);
     if (!tracks) {
-        fprintf(stderr, "Playlist not loaded.\n");
+        g_info("Playlist not loaded.");
         return;
     }
 
@@ -155,8 +151,7 @@ void queue_remove_tracks(gboolean notif, int idx, int nb) {
     int len;
     int i;
 
-    if (g_debug)
-        fprintf(stderr, "Removing %d tracks from queue, starting at %d.\n", nb, idx);
+    g_debug("Removing %d tracks from queue, starting at %d.", nb, idx);
 
     if ((idx < 0) || (nb < 0))
         return;
@@ -205,35 +200,29 @@ void queue_play(gboolean notif) {
             else if (g_current_track >= len)
                 g_current_track = len-1;
 
-            if (g_debug)
-                fprintf(stderr, "Playing track %d.\n", g_current_track);
+            g_debug("Playing track %d.", g_current_track);
 
             track = g_queue_peek_nth(&g_queue, g_current_track);
-            if (!track) {
-                fprintf(stderr, "Can't peek track.\n");
-                exit(1);
-            }
+            if (!track)
+                g_error("Can't peek track.");
 
             session_load(track);
             session_play(TRUE);
             g_status = PLAYING;
             if (notif) queue_notify();
         }
-        else if (g_debug)
-            fprintf(stderr, "Nothing to play (empty queue).\n");
+        else g_debug("Nothing to play (empty queue).");
         break;
 
     case PAUSED:
-        if (g_debug)
-            fprintf(stderr, "Resuming playback.\n");
+        g_debug("Resuming playback.");
         session_play(TRUE);
         g_status = PLAYING;
         if (notif) queue_notify();
         break;
 
     case PLAYING:
-        if (g_debug)
-            fprintf(stderr, "Already playing: nothing to do.\n");
+        g_debug("Already playing: nothing to do.");
         break;
     }
 }
@@ -242,16 +231,14 @@ void queue_stop(gboolean notif) {
     switch(g_status) {
     case PLAYING:
     case PAUSED:
-        if (g_debug)
-            fprintf(stderr, "Stopping playback.\n");
+        g_debug("Stopping playback.");
         session_unload();
         g_status = STOPPED;
         if (notif) queue_notify();
         break;
 
     case STOPPED:
-        if (g_debug)
-            fprintf(stderr, "Already stopped: nothing to do.\n");
+        g_debug("Already stopped: nothing to do.");
         break;
     }
 }
@@ -259,22 +246,19 @@ void queue_stop(gboolean notif) {
 void queue_toggle(gboolean notif) {
     switch(g_status) {
     case PLAYING:
-        if (g_debug)
-            fprintf(stderr, "Toggle: now paused.\n");
+        g_debug("Toggle: now paused.");
         session_play(FALSE);
         g_status = PAUSED;
         break;
 
     case PAUSED:
-        if (g_debug)
-            fprintf(stderr, "Toggle: now playing.\n");
+        g_debug("Toggle: now playing.");
         session_play(TRUE);
         g_status = PLAYING;
         break;
 
     case STOPPED:
-        if (g_debug)
-            fprintf(stderr, "Toggle: was stopped, will now start playing.\n");
+        g_debug("Toggle: was stopped, will now start playing.");
         queue_play(FALSE);
     }
 
@@ -292,15 +276,14 @@ void queue_seek(int pos) {
         dur = sp_track_duration(track) / 1000;
 
         if (dur <= 0)
-            fprintf(stderr, "Can't get track duration.\n");
+            g_warning("Can't get track duration.");
         else if ((pos < 0) || ((pos) >= dur))
-            fprintf(stderr, "Can't seek: value is out of range.\n");
+            g_info("Can't seek: value is out of range.");
         else
             session_seek(pos);
         break;
     case STOPPED:
-        if (g_debug)
-            fprintf(stderr, "Seek: stopped, doing nothing.\n");
+        g_debug("Seek: stopped, doing nothing.");
     }
 }
 
@@ -330,10 +313,8 @@ GArray* queue_tracks() {
 
     n = g_queue_get_length(&g_queue);
     tracks = g_array_sized_new(FALSE, FALSE, sizeof(sp_track*), n);
-    if (!tracks) {
-        fprintf(stderr, "Can't allocate array of %d tracks.\n", n);
-        exit(1);
-    }
+    if (!tracks)
+        g_error("Can't allocate array of %d tracks.", n);
 
     for (i=0; i < n; i++) {
         tr = g_queue_peek_nth(&g_queue, i);
@@ -358,8 +339,7 @@ void queue_notify() {
 void queue_next(gboolean notif) {
     int n;
 
-    if (g_debug)
-        fprintf(stderr, "Switching to next track.\n");
+    g_debug("Switching to next track.");
 
     if (g_shuffle) {
         if (g_current_track == -1)
@@ -380,8 +360,7 @@ void queue_next(gboolean notif) {
 void queue_prev(gboolean notif) {
     int n;
 
-    if (g_debug)
-        fprintf(stderr, "Switching to previous track.\n");
+    g_debug("Switching to previous track.");
 
     if (g_shuffle) {
         if (g_current_track == -1)
@@ -404,32 +383,27 @@ void queue_goto(gboolean notif, int idx, gboolean reset_shuffle_first) {
     int len = g_queue_get_length(&g_queue);
 
     if (idx == g_current_track) {
-        if (g_debug)
-            fprintf(stderr, "New track == current_track: doing nothing.\n");
+        g_debug("New track == current_track: doing nothing.");
         return;
     }
-
-    if (g_debug)
-        fprintf(stderr, "Switching to track %d.\n", idx);
 
     queue_stop(FALSE);
 
     if (g_repeat) {
         if (idx < 0) idx = len - 1;
         else if (idx >= len) idx = 0;
-        if (g_debug)
-            fprintf(stderr, "Repeat mode: switching to track %d.\n", idx);
     }
 
     if (idx < 0) {
-        if (g_debug) fprintf(stderr, "Reached beginning of queue, stopping playback.\n");
+        g_debug("Reached beginning of queue, stopping playback.");
         g_current_track = -1;
     }
     else if (idx >= len) {
-        if (g_debug) fprintf(stderr, "Reached end of queue, stopping playback.\n");
+        g_debug("Reached end of queue, stopping playback.");
         g_current_track = -1;
     }
     else {
+        g_debug("Switching to track %d.", idx);
         g_current_track = idx;
         if (reset_shuffle_first)
             g_shuffle_first = idx;
@@ -482,8 +456,7 @@ void queue_setup_shuffle() {
 
     if (len == 0) return;
 
-    if (g_debug)
-        fprintf(stderr, "Finding new shuffle parameters...\n");
+    g_debug("Finding new shuffle parameters...");
     
     if (len <= 3) {
         n = 5;
@@ -502,8 +475,7 @@ void queue_setup_shuffle() {
         }
     } while ((len % n) == 0);
 
-    if (g_debug)
-        fprintf(stderr, "New shuffle parameters: len=%d, prime=%d.\n", len, n);
+    g_debug("New shuffle parameters: len=%d, prime=%d.", len, n);
 
     g_prime = n;
 }

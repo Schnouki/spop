@@ -39,22 +39,18 @@ void list_playlists(GString* result) {
 
     n = playlists_len();
     if (n == -1) {
-        fprintf(stderr, "Could not determine the number of playlists\n");
+        g_warning("Could not determine the number of playlists");
         return;
     }
-    if (g_debug)
-        fprintf(stderr, "%d playlists\n", n);
 
     for (i=0; i<n; i++) {
         pl = playlist_get(i);
         if (!pl) {
-            if (g_debug)
-                fprintf(stderr, "Got NULL pointer when loading playlist %d.\n", i);
+            g_debug("Got NULL pointer when loading playlist %d.", i);
             continue;
         }
         if (!sp_playlist_is_loaded(pl)) {
-            if (g_debug)
-                fprintf(stderr, "Playlist %d is not loaded.\n", i);
+            g_debug("Playlist %d is not loaded.", i);
             continue;
         }
         t = sp_playlist_num_tracks(pl);
@@ -88,10 +84,8 @@ void list_queue(GString* result) {
     GArray* tracks;
 
     tracks = queue_tracks();
-    if (!tracks) {
-        fprintf(stderr, "Couldn't read queue.\n");
-        exit(1);
-    }
+    if (!tracks)
+        g_error("Couldn't read queue.");
 
     format_tracks_array(tracks, result);
     g_array_free(tracks, TRUE);

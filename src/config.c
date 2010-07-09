@@ -41,18 +41,14 @@ static void config_ready() {
 
     /* Not ready yet: load the configuration file */
     g_config_file = g_key_file_new();
-    if (!g_config_file) {
-        fprintf(stderr, "Could not allocate a data structure for reading the configuration file.\n");
-        exit(1);
-    }
+    if (!g_config_file)
+        g_error( "Could not allocate a data structure for reading the configuration file.");
 
     /* Name of the configuration file. TODO: read path from command-line option. */
     cfg_path = g_build_filename(g_get_user_config_dir(), g_get_prgname(), "spopd.conf", NULL);
 
-    if (!g_key_file_load_from_file(g_config_file, cfg_path, G_KEY_FILE_NONE, &err)) {
-        fprintf(stderr, "Can't read configuration file: %s\n", err->message);
-        exit(1);
-    }
+    if (!g_key_file_load_from_file(g_config_file, cfg_path, G_KEY_FILE_NONE, &err))
+        g_error("Can't read configuration file: %s", err->message);
     g_free(cfg_path);
     g_static_mutex_unlock(&config_mutex);
 }
@@ -64,10 +60,8 @@ static void config_ready() {
         GError* err = NULL;                                             \
         config_ready();                                                 \
         value = read_fct(g_config_file, g_get_prgname(), name, &err);   \
-        if (err != NULL) {                                              \
-            fprintf(stderr, "Error while reading " dsptype " \"%s\" in configuration file: %s\n", name, err->message); \
-            exit(1);                                                    \
-        }                                                               \
+        if (err != NULL)                                                \
+            g_error("Error while reading " dsptype " \"%s\" in configuration file: %s", name, err->message); \
         return value;                                                   \
     }                                                                   \
     rtype fct_name##_opt(const char* name, rtype def_value) {           \
