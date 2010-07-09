@@ -35,6 +35,7 @@ static const char* copyright_notice =
 
 int g_run_as_daemon = 1;
 int g_debug = 0;
+int g_verbose = 0;
 
 void log_ignore(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data) { }
 
@@ -50,9 +51,11 @@ int real_main() {
     g_thread_init(NULL);
     main_loop = g_main_loop_new(NULL, FALSE);
 
-    /* Disable debug messages */
+    /* Disable debug and verbose messages */
     if (!g_debug)
         g_log_set_handler(NULL, G_LOG_LEVEL_DEBUG, log_ignore, NULL);
+    if (!g_verbose)
+        g_log_set_handler(NULL, G_LOG_LEVEL_INFO, log_ignore, NULL);
 
     /* Read username and password */
     username = config_get_string("spotify_username");
@@ -79,17 +82,20 @@ int real_main() {
 int main(int argc, char** argv) {
     /* Parse command line options */
     int opt;
-    while ((opt = getopt(argc, argv, "dfh")) != -1) {
+    while ((opt = getopt(argc, argv, "dfhv")) != -1) {
         switch (opt) {
         case 'd':
-            g_debug = 1; g_run_as_daemon = 0; break;
+            g_debug = 1; g_verbose = 1; g_run_as_daemon = 0; break;
         case 'f':
             g_run_as_daemon = 0; break;
+        case 'v':
+            g_verbose = 1; g_run_as_daemon = 0; break;
         default:
             printf("Usage: spopd [options\n"
                    "Options:\n"
-                   "  -d        debug mode (implies -f)\n"
+                   "  -d        debug mode (implies -f and -v)\n"
                    "  -f        run in foreground (default: fork to background)\n"
+                   "  -v        verbose mode (implies -f)\n"
                    "  -h        display this message\n");
             return 0;
         }
