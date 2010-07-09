@@ -66,6 +66,7 @@ class SpopListener(object):
         album, artist, title, dur, pos = "", "", "", "", ""
         qpos, qtot = 1, 1
         paused, stopped = False, False
+        repeat, shuffle = False, False
 
         sockf = sock.makefile("r")
 
@@ -78,10 +79,11 @@ class SpopListener(object):
             (name, val) = line.split(": ", 1)
             
             if name == "Status":
-                if val == "stopped":
-                    stopped = True
-                elif val == "paused":
-                    paused = True
+                stopped = (val == "stopped")
+                paused = (val == "paused")
+            elif name == "Mode":
+                repeat = (val.find("repeat") >= 0)
+                shuffle = (val.find("shuffle") >= 0)                    
             elif name == "Total tracks":
                 qtot = int(val)
             elif name == "Current track":
@@ -100,12 +102,20 @@ class SpopListener(object):
         # Prepare data to display
         wtxt = ""
         ntxt = ""
+
+        wrs = ""
+        if repeat:
+            wrs += "r"
+        if shuffle:
+            wrs += "s"
+        if len(wrs) >= 1:
+            wrs = " [<b>%s</b>]" % col("#daf", wrs)
         if stopped:
-            wtxt = " [stopped] "
+            wtxt = "[stopped]" + wrs
             ntxt = "<b>[stopped]</b>\n%d tracks in queue" % qtot
         else:
             if paused:
-                wtxt = " <b>[p]</b>"
+                wtxt = "<b>[p]</b>"
                 ntxt = "<b>[paused]</b>\n"
 
             short_title = title
@@ -114,11 +124,20 @@ class SpopListener(object):
 
             wtxt += " [<b>%s:</b> %s / %s]" % (col("#afd", qpos), col("#adf", artist), col("#fad", short_title))
             wtxt += " [<b>%s</b>/%s]" % (col("#dfa", pos), col("#dfa", dur))
+            wtxt += wrs
 
             if notif:
                 ntxt += "\nNow playing track <b>%s</b>/%s:\n\n" % (col("#afd", qpos), col("#afd", qtot))
                 ntxt += "\t<b>%s</b>\nby\t<b>%s</b>\n" % (col("#fad", title), col("#adf", artist))
                 ntxt += "from\t%s" % col("#fda", album)
+                if repeat or shuffle:
+                    ntxt += "\n\nMode: "
+                    if repeat:
+                        ntxt += "<b>%s</b>" % col("#daf", "repeat")
+                        if shuffle:
+                            ntxt += ", <b>%s</b>" % col("#daf", "shuffle")
+                    elif shuffle:
+                        ntxt += "<b>%s</b>" % col("#daf", "shuffle")
 
         # Send to Awesome
         self.awesome(wtxt)

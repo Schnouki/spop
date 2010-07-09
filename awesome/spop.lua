@@ -17,6 +17,7 @@ local socket = require("socket")
 module("spop")
 
 local server, port
+local cycle_status = 0
 
 function init(serv, por)
    server = serv
@@ -35,3 +36,12 @@ function next()   command("next")   end
 function prev()   command("prev")   end
 function toggle() command("toggle") end
 function stop()   command("stop")   end
+
+function cycle()
+   if (cycle_status % 2) == 0 then
+      command("repeat")
+   else
+      command("shuffle")
+   end
+   cycle_status = cycle_status + 1
+end
