@@ -17,12 +17,14 @@
 #ifndef INTERFACE_H
 #define INTERFACE_H
 
+#include <glib.h>
+
 /* Functions called directly from spop */
 void interface_init();
 
 /* Internal functions used to manage the network interface */
-void* interface_thread(void* data);
-void* interface_handle_client(void* data);
+gboolean interface_event(GIOChannel* source, GIOCondition condition, gpointer data);
+gboolean interface_client_event(GIOChannel* source, GIOCondition condition, gpointer data);
 gboolean interface_handle_command(gchar** command, GString* result);
 
 #endif

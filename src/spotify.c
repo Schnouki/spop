@@ -14,14 +14,16 @@
  * spop. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <fcntl.h>
 #include <glib.h>
-#include <semaphore.h>
+#include <libspotify/api.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #include "spop.h"
-#include "libspotify.h"
 #include "plugin.h"
 #include "queue.h"
 #include "spotify.h"
@@ -33,9 +35,6 @@ static sp_playlistcontainer* g_container;
 static gboolean g_container_loaded = FALSE;
 
 static sp_session* g_session = NULL;
-static int g_eventloop_timeout = 0;
-static sem_t g_notify_sem;
-static sem_t g_logged_in_sem;
 
 static unsigned int g_audio_time = 0;
 static unsigned int g_audio_samples = 0;
@@ -72,28 +71,10 @@ static sp_session_callbacks g_session_callbacks = {
 /**********************
  *** Init functions ***
  **********************/
-void playlist_init() {
-    /* Get the container */
-    g_container = sp_session_playlistcontainer(g_session);
-    if (g_container == NULL) {
-        fprintf(stderr, "Could not get the playlist container\n");
-        exit(1);
-    }
-
-    /* Callback to be able to wait until it is loaded */
-    sp_playlistcontainer_add_callbacks(g_container, &g_container_callbacks, NULL);
-}
-
 void session_init(gboolean high_bitrate) {
     sp_error error;
     sp_session_config config;
     gchar* cache_path;
-
-    /* Semaphore used to notify main thread to process new events */
-    sem_init(&g_notify_sem, 0, 0);
-
-    /* Semaphore used to wait until logged in */
-    sem_init(&g_logged_in_sem, 0, 0);
 
     /* Cache path */
     cache_path = g_build_filename(g_get_user_cache_dir(), g_get_prgname(), NULL);
@@ -125,18 +106,16 @@ void session_init(gboolean high_bitrate) {
             fprintf(stderr, "Setting preferred bitrate to low.\n");
         sp_session_preferred_bitrate(g_session, SP_BITRATE_160k);
     }
-}
 
+    /* Get the playlists container */
+    g_container = sp_session_playlistcontainer(g_session);
+    if (!g_container) {
+        fprintf(stderr, "Could not get the playlist container\n");
+        exit(1);
+    }
 
-/**************************************************
- *** Functions used from commands and callbacks ***
- **************************************************/
-int playlists_len() {
-    return sp_playlistcontainer_num_playlists(g_container);
-}
-
-sp_playlist* playlist_get(int nb) {
-    return sp_playlistcontainer_playlist(g_container, nb);
+    /* Callback to be able to wait until it is loaded */
+    sp_playlistcontainer_add_callbacks(g_container, &g_container_callbacks, NULL);
 }
 
 void session_login(const char* username, const char* password) {
@@ -155,33 +134,16 @@ void session_login(const char* username, const char* password) {
     }
 }
 
-void session_events_loop() {
-    struct timespec ts;
 
-    if (!g_session) {
-        fprintf(stderr, "No session\n");
-        exit(1);
-    }
+/**************************************************
+ *** Functions used from commands and callbacks ***
+ **************************************************/
+int playlists_len() {
+    return sp_playlistcontainer_num_playlists(g_container);
+}
 
-    while (1) {
-        /* If timeout == 0, repeat as many times as needed */
-        do {
-            sp_session_process_events(g_session, &g_eventloop_timeout);
-        } while (g_eventloop_timeout == 0);
-
-        /* Wait until either the timeout expires, or the main thread is notified
-           using g_notify_sem. */
-        clock_gettime(CLOCK_REALTIME, &ts);
-        ts.tv_sec += g_eventloop_timeout / 1000;
-        ts.tv_nsec += (g_eventloop_timeout % 1000) * 1000000;
-        /* Stupid overflow? */
-        if (ts.tv_nsec >= 1000000000) {
-            ts.tv_sec += ts.tv_nsec / 1000000000;
-            ts.tv_nsec %= 1000000000;
-        }
-
-         sem_timedwait(&g_notify_sem, &ts);
-    }
+sp_playlist* playlist_get(int nb) {
+    return sp_playlistcontainer_playlist(g_container, nb);
 }
 
 void session_load(sp_track* track) {
@@ -201,6 +163,7 @@ void session_load(sp_track* track) {
 void session_unload() {
     if (g_debug) fprintf(stderr, "Entering session_unload()\n");
 
+    sp_session_player_play(g_session, FALSE);
     sp_session_player_unload(g_session);
     cb_notify_main_thread(NULL);
     g_audio_samples = 0;
@@ -351,16 +314,33 @@ void track_get_data(sp_track* track, const char** name, GString** artist, GStrin
 }
 
 
-
 /*************************
  *** Utility functions ***
  *************************/
 gboolean container_loaded() {
     return g_container_loaded;
 }
-void logged_in() {
-    sem_wait(&g_logged_in_sem);
-    sem_post(&g_logged_in_sem);
+
+
+/*************************
+ *** Events management ***
+ *************************/
+gboolean session_event(gpointer data) {
+    int timeout;
+
+    if (g_debug)
+        fprintf(stderr, "Got session event.\n");
+
+    do {
+        sp_session_process_events(g_session, &timeout);
+    } while (timeout == 0);
+
+    /* Add next timeout */
+    if (g_debug)
+        fprintf(stderr, "Next session timeout in %d ms.\n", timeout);
+
+    g_timeout_add(timeout, session_event, NULL);
+    return FALSE;
 }
 
 
@@ -379,11 +359,8 @@ void cb_logged_in(sp_session* session, sp_error error) {
                 sp_error_message(error));
         exit(1);
     }
-    else {
-        if (g_debug)
+    else if (g_debug)
             fprintf(stderr, "Logged in.\n");
-        sem_post(&g_logged_in_sem);
-    }
 }
 
 void cb_logged_out(sp_session* session) {
@@ -401,9 +378,8 @@ void cb_message_to_user(sp_session* session, const char* message) {
     printf("Message from Spotify: %s\n", message);
 }
 void cb_notify_main_thread(sp_session* session) {
-    /* Wake up main thread using a semaphore */
     if (g_debug) fprintf(stderr, "Notifying main thread.\n");
-    sem_post(&g_notify_sem);
+    g_idle_add_full(G_PRIORITY_DEFAULT, session_event, NULL, NULL);
 }
 int cb_music_delivery(sp_session* session, const sp_audioformat* format, const void* frames, int num_frames) {
     int n =  g_audio_delivery_func(format, frames, num_frames);

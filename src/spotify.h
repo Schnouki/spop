@@ -18,18 +18,15 @@
 #define SPOTIFY_H
 
 #include <glib.h>
-#include "libspotify.h"
+#include <libspotify/api.h>
 
 /* Init functions */
-void playlist_init();
 void session_init(gboolean high_bitrate);
+void session_login(const char* username, const char* password);
 
 /* Functions used from commands or callbacks */
 int playlists_len();
 sp_playlist* playlist_get(int nb);
-
-void session_login(const char* username, const char* password);
-void session_events_loop();
 
 sp_playlistcontainer* session_playlistcontainer();
 
@@ -45,7 +42,9 @@ void track_get_data(sp_track* track, const char** name, GString** artist, GStrin
 
 /* Utility functions */
 gboolean container_loaded();
-void logged_in();
+
+/* Events management */
+gboolean session_event(gpointer data);
 
 /* Callbacks */
 void cb_container_loaded(sp_playlistcontainer* pc, void* data);

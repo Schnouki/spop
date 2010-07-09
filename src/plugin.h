@@ -17,7 +17,7 @@
 #ifndef PLUGIN_H
 #define PLUGIN_H
 
-#include "libspotify.h"
+#include <libspotify/api.h>
 
 typedef int (*audio_delivery_func_ptr)(const sp_audioformat*, const void*, int);
 extern audio_delivery_func_ptr g_audio_delivery_func;

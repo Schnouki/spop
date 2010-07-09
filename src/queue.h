@@ -18,7 +18,7 @@
 #define QUEUE_H
 
 #include <glib.h>
-#include "libspotify.h"
+#include <libspotify/api.h>
 
 typedef enum { STOPPED, PLAYING, PAUSED } queue_status;
 

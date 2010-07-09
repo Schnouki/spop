@@ -32,20 +32,12 @@ string(REPLACE ";" " " GTHREAD2_CFLAGS "${GTHREAD2_CFLAGS}")
 pkg_check_modules(AO ao)
 string(REPLACE ";" " " AO_CFLAGS "${AO_CFLAGS}")
 
-# Create libspotify thread-safe wrapper
-add_custom_command(OUTPUT "${CMAKE_SOURCE_DIR}/src/libspotify.h" "${CMAKE_SOURCE_DIR}/src/libspotify_wrapper.c"
-  COMMAND "${CMAKE_SOURCE_DIR}/create_libspotify_wrapper.pl" ARGS "${SPOTIFY_INCLUDEDIR}/libspotify/api.h"
-  DEPENDS "${CMAKE_SOURCE_DIR}/create_libspotify_wrapper.pl" "${SPOTIFY_INCLUDEDIR}/libspotify/api.h"
-  WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-) # src/libspotify_wrapper.c
-
 # spop daemon
 set(SPOPD
   src/appkey.c
   src/commands.c
   src/config.c
   src/interface.c
-  src/libspotify_wrapper.c
   src/main.c
   src/plugin.c
   src/queue.c

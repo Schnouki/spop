@@ -40,11 +40,13 @@ int real_main() {
     const char* username;
     const char* password;
     gboolean high_bitrate;
+    GMainLoop* main_loop;
 
     /* Init essential stuff */
     g_set_application_name("spop " SPOP_VERSION);
     g_set_prgname("spop");
     g_thread_init(NULL);
+    main_loop = g_main_loop_new(NULL, FALSE);
 
     /* Read username and password */
     username = config_get_string("spotify_username");
@@ -61,11 +63,10 @@ int real_main() {
 
     /* Init various subsystems */
     queue_init();
-    playlist_init();
     interface_init();
 
     /* Event loop */
-    session_events_loop();
+    g_main_loop_run(main_loop);
 
     return 0;
 }
