@@ -33,7 +33,7 @@ static queue_status g_status = STOPPED;
 
 static gboolean g_repeat = FALSE;
 static gboolean g_shuffle = FALSE;
-static int g_prime;
+static GQueue g_shuffle_queue = G_QUEUE_INIT;
 static int g_shuffle_first;
 
 
@@ -337,43 +337,105 @@ void queue_notify() {
  *** Move into the queue ***
  ***************************/
 void queue_next(gboolean notif) {
-    int n;
+    int n, p;
+    int len = g_queue_get_length(&g_queue);
 
     g_debug("Switching to next track.");
 
     if (g_shuffle) {
-        if (g_current_track == -1)
-            n = g_shuffle_first;
+        /* Possible cases: g_repeat, g_current_track == -1, g_shuffle_first == -1 */
+        if (g_current_track == -1) {
+            if (g_shuffle_first == -1) {
+                /* Pick a random track */
+                n = g_random_int_range(0, len);
+                g_shuffle_first = n;
+            }
+            else {
+                n = g_shuffle_first;
+            }
+        }
         else {
-            n = (g_current_track + g_prime) % g_queue_get_length(&g_queue);
+            if (g_shuffle_first == -1) {
+                g_warning("g_shuffle_first == -1 in goto_next()");
+                g_shuffle_first = g_current_track;
+            }
+
+            /* Find the index of the current track in the shuffle queue */
+            p = g_queue_index(&g_shuffle_queue, GINT_TO_POINTER(g_current_track));
+            if (p == -1) g_error("Can't find current track in shuffle queue");
+
+            /* Find the next track in the shuffle queue */
+            p = (p+1) % len;
+            n = GPOINTER_TO_INT(g_queue_peek_nth(&g_shuffle_queue, p));
+
             if ((n == g_shuffle_first) && !g_repeat)
                 n = -1;
         }
     }
-    else
+    else {
         n = g_current_track + 1;
+        if (g_repeat)
+            n %= len;
+    }
 
     queue_goto(FALSE, n, FALSE);
     if (notif) queue_notify();
 }
 
 void queue_prev(gboolean notif) {
-    int n;
+    int n, p;
+    int len = g_queue_get_length(&g_queue);
 
     g_debug("Switching to previous track.");
 
     if (g_shuffle) {
-        if (g_current_track == -1)
-            n = (g_shuffle_first - g_prime) % g_queue_get_length(&g_queue);
+        /* Possible cases: g_repeat, g_current_track == -1, g_shuffle_first == -1 */
+        if (g_current_track == -1) {
+            if (g_shuffle_first == -1) {
+                /* Pick a random track */
+                n = g_random_int_range(0, len);
+
+                /* Set the next one to be the first shuffle track... */
+                p = g_queue_index(&g_shuffle_queue, GINT_TO_POINTER(n));
+                if (p == -1) g_error("Can't find last track in shuffle queue");
+                p = (p+1) % len;
+                g_shuffle_first = GPOINTER_TO_INT(g_queue_peek_nth(&g_shuffle_queue, p));
+            }
+            else {
+                /* Find the track that comes just before the first shuffle track */
+                p = g_queue_index(&g_shuffle_queue, GINT_TO_POINTER(g_shuffle_first));
+                if (p == -1) g_error("Can't find first track in shuffle queue");
+                p = (p-1) % len;
+                n = GPOINTER_TO_INT(g_queue_peek_nth(&g_shuffle_queue, p));
+            }
+        }
         else {
-            if ((g_current_track == g_shuffle_first) && !g_repeat)
+            if (g_shuffle_first == -1) {
+                g_warning("g_shuffle_first == -1 in goto_prev()");
+                g_shuffle_first = g_current_track;
+            }
+            
+            /* Is this the first track in non-repeat mode? */
+            if ((g_current_track == g_shuffle_first) && !g_repeat) {
                 n = -1;
-            else
-                n = (g_current_track - g_prime) % g_queue_get_length(&g_queue);
+            }
+            else {
+                /* Find the index of the current track in the shuffle queue */
+                p = g_queue_index(&g_shuffle_queue, GINT_TO_POINTER(g_current_track));
+                if (p == -1)
+                    g_error("Can't find current track in shufflequeue");
+                
+                /* Find the previous track in the shuffle queue */
+                p = (p+len-1) % len;
+                n = GPOINTER_TO_INT(g_queue_peek_nth(&g_shuffle_queue, p));
+            }
         }
     }
-    else
+    else {
         n = g_current_track - 1;
+        if (g_repeat)
+            n %= len;
+    }
 
     queue_goto(FALSE, n, FALSE);
     if (notif) queue_notify();
@@ -388,11 +450,6 @@ void queue_goto(gboolean notif, int idx, gboolean reset_shuffle_first) {
     }
 
     queue_stop(FALSE);
-
-    if (g_repeat) {
-        if (idx < 0) idx = len - 1;
-        else if (idx >= len) idx = 0;
-    }
 
     if (idx < 0) {
         g_debug("Reached beginning of queue, stopping playback.");
@@ -427,57 +484,24 @@ void queue_set_shuffle(gboolean notif, gboolean shuffle) {
     if (notif) queue_notify();
 }
 
-gboolean is_prime(int n) {
-    int i;
-
-    if (n <= 1) return FALSE;
-    else if (n <= 100) {
-        switch (n) {
-        case 2: case 3: case 5: case 7: case 11: case 13: case 17: case 19:
-        case 23: case 29: case 31: case 37: case 41: case 43: case 47:
-        case 53: case 59: case 61: case 67: case 71: case 73: case 79:
-        case 83: case 89: case 97: return TRUE;
-        default: return FALSE;
-        }
-    }
-    else {
-        if ((n % 2) == 0) return FALSE;
-        for (i=3; i*i <= n; i += 2)
-            if ((n%i) == 0)
-                return FALSE;
-        return TRUE;
-    }
+gint queue_cmp_random(gconstpointer a, gconstpointer b, gpointer user_data) {
+    return g_random_boolean() ? 1 : -1;
 }
 void queue_setup_shuffle() {
-    /* Use the method described on http://en.wikipedia.org/wiki/Full_cycle */
     int len = g_queue_get_length(&g_queue);
-    int incr = -1;
-    int n, r;
+    int i;
 
     if (len == 0) return;
 
-    g_debug("Finding new shuffle parameters...");
-    
-    if (len <= 3) {
-        n = 5;
-    }
+    g_debug("Setting up shuffle mode");
 
-    r = g_random_int_range(3, len);
-    n = r;
-    do {
-        n += incr;
-        if (n == 2) {
-            n = r;
-            incr = 1;
-        }
-        while (!is_prime(n)) {
-            n += incr;
-        }
-    } while ((len % n) == 0);
+    /* Fill the shuffle queue with sequential integers */
+    g_queue_clear(&g_shuffle_queue);
+    for (i=0; i < len; i++)
+        g_queue_push_tail(&g_shuffle_queue, GINT_TO_POINTER(i));
 
-    g_debug("New shuffle parameters: len=%d, prime=%d.", len, n);
-
-    g_prime = n;
+    /* Now randomize the order of its elements */
+    g_queue_sort(&g_shuffle_queue, queue_cmp_random, NULL);    
 }
 
 gboolean queue_get_repeat() {
