@@ -167,8 +167,10 @@ void queue_remove_tracks(gboolean notif, int idx, int nb) {
 
         /* Was the current track removed too? */
         if (g_current_track >= idx) {
-            if (g_current_track < idx+nb)
+            if (g_current_track < idx+nb) {
+                queue_stop(FALSE);
                 g_current_track = -1;
+            }
             else
                 g_current_track -= nb;
         }

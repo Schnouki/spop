@@ -80,17 +80,6 @@ void list_tracks(int idx, GString* result) {
     g_array_free(tracks, TRUE);
 }
 
-void list_queue(GString* result) {
-    GArray* tracks;
-
-    tracks = queue_tracks();
-    if (!tracks)
-        g_error("Couldn't read queue.");
-
-    format_tracks_array(tracks, result);
-    g_array_free(tracks, TRUE);
-}
-
 
 void status(GString* result) {
     sp_track* track;
@@ -154,6 +143,29 @@ void shuffle(GString* result) {
     queue_set_shuffle(TRUE, !s);
     status(result);
 }
+
+
+void list_queue(GString* result) {
+    GArray* tracks;
+
+    tracks = queue_tracks();
+    if (!tracks)
+        g_error("Couldn't read queue.");
+
+    format_tracks_array(tracks, result);
+    g_array_free(tracks, TRUE);
+}
+
+void clear_queue(GString* result) {
+    queue_clear(TRUE);
+    status(result);
+}
+
+void remove_queue_items(int first, int nb, GString* result) {
+    queue_remove_tracks(TRUE, first, nb);
+    status(result);
+}
+
 
 void play_playlist(int idx, GString* result) {
     sp_playlist* pl;

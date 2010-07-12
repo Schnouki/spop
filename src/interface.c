@@ -223,13 +223,23 @@ gboolean interface_handle_command(gchar** command, GString* result, gboolean* mu
             g_string_assign(result, "- invalid argument 1\n");
             return TRUE;
         }
+        else if (arg1 < 0) {
+            g_debug("Invalid value for command argument: %s", command[1]);
+            g_string_assign(result, "- invalid value for argument 1\n");
+            return TRUE;
+        }
     }
     if (len >= 3) {
         arg2 = strtol(command[2], &endptr, 0);
         if (endptr == command[2]) {
-            arg1 = -1;
+            arg2 = -1;
             g_debug("Invalid argument: %s", command[2]);
             g_string_assign(result, "- invalid argument 2\n");
+            return TRUE;
+        }
+        else if (arg2 < 0) {
+            g_debug("Invalid value for command argument: %s", command[2]);
+            g_string_assign(result, "- invalid value for argument 2\n");
             return TRUE;
         }
     }
@@ -241,8 +251,6 @@ gboolean interface_handle_command(gchar** command, GString* result, gboolean* mu
         else
             list_tracks(arg1, result);
     }
-    else if (strcmp(cmd, "qls") == 0)
-        list_queue(result);
     else if (strcmp(cmd, "add") == 0) {
         if (arg1 == -1) {
             g_string_assign(result, "- missing argument\n");
@@ -295,6 +303,22 @@ gboolean interface_handle_command(gchar** command, GString* result, gboolean* mu
         repeat(result);
     else if (strcmp(cmd, "shuffle") == 0)
         shuffle(result);
+    else if (strcmp(cmd, "qls") == 0)
+        list_queue(result);
+    else if (strcmp(cmd, "qclear") == 0)
+        clear_queue(result);
+    else if (strcmp(cmd, "qrm") == 0) {
+        if ((arg1 == -1)) {
+            g_string_assign(result, "- missing argument\n");
+            return TRUE;
+        }
+        else {
+            if (arg2 == -1)
+                remove_queue_items(arg1, 1, result);
+            else
+                remove_queue_items(arg1, arg2, result);
+        }
+    }
     else if (strcmp(cmd, "quit") == 0) {
         g_message("Got a quit command, exiting...");
         exit(0);

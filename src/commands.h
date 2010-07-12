@@ -22,11 +22,14 @@
 /* Commands */
 void list_playlists(GString* result);
 void list_tracks(int idx, GString* result);
-void list_queue(GString* result);
 
 void status(GString* result);
 void repeat(GString* result);
 void shuffle(GString* result);
+
+void list_queue(GString* result);
+void clear_queue(GString* result);
+void remove_queue_items(int first, int nb, GString* result);
 
 void play_playlist(int idx, GString* result);
 void play_track(int pl_idx, int tr_idx, GString* result);
