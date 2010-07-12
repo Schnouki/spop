@@ -443,6 +443,7 @@ void queue_prev(gboolean notif) {
 
 void queue_goto(gboolean notif, int idx, gboolean reset_shuffle_first) {
     int len = g_queue_get_length(&g_queue);
+    queue_status s = g_status;
 
     if (idx == g_current_track) {
         g_debug("New track == current_track: doing nothing.");
@@ -464,7 +465,16 @@ void queue_goto(gboolean notif, int idx, gboolean reset_shuffle_first) {
         g_current_track = idx;
         if (reset_shuffle_first)
             g_shuffle_first = idx;
-        queue_play(FALSE);
+        if (s == PAUSED) {
+            sp_track* track;
+            track = g_queue_peek_nth(&g_queue, g_current_track);
+            if (!track)
+                g_error("Can't peek track.");
+            session_load(track);
+            g_status = PAUSED;
+        }
+        else
+            queue_play(FALSE);
     }
 
     if (notif) queue_notify();
