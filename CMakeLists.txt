@@ -17,6 +17,7 @@ cmake_minimum_required(VERSION 2.8)
 project(spop C)
 
 find_package(PkgConfig)
+set(targets)
 
 # Check for libspotify
 pkg_check_modules(SPOTIFY REQUIRED libspotify>=0.0.4)
@@ -49,6 +50,7 @@ set_target_properties(spopd PROPERTIES
   COMPILE_FLAGS "${SPOTIFY_CFLAGS} ${GLIB2_CFLAGS} ${GTHREAD2_CFLAGS}"
 )
 target_link_libraries(spopd dl ${SPOTIFY_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES})
+set(targets ${targets} spopd)
 
 # OSS audio plugin
 set(AUDIO_OSS
@@ -59,6 +61,7 @@ set_target_properties(spop_audio_oss PROPERTIES
   COMPILE_FLAGS "${GLIB2_CFLAGS}"
 )
 target_link_libraries(spop_audio_oss ${GLIB2_LIBRARIES})
+set(targets ${targets} spop_audio_oss)
 
 # libao audio plugin
 if(AO_FOUND)
@@ -70,6 +73,7 @@ if(AO_FOUND)
     COMPILE_FLAGS "${AO_CFLAGS} ${GTHREAD2_CFLAGS}"
   )
   target_link_libraries(spop_audio_ao ${AO_LIBRARIES} ${GTHREAD2_LIBRARIES})
+  set(targets ${targets} spop_audio_ao)
 endif(AO_FOUND)
 
 # common to all source files
@@ -80,4 +84,10 @@ set(SRC
 )
 set_source_files_properties(${SRC}
   COMPILE_FLAGS "-O2 -Wall -Werror"
+)
+
+# system-wide installation
+install(TARGETS ${targets}
+  RUNTIME DESTINATION bin
+  LIBRARY DESTINATION lib
 )

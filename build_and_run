@@ -3,7 +3,7 @@
 if [ -d build ]; then
     cd build && make rebuild_cache || exit 1
 else
-    mkdir build && cd build && cmake -Wdev -DCMAKE_BUILD_TYPE=Debug .. || exit 1
+    mkdir build && cd build && cmake -Wdev -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=/usr .. || exit 1
 fi
 
 make all || exit 1
