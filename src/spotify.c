@@ -300,7 +300,8 @@ gboolean session_libspotify_event(gpointer data) {
     static guint evid = 0;
     int timeout;
 
-    g_source_remove(evid);
+    if (evid > 0)
+        g_source_remove(evid);
 
     do {
         sp_session_process_events(g_session, &timeout);
