@@ -76,7 +76,7 @@ static void* lao_player(gpointer data) {
             g_mutex_unlock(g_buf_mutex);
      
             if (!ao_play(g_ao_dev, buf->buf, buf->size))
-                g_error("Error while playing sound with libao.");
+                g_error("Error while playing sound with libao");
 
             g_mutex_lock(g_buf_mutex);
             g_queue_push_tail(g_free_bufs, buf);
@@ -104,18 +104,18 @@ static void lao_setup(const sp_audioformat* format) {
 
         g_free_bufs = g_queue_new();
         if (!g_free_bufs)
-            g_error("Can't allocate queue of free buffers.");
+            g_error("Can't allocate a queue of free buffers");
         g_full_bufs = g_queue_new();
         if (!g_full_bufs)
-            g_error("Can't allocate queue of full buffers.");
+            g_error("Can't allocate a queue of full buffers");
 
         bufs = (lao_buf*) malloc(BUFNB*sizeof(lao_buf));
         if (!bufs)
-            g_error("Can't allocate buffer structures.");
+            g_error("Can't allocate buffer structures");
         for (i=0; i < BUFNB; i++) {
             bufs[i].buf = malloc(BUFSIZE);
             if (!(bufs[i].buf))
-                g_error("Can't allocate buffer.");
+                g_error("Can't allocate buffer");
             g_queue_push_tail(g_free_bufs, &(bufs[i]));
         }
 
@@ -129,7 +129,7 @@ static void lao_setup(const sp_audioformat* format) {
 
     /* Set up sample format */
     if (format->sample_type != SP_SAMPLETYPE_INT16_NATIVE_ENDIAN)
-        g_error("Unsupported sample type.");
+        g_error("Unsupported sample type");
 
     lao_fmt.bits = 16;
     lao_fmt.rate = format->sample_rate;
