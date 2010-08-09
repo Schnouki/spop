@@ -34,7 +34,6 @@ typedef struct {
     char* buf;
 } loss_buf;
 
-static int g_oss_fd = -1;
 static GIOChannel* g_chan = NULL;
 static guint g_oss_ev_id = 0;
 static size_t g_oss_frame_size;
@@ -45,7 +44,7 @@ static GStaticMutex g_oss_mutex = G_STATIC_MUTEX_INIT;
 
 /* "Private" functions, used to set up the OSS device */
 static void oss_open(const sp_audioformat* format) {
-    int sample_type, i, tmp;
+    int fd, sample_type, i, tmp;
     loss_buf* bufs = NULL;
     GError* err = NULL;
 
@@ -53,8 +52,8 @@ static void oss_open(const sp_audioformat* format) {
     g_static_mutex_lock(&g_oss_mutex);
 
     /* Open the device */
-    g_oss_fd = open("/dev/dsp", O_WRONLY);
-    if (g_oss_fd == -1)
+    fd = open("/dev/dsp", O_WRONLY);
+    if (fd == -1)
         g_error("Can't open OSS device: %s", g_strerror(errno));
 
     /* sample_type is an enum */
@@ -72,19 +71,19 @@ static void oss_open(const sp_audioformat* format) {
        (http://manuals.opensound.com/developer/callorder.html) */
 
     tmp = format->channels;
-    if (ioctl(g_oss_fd, SNDCTL_DSP_CHANNELS, &tmp) == -1)
+    if (ioctl(fd, SNDCTL_DSP_CHANNELS, &tmp) == -1)
         g_error("Error setting OSS channels: %s", g_strerror(errno));
     if (tmp != format->channels)
         g_error( "Could not set OSS channels to %d (set to %d instead)", format->channels, tmp);
 
     tmp = sample_type;
-    if (ioctl(g_oss_fd, SNDCTL_DSP_SETFMT, &tmp) == -1)
+    if (ioctl(fd, SNDCTL_DSP_SETFMT, &tmp) == -1)
         g_error("Error setting OSS sample type: %s", g_strerror(errno));
     if (tmp != sample_type)
         g_error("Could not set OSS sample type to %d (set to %d instead)", sample_type, tmp);
 
     tmp = format->sample_rate;
-    if (ioctl(g_oss_fd, SNDCTL_DSP_SPEED, &tmp) == -1)
+    if (ioctl(fd, SNDCTL_DSP_SPEED, &tmp) == -1)
         g_error("Error setting OSS sample rate: %s", g_strerror(errno));
     /* Sample rate: the OSS doc that differences up to 10% should be accepted */
     if (((100*abs(format->sample_rate - tmp))/format->sample_rate) > 10)
@@ -113,7 +112,7 @@ static void oss_open(const sp_audioformat* format) {
     }
 
     /* Create a matching IO channel */
-    g_chan = g_io_channel_unix_new(g_oss_fd);
+    g_chan = g_io_channel_unix_new(fd);
     if (!g_chan)
         g_error("Could not create an IO channel for the OSS device");
     if (g_io_channel_set_encoding(g_chan, NULL, &err) != G_IO_STATUS_NORMAL)
@@ -143,11 +142,6 @@ static void oss_close() {
     if (g_io_channel_shutdown(g_chan, FALSE, &err) != G_IO_STATUS_NORMAL)
         g_error("Can't shutdown OSS IO channel: %s", err->message);
     g_chan = NULL;
-
-    /* Close the OSS device */
-    if (close(g_oss_fd) == -1)
-        g_error("Can't close OSS device: %s", g_strerror(errno));
-    g_oss_fd = -1;
 
     g_static_mutex_unlock(&g_oss_mutex);
 }
@@ -190,7 +184,7 @@ int audio_delivery(const sp_audioformat* format, const void* frames, int num_fra
         return 0;
     }
     else {
-        if (g_oss_fd == -1)
+        if (!g_chan)
             /* Some frames to play, but the device is closed: open it and set it up */
             oss_open(format);
 
