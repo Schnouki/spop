@@ -146,6 +146,7 @@ void session_load(sp_track* track) {
 
 void session_unload() {
     sp_session_player_play(g_session, FALSE);
+    g_audio_delivery_func(NULL, NULL, 0);
     sp_session_player_unload(g_session);
     cb_notify_main_thread(NULL);
     g_audio_samples = 0;
@@ -158,6 +159,10 @@ void session_play(gboolean play) {
     error = sp_session_player_play(g_session, play);
     if (error != SP_ERROR_OK)
         g_error("Failed to play: %s", sp_error_message(error));
+
+    if (!play)
+        /* Force pause in the audio plugin */
+        g_audio_delivery_func(NULL, NULL, 0);
 
     cb_notify_main_thread(NULL);
 }
