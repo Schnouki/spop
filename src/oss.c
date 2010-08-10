@@ -101,7 +101,8 @@ int audio_delivery(const sp_audioformat* format, const void* frames, int num_fra
     /* What are we supposed to do here? */
     if (num_frames == 0) {
         /* Pause: close the device */
-        oss_close();
+        if (g_oss_fd != -1)
+            oss_close();
         ret = 0;
     }
     else {
