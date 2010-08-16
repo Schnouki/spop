@@ -143,6 +143,7 @@ void queue_clear(gboolean notif) {
     queue_stop(FALSE);
     g_queue_foreach(&g_queue, cb_queue_track_release, NULL);
     g_queue_clear(&g_queue);
+    g_current_track = -1;
 
     if (notif) queue_notify();
 }
