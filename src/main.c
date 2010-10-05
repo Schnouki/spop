@@ -182,8 +182,10 @@ void spop_log_handler(const gchar* log_domain, GLogLevelFlags log_level, const g
         level = "WARN";
     else if (log_level & G_LOG_LEVEL_MESSAGE)
         level = "MSG ";
-    else if (log_level & G_LOG_LEVEL_INFO)
+    else if (log_level & G_LOG_LEVEL_INFO) {
+        if (!verbose_mode) return;
         level = "INFO";
+    }
     else if (log_level & G_LOG_LEVEL_DEBUG) {
         if (!debug_mode) return;
         level = "DBG ";
