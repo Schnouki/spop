@@ -17,6 +17,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <glib.h>
+#include <gmodule.h>
 #include <poll.h>
 #include <sys/soundcard.h>
 #include <stdio.h>
@@ -93,7 +94,7 @@ static void oss_setup(const sp_audioformat* format) {
 }
 
 /* "Public" function, called from a libspotify callback */
-int audio_delivery(const sp_audioformat* format, const void* frames, int num_frames) {
+G_MODULE_EXPORT int audio_delivery(const sp_audioformat* format, const void* frames, int num_frames) {
     int ret;
 
     g_static_mutex_lock(&g_oss_mutex);

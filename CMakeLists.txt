@@ -26,6 +26,8 @@ string(REPLACE ";" " " SPOTIFY_CFLAGS "${SPOTIFY_CFLAGS}")
 # Check for required libraries
 pkg_check_modules(GLIB2 REQUIRED glib-2.0)
 string(REPLACE ";" " " GLIB2_CFLAGS "${GLIB2_CFLAGS}")
+pkg_check_modules(GMODULE2 REQUIRED gmodule-2.0)
+string(REPLACE ";" " " GMODULE2_CFLAGS "${GMODULE2_CFLAGS}")
 pkg_check_modules(GTHREAD2 REQUIRED gthread-2.0)
 string(REPLACE ";" " " GTHREAD2_CFLAGS "${GTHREAD2_CFLAGS}")
 
@@ -47,12 +49,12 @@ set(SPOPD
 add_executable(spopd ${SPOPD})
 
 set_target_properties(spopd PROPERTIES
-  COMPILE_FLAGS "${SPOTIFY_CFLAGS} ${GLIB2_CFLAGS} ${GTHREAD2_CFLAGS}"
+  COMPILE_FLAGS "${SPOTIFY_CFLAGS} ${GLIB2_CFLAGS} ${GMODULE2_CFLAGS} ${GTHREAD2_CFLAGS}"
 )
-target_link_libraries(spopd dl ${SPOTIFY_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES})
+target_link_libraries(spopd dl ${SPOTIFY_LIBRARIES} ${GLIB2_LIBRARIES} ${GMODULE2_LIBRARIES} ${GTHREAD2_LIBRARIES})
 set(targets ${targets} spopd)
 
-# OSS audio plugin
+# Audio plugin: OSS
 set(AUDIO_OSS
   src/oss.c
 )
@@ -63,7 +65,7 @@ set_target_properties(spop_audio_oss PROPERTIES
 target_link_libraries(spop_audio_oss ${GLIB2_LIBRARIES})
 set(targets ${targets} spop_audio_oss)
 
-# libao audio plugin
+# Audio plugin: libao
 if(AO_FOUND)
   set(AUDIO_AO
     src/ao.c
@@ -76,7 +78,7 @@ if(AO_FOUND)
   set(targets ${targets} spop_audio_ao)
 endif(AO_FOUND)
 
-# common to all source files
+# Common to all source files
 set(SRC
   ${SPOPD}
   ${AUDIO_OSS}
@@ -86,7 +88,7 @@ set_source_files_properties(${SRC}
   COMPILE_FLAGS "-O2 -Wall -Werror"
 )
 
-# system-wide installation
+# System-wide installation
 install(TARGETS ${targets}
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib

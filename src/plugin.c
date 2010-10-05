@@ -14,9 +14,8 @@
  * spop. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <dlfcn.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <glib.h>
+#include <gmodule.h>
 
 #include "spop.h"
 #include "config.h"
@@ -25,21 +24,23 @@
 audio_delivery_func_ptr g_audio_delivery_func = NULL;
 
 void plugins_init() {
-    void* lib_audio;
-    const char* audio_output;
-    char lib_name[80];
-    char* error;
+    GString* module_name = NULL;
+    GModule* module;
+
+    gchar* audio_output;
+
+    module_name = g_string_sized_new(80);
+    if (!module_name)
+        g_error("Can't allocate memory.");
 
     /* Load audio plugin */
     audio_output = config_get_string("audio_output");
-    snprintf(lib_name, sizeof(lib_name), "libspop_audio_%s.so", audio_output);
+    g_string_printf(module_name, "libspop_audio_%s", audio_output);
 
-    lib_audio = dlopen(lib_name, RTLD_LAZY);
-    if (!lib_audio)
-        g_error("Can't load audio plugin %s: %s", lib_name, dlerror());
+    module = g_module_open(module_name->str, G_MODULE_BIND_LAZY);
+    if (!module)
+        g_error("Can't load %s audio plugin: %s", audio_output, g_module_error());
 
-    dlerror(); /* Clear any existing error */
-    g_audio_delivery_func = dlsym(lib_audio, "audio_delivery");
-    if ((error = dlerror()) != NULL)
-        g_error("Can't find symbol in audio plugin: %s", error);
+    if (!g_module_symbol(module, "audio_delivery", (void**) &g_audio_delivery_func))
+        g_error("Can't find symbol in audio plugin: %s", g_module_error());
 }

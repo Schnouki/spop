@@ -16,6 +16,7 @@
 
 #include <ao/ao.h>
 #include <glib.h>
+#include <gmodule.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -145,7 +146,7 @@ static void lao_setup(const sp_audioformat* format) {
 }
 
 /* "Public" function, called from a libspotify callback */
-int audio_delivery(const sp_audioformat* format, const void* frames, int num_frames) {
+G_MODULE_EXPORT int audio_delivery(const sp_audioformat* format, const void* frames, int num_frames) {
     lao_buf* buf;
     size_t size;
 
