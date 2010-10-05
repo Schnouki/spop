@@ -27,8 +27,13 @@ gboolean interface_event(GIOChannel* source, GIOCondition condition, gpointer da
 gboolean interface_client_event(GIOChannel* source, GIOCondition condition, gpointer data);
 gboolean interface_handle_command(gchar** command, GString* result, gboolean* must_idle);
 
-/* Notify clients that issued the "idle" command */
-void interface_notify_idle();
-void interface_notify_idle_chan(gpointer data, gpointer user_data);
+/* Notify clients (channels or plugins) that are waiting for an update */
+void interface_notify();
+void interface_notify_chan(gpointer data, gpointer user_data);
+void interface_notify_callback(gpointer data, gpointer user_data);
+
+typedef void (*spop_notify_callback_ptr)(const GString*, gpointer);
+gboolean interface_notify_add_callback(spop_notify_callback_ptr func, gpointer data);
+gboolean interface_notify_remove_callback(spop_notify_callback_ptr func, gpointer data);
 
 #endif

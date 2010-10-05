@@ -31,7 +31,14 @@
 
 const char proto_greetings[] = "spop " SPOP_VERSION "\n";
 
-static GList* g_idle = NULL;
+/* Channels and plugins that have to be notified when something changes
+   ("idle" command) */
+static GList* g_idle_channels = NULL;
+static GList* g_notification_callbacks = NULL;
+typedef struct {
+    spop_notify_callback_ptr func;
+    gpointer data;
+} notification_callback;
 
 /* Functions called directly from spop */
 void interface_init() {
@@ -165,7 +172,7 @@ gboolean interface_client_event(GIOChannel* source, GIOCondition condition, gpoi
     /* "idle" command? */
     if (must_idle) {
         /* Add to list of idle channels */
-        g_idle = g_list_prepend(g_idle, source);
+        g_idle_channels = g_list_prepend(g_idle_channels, source);
         g_string_free(result, TRUE);
     }
     else {
@@ -189,7 +196,7 @@ gboolean interface_client_event(GIOChannel* source, GIOCondition condition, gpoi
  ice_client_clean:
     if (buffer)
         g_string_free(buffer, TRUE);
-    g_idle = g_list_remove(g_idle, source);
+    g_idle_channels = g_list_remove(g_idle_channels, source);
     g_io_channel_shutdown(source, TRUE, NULL);
     g_io_channel_unref(source);
     close(client);
@@ -344,20 +351,25 @@ gboolean interface_handle_command(gchar** command, GString* result, gboolean* mu
     return TRUE;
 }
 
-/* Notify clients that issued the "idle" command */
-void interface_notify_idle() {
+/* Notify clients (channels or plugins) that are waiting for an update */
+void interface_notify() {
     GString* str = g_string_sized_new(1024);
+
     status(str);
     g_string_append(str, "+ OK\n");
 
-    g_list_foreach(g_idle, interface_notify_idle_chan, str);
-    g_list_free(g_idle);
-    g_idle = NULL;
+    /* First notify idle channels */
+    g_list_foreach(g_idle_channels, interface_notify_chan, str);
+    g_list_free(g_idle_channels);
+    g_idle_channels = NULL;
+
+    /* Then call callbacks from plugins */
+    g_list_foreach(g_notification_callbacks, interface_notify_callback, str);
 
     g_string_free(str, TRUE);
 }
 
-void interface_notify_idle_chan(gpointer data, gpointer user_data) {
+void interface_notify_chan(gpointer data, gpointer user_data) {
     GIOChannel* chan = data;
     GString* str = user_data;
     GIOStatus status;
@@ -380,4 +392,32 @@ void interface_notify_idle_chan(gpointer data, gpointer user_data) {
     g_io_channel_unref(chan);
     close(client);
     g_debug("[%d] Connection closed.", client);
+}
+
+void interface_notify_callback(gpointer data, gpointer user_data) {
+    notification_callback* ncb = (notification_callback*) data;
+    const GString* status = (const GString*) user_data;
+
+    ncb->func(status, ncb->data);
+}
+
+gboolean interface_notify_add_callback(spop_notify_callback_ptr func, gpointer data) {
+    notification_callback* ncb;
+    GList* cur;
+
+    /* Is there already such a callback/data couple in the list? */
+    cur = g_notification_callbacks;
+    while (cur != NULL) {
+        ncb = cur->data;
+        if ((ncb->func == func) && (ncb->data == data))
+            return FALSE;
+        cur = cur->next;
+    }
+    
+    /* Callback/data not in the list: add them */
+    ncb = g_malloc(sizeof(notification_callback));
+    ncb->func = func;
+    ncb->data = data;
+    g_notification_callbacks = g_list_prepend(g_notification_callbacks, ncb);
+    return TRUE;
 }

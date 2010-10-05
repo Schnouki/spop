@@ -332,7 +332,7 @@ GArray* queue_tracks() {
  *** Notify clients that something changed ***
  *********************************************/
 void queue_notify() {
-    interface_notify_idle();
+    interface_notify();
 }
 
 
