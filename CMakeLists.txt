@@ -56,7 +56,7 @@ set(targets ${targets} spopd)
 
 # Audio plugin: OSS
 set(AUDIO_OSS
-  src/oss.c
+  plugins/oss.c
 )
 add_library(spop_audio_oss MODULE ${AUDIO_OSS})
 set_target_properties(spop_audio_oss PROPERTIES
@@ -68,7 +68,7 @@ set(targets ${targets} spop_audio_oss)
 # Audio plugin: libao
 if(AO_FOUND)
   set(AUDIO_AO
-    src/ao.c
+    plugins/ao.c
   )
   add_library(spop_audio_ao MODULE ${AUDIO_AO})
   set_target_properties(spop_audio_ao PROPERTIES
@@ -87,6 +87,7 @@ set(SRC
 set_source_files_properties(${SRC}
   COMPILE_FLAGS "-O2 -Wall -Werror"
 )
+include_directories(src)
 
 # System-wide installation
 install(TARGETS ${targets}
