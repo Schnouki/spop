@@ -14,7 +14,9 @@
  * spop. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <errno.h>
 #include <glib.h>
+#include <signal.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -34,10 +36,16 @@ static const char* copyright_notice =
     "Powered by SPOTIFY(R) CORE\n\n";
 
 int g_run_as_daemon = 1;
+int g_i_am_daemon = 0;
 int g_debug = 0;
 int g_verbose = 0;
 
-void spop_log_handler(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data);
+/* Logging stuff */
+static const gchar* g_log_file_path = NULL;
+static GIOChannel* g_log_channel = NULL;
+static void logging_init();
+static void sighup_handler(int signum);
+static void spop_log_handler(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data);
 
 int real_main() {
     const char* username;
@@ -46,9 +54,6 @@ int real_main() {
     GMainLoop* main_loop;
 
     /* Init essential stuff */
-    g_set_application_name("spop " SPOP_VERSION);
-    g_set_prgname("spop");
-    g_thread_init(NULL);
     main_loop = g_main_loop_new(NULL, FALSE);
 
     /* Read username and password */
@@ -95,13 +100,17 @@ int main(int argc, char** argv) {
         }
     }
 
-    /* Set log handler */
-    g_log_set_default_handler(spop_log_handler, NULL);
+    g_set_application_name("spop " SPOP_VERSION);
+    g_set_prgname("spop");
+    g_thread_init(NULL);
+    
+    printf(copyright_notice);
+
+    /* Log handler */
+    logging_init();
 
     if (!g_run_as_daemon) {
         /* Stay in foreground: do everything here */
-        printf(copyright_notice);
-
         if (g_debug)
             g_info("Running in debug mode");
     }
@@ -115,13 +124,54 @@ int main(int argc, char** argv) {
             g_info("Forked to background with pid %d", pid);
             return 0;
         }
+        else {
+            /* Child process */
+            g_i_am_daemon = 1;
+        }
         /* The child process will continue and run the real_main() function */
     }
 
     return real_main();    
 }
 
+void logging_init() {
+    struct sigaction act;
+
+    /* Set the default handler */
+    g_log_set_default_handler(spop_log_handler, NULL);
+
+    /* Open the log file */
+    g_log_file_path = config_get_string_opt("log_file", "/var/log/spopd.log");
+    if (strlen(g_log_file_path) > 0) {
+        /* Install a handler so that we can reopen the file on SIGHUP */
+        act.sa_handler = sighup_handler;
+        act.sa_flags = 0;
+        sigemptyset(&act.sa_mask);
+        sigaddset(&act.sa_mask, SIGHUP);
+        if (sigaction(SIGHUP, &act, NULL) == -1)
+            g_error("Can't install signal handler: %s", g_strerror(errno));
+
+        /* And open the file using this handler :) */
+        sighup_handler(0);
+    }    
+}
+
+void sighup_handler(int signum) {
+    GError* err = NULL;
+
+    if (g_log_channel && (g_io_channel_shutdown(g_log_channel, TRUE, &err) != G_IO_STATUS_NORMAL))
+        g_error("Can't close log file: %s", err->message);
+
+    if (strlen(g_log_file_path) > 0) {
+        g_log_channel = g_io_channel_new_file(g_log_file_path, "a", &err);
+        if (!g_log_channel)
+            g_error("Can't open log file (%s): %s", g_log_file_path, err->message);
+    }
+}
+
 void spop_log_handler(const gchar* log_domain, GLogLevelFlags log_level, const gchar* message, gpointer user_data) {
+    GString* log_line = NULL;
+    GError* err = NULL;
     gchar* level = "";
 
     if (log_level & G_LOG_LEVEL_ERROR)
@@ -143,7 +193,22 @@ void spop_log_handler(const gchar* log_domain, GLogLevelFlags log_level, const g
     else
         g_warn_if_reached();
 
+    log_line = g_string_sized_new(1024);
+    if (!log_line)
+        g_error("Can't allocate memory.");
+
     if (log_domain)
-        printf("%s ", log_domain);
-    printf("[%s] %s\n", level, message);
+        g_string_printf(log_line, "%s ", log_domain);
+    g_string_append_printf(log_line, "[%s] %s\n", level, message);
+    
+    /* First display to stderr... */
+    if (!g_i_am_daemon)
+        fprintf(stderr, log_line->str);
+    /* ... then to the log file. */
+    if (g_log_channel) {
+        if (g_io_channel_write_chars(g_log_channel, log_line->str, log_line->len, NULL, &err) != G_IO_STATUS_NORMAL)
+            g_error("Can't write to log file: %s", err->message);
+        if (g_io_channel_flush(g_log_channel, &err) != G_IO_STATUS_NORMAL)
+            g_error("Can't flush log file: %s", err->message);
+    }    
 }
