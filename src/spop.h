@@ -20,11 +20,6 @@
 #define SPOP_VERSION "0.0.1"
 #define SPOP_YEAR    "2010"
 
-/* Global configuration variables */
-extern int g_run_as_daemon;
-extern int g_debug;
-extern int g_verbose;
-
 /* Logging */
 #define G_LOG_LEVEL_LIBSPOTIFY (1 << (G_LOG_LEVEL_USER_SHIFT))
 

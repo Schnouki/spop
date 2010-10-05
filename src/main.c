@@ -35,10 +35,10 @@ static const char* copyright_notice =
     "See the COPYING file bundled with this program for details.\n"
     "Powered by SPOTIFY(R) CORE\n\n";
 
-int g_run_as_daemon = 1;
-int g_i_am_daemon = 0;
-int g_debug = 0;
-int g_verbose = 0;
+static gboolean daemon_mode  = TRUE;
+static gboolean i_am_daemon  = FALSE;
+static gboolean debug_mode   = FALSE;
+static gboolean verbose_mode = FALSE;
 
 /* Logging stuff */
 static const gchar* g_log_file_path = NULL;
@@ -84,11 +84,11 @@ int main(int argc, char** argv) {
     while ((opt = getopt(argc, argv, "dfhv")) != -1) {
         switch (opt) {
         case 'd':
-            g_debug = 1; g_verbose = 1; g_run_as_daemon = 0; break;
-        case 'f':
-            g_run_as_daemon = 0; break;
+            debug_mode = TRUE;
         case 'v':
-            g_verbose = 1; g_run_as_daemon = 0; break;
+            verbose_mode = TRUE;
+        case 'f':
+            daemon_mode = FALSE; break;
         default:
             printf("Usage: spopd [options\n"
                    "Options:\n"
@@ -109,16 +109,16 @@ int main(int argc, char** argv) {
     /* Log handler */
     logging_init();
 
-    if (!g_run_as_daemon) {
+    if (!daemon_mode) {
         /* Stay in foreground: do everything here */
-        if (g_debug)
+        if (debug_mode)
             g_info("Running in debug mode");
     }
     else {
         /* Run in daemon mode: fork to background */
         pid_t pid = fork();
         if (pid < 0)
-            g_error("Error while forking process");
+            g_error("Error while forking process: %s", g_strerror(errno));
         else if (pid > 0) {
             /* Parent process */
             g_info("Forked to background with pid %d", pid);
@@ -126,7 +126,7 @@ int main(int argc, char** argv) {
         }
         else {
             /* Child process */
-            g_i_am_daemon = 1;
+            i_am_daemon = TRUE;
         }
         /* The child process will continue and run the real_main() function */
     }
@@ -185,7 +185,7 @@ void spop_log_handler(const gchar* log_domain, GLogLevelFlags log_level, const g
     else if (log_level & G_LOG_LEVEL_INFO)
         level = "INFO";
     else if (log_level & G_LOG_LEVEL_DEBUG) {
-        if (!g_debug) return;
+        if (!debug_mode) return;
         level = "DBG ";
     }
     else if (log_level & G_LOG_LEVEL_LIBSPOTIFY)
@@ -202,7 +202,7 @@ void spop_log_handler(const gchar* log_domain, GLogLevelFlags log_level, const g
     g_string_append_printf(log_line, "[%s] %s\n", level, message);
     
     /* First display to stderr... */
-    if (!g_i_am_daemon)
+    if (!i_am_daemon)
         fprintf(stderr, log_line->str);
     /* ... then to the log file. */
     if (g_log_channel) {
