@@ -28,12 +28,16 @@ typedef enum {
 /* Read mandatory options */
 gboolean config_get_bool(const char* name);
 int config_get_int(const char* name);
-const char* config_get_string(const char* name);
+gchar* config_get_string(const char* name);
 
 /* Read optional options */
 gboolean config_get_bool_opt(const char* name, gboolean def_value);
 int config_get_int_opt(const char* name, int def_value);
-const char* config_get_string_opt(const char* name, const char* def_value);
+gchar* config_get_string_opt(const char* name, char* def_value);
 
+/* Read list of options */
+gboolean* config_get_bool_list(const char* name, gsize* length);
+int* config_get_int_list(const char* name, gsize* length);
+gchar** config_get_string_list(const char* name, gsize* length);
 
 #endif

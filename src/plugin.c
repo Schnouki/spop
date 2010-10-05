@@ -29,6 +29,12 @@ void plugins_init() {
 
     gchar* audio_output;
 
+    char** plugins;
+    gsize size;
+    void (*plugin_init)();
+
+    int i;
+
     module_name = g_string_sized_new(80);
     if (!module_name)
         g_error("Can't allocate memory.");
@@ -43,4 +49,26 @@ void plugins_init() {
 
     if (!g_module_symbol(module, "audio_delivery", (void**) &g_audio_delivery_func))
         g_error("Can't find symbol in audio plugin: %s", g_module_error());
+
+    /* Now load other plugins */
+    plugins = config_get_string_list("plugins", &size);
+    for (i=0; i < size; i++) {
+        g_strstrip(plugins[i]);
+        g_info("Loading plugin %s...", plugins[i]);
+
+        /* Load the module and the symbol */
+        g_string_printf(module_name, "libspop_plugin_%s", plugins[i]);
+        module = g_module_open(module_name->str, G_MODULE_BIND_LAZY);
+        if (!module)
+            g_error("Can't load plugin \"%s\": %s", plugins[i], g_module_error());
+        g_string_printf(module_name, "spop_%s_init", plugins[i]);
+        if (!g_module_symbol(module, module_name->str, (void**) &plugin_init))
+            g_error("Can't find symbol \"%s\" in module \"%s\": %s", module_name->str, plugins[i], g_module_error());
+
+        /* Really init the plugin (hoping it will not blow up) */
+        plugin_init();
+
+        g_debug("Plugin %s loaded and initialized", plugins[i]);
+    }
+    g_strfreev(plugins);
 }

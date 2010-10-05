@@ -29,3 +29,6 @@ audio_output = oss
 # Path to the log file. If blank, messages will not be saved anywhere.
 # Default is /var/log/spopd.log.
 #log_file = /var/log/spopd.log
+
+# Various plugins to load.
+#plugins = notify

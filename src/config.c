@@ -60,7 +60,7 @@ static void config_ready() {
         GError* err = NULL;                                             \
         config_ready();                                                 \
         value = read_fct(g_config_file, g_get_prgname(), name, &err);   \
-        if (err != NULL)                                                \
+        if (err)                                                        \
             g_error("Error while reading " dsptype " \"%s\" in configuration file: %s", name, err->message); \
         return value;                                                   \
     }                                                                   \
@@ -70,8 +70,23 @@ static void config_ready() {
             return fct_name(name);                                      \
         else                                                            \
             return def_value;                                           \
+    }                                                                   \
+    rtype* fct_name##_list(const char* name, gsize* length) {           \
+        rtype* value;                                                   \
+        GError* err = NULL;                                             \
+        config_ready();                                                 \
+        value = (rtype*) read_fct##_list(g_config_file, g_get_prgname(), name, length, &err); \
+        if (err) {                                                      \
+            if (err->code == G_KEY_FILE_ERROR_KEY_NOT_FOUND) {          \
+                if (length) *length = 0;                                \
+                return NULL;                                            \
+            }                                                           \
+            else                                                        \
+                g_error("Error while reading " dsptype "_list \"%s\" in configuration file: %s", name, err->message); \
+        }                                                               \
+        return value;                                                   \
     }
 
-CONFIG_GET_FCT(gboolean,    "boolean", g_key_file_get_boolean, config_get_bool)
-CONFIG_GET_FCT(int,         "integer", g_key_file_get_integer, config_get_int)
-CONFIG_GET_FCT(const char*, "string",  g_key_file_get_string,  config_get_string)
+CONFIG_GET_FCT(gboolean, "boolean", g_key_file_get_boolean, config_get_bool)
+CONFIG_GET_FCT(int,      "integer", g_key_file_get_integer, config_get_int)
+CONFIG_GET_FCT(gchar*,   "string",  g_key_file_get_string,  config_get_string)
