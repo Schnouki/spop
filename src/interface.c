@@ -70,7 +70,7 @@ void interface_init() {
         g_error("Can't create IO channel for the main socket.");
     g_io_add_watch(chan, G_IO_IN|G_IO_PRI|G_IO_ERR|G_IO_HUP|G_IO_NVAL, interface_event, NULL);
 
-    g_message("Listening on %s:%d", ip_addr, port);
+    g_info("Listening on %s:%d", ip_addr, port);
 }
 
 /* Interface event -- accept connections, create IO channels for clients */

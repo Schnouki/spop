@@ -37,7 +37,7 @@ int g_run_as_daemon = 1;
 int g_debug = 0;
 int g_verbose = 0;
 
-void log_ignore(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data) { }
+void spop_log_handler(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data);
 
 int real_main() {
     const char* username;
@@ -50,12 +50,6 @@ int real_main() {
     g_set_prgname("spop");
     g_thread_init(NULL);
     main_loop = g_main_loop_new(NULL, FALSE);
-
-    /* Disable debug and verbose messages */
-    if (!g_debug)
-        g_log_set_handler(NULL, G_LOG_LEVEL_DEBUG, log_ignore, NULL);
-    if (!g_verbose)
-        g_log_set_handler(NULL, G_LOG_LEVEL_INFO, log_ignore, NULL);
 
     /* Read username and password */
     username = config_get_string("spotify_username");
@@ -101,6 +95,9 @@ int main(int argc, char** argv) {
         }
     }
 
+    /* Set log handler */
+    g_log_set_default_handler(spop_log_handler, NULL);
+
     if (!g_run_as_daemon) {
         /* Stay in foreground: do everything here */
         printf(copyright_notice);
@@ -122,4 +119,31 @@ int main(int argc, char** argv) {
     }
 
     return real_main();    
+}
+
+void spop_log_handler(const gchar* log_domain, GLogLevelFlags log_level, const gchar* message, gpointer user_data) {
+    gchar* level = "";
+
+    if (log_level & G_LOG_LEVEL_ERROR)
+        level = "ERR ";
+    else if (log_level & G_LOG_LEVEL_CRITICAL)
+        level = "CRIT";
+    else if (log_level & G_LOG_LEVEL_WARNING)
+        level = "WARN";
+    else if (log_level & G_LOG_LEVEL_MESSAGE)
+        level = "MSG ";
+    else if (log_level & G_LOG_LEVEL_INFO)
+        level = "INFO";
+    else if (log_level & G_LOG_LEVEL_DEBUG) {
+        if (!g_debug) return;
+        level = "DBG ";
+    }
+    else if (log_level & G_LOG_LEVEL_LIBSPOTIFY)
+        level = "SPTF";
+    else
+        g_warn_if_reached();
+
+    if (log_domain)
+        printf("%s ", log_domain);
+    printf("[%s] %s\n", level, message);
 }

@@ -335,12 +335,12 @@ void cb_container_loaded(sp_playlistcontainer* pc, void* data) {
 
 void cb_logged_in(sp_session* session, sp_error error) {
     if (error != SP_ERROR_OK)
-        g_error("Login failed: %s", sp_error_message(error));
-    else g_message("Logged in.");
+        g_warning("Login failed: %s", sp_error_message(error));
+    else g_info("Logged in.");
 }
 
 void cb_logged_out(sp_session* session) {
-    g_message("Logged out.");
+    g_info("Logged out.");
 }
 void cb_metadata_updated(sp_session* session) {
 }
@@ -349,7 +349,7 @@ void cb_connection_error(sp_session* session, sp_error error) {
     g_warning("Connection error: %s\n", sp_error_message(error));
 }
 void cb_message_to_user(sp_session* session, const char* message) {
-    g_message("Message from Spotify: %s", message);
+    g_message(message);
 }
 void cb_notify_main_thread(sp_session* session) {
     g_idle_add_full(G_PRIORITY_DEFAULT, session_libspotify_event, NULL, NULL);
@@ -375,7 +375,7 @@ void cb_log_message(sp_session* session, const char* data) {
     gchar* c = g_strrstr(data, "\n");
     if (c)
         *c = '\0';
-    g_info(data);
+    g_log_libspotify(data);
 }
 void cb_end_of_track(sp_session* session) {
     g_debug("End of track.");

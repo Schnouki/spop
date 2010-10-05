@@ -20,12 +20,15 @@
 #define SPOP_VERSION "0.0.1"
 #define SPOP_YEAR    "2010"
 
-
 /* Global configuration variables */
 extern int g_run_as_daemon;
 extern int g_debug;
 extern int g_verbose;
 
+/* Logging */
+#define G_LOG_LEVEL_LIBSPOTIFY (1 << (G_LOG_LEVEL_USER_SHIFT))
+
 #define g_info(...) g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, __VA_ARGS__)
+#define g_log_libspotify(...) g_log(G_LOG_DOMAIN, G_LOG_LEVEL_LIBSPOTIFY, __VA_ARGS__)
 
 #endif
