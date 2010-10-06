@@ -47,6 +47,7 @@ set(SPOPD
   src/plugin.c
   src/queue.c
   src/spotify.c
+  src/utils.c
 )
 add_executable(spopd ${SPOPD})
 

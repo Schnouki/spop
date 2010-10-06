@@ -23,20 +23,19 @@
 #include "interface.h"
 #include "queue.h"
 #include "spotify.h"
+#include "utils.h"
 
 static NotifyNotification* g_notif = NULL;
 
 #define col(c, txt) "<span foreground=\"" c "\">" txt "</span>"
 
-void notification_callback(const GString* status, gpointer data) {
+static void notification_callback(const GString* status, gpointer data) {
     queue_status qs;
     sp_track* cur_track;
     int cur_track_nb;
     int tot_tracks;
 
     GString* body;
-    gchar* pos_beg = NULL;
-    gchar* pos_ptr = NULL;
 
     GError* err = NULL;
 
@@ -88,14 +87,7 @@ void notification_callback(const GString* status, gpointer data) {
     }
 
     /* Replace "&" with "&amp;" */
-    pos_beg = body->str;
-    while ((pos_ptr = g_strstr_len(pos_beg, (body->len - (pos_beg - body->str)), "&")) != NULL) {
-        gssize pos = pos_ptr - body->str;
-        g_debug("Notify: escaping & at position %ld", pos);
-        g_string_erase(body, pos, 1);
-        g_string_insert_len(body, pos, "&amp;", 5); 
-        pos_beg = pos_ptr + 1;
-   }
+    g_string_replace(body, "&", "&amp;");
 
     /* Create or update the notification */
     if (!g_notif) {
