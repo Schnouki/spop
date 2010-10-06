@@ -1,4 +1,6 @@
 /*
+ * Copyright (C) 2010 Thomas Jost
+ *
  * This file is part of spop.
  *
  * spop is free software: you can redistribute it and/or modify it under the
@@ -12,6 +14,13 @@
  *
  * You should have received a copy of the GNU General Public License along with
  * spop. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Additional permission under GNU GPL version 3 section 7
+ *
+ * If you modify this Program, or any covered work, by linking or combining it
+ * with libspotify (or a modified version of that library), containing parts
+ * covered by the terms of the Libspotify Terms of Use, the licensors of this
+ * Program grant you additional permission to convey the resulting work.
  */
 
 #include <ao/ao.h>
