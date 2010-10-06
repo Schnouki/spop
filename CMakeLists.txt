@@ -34,6 +34,8 @@ string(REPLACE ";" " " GTHREAD2_CFLAGS "${GTHREAD2_CFLAGS}")
 # Check for optional libraries
 pkg_check_modules(AO ao)
 string(REPLACE ";" " " AO_CFLAGS "${AO_CFLAGS}")
+pkg_check_modules(DBUS dbus-glib-1)
+string(REPLACE ";" " " DBUS_CFLAGS "${DBUS_CFLAGS}")
 pkg_check_modules(NOTIFY libnotify)
 string(REPLACE ";" " " NOTIFY_CFLAGS "${NOTIFY_CFLAGS}")
 
@@ -81,6 +83,19 @@ if(AO_FOUND)
   set(targets ${targets} spop_audio_ao)
 endif(AO_FOUND)
 
+# Generic plugin: awesome
+if(DBUS_FOUND)
+  set(PLUGIN_AWESOME
+    plugins/awesome.c
+  )
+  add_library(spop_plugin_awesome MODULE ${PLUGIN_AWESOME})
+  set_target_properties(spop_plugin_awesome PROPERTIES
+    COMPILE_FLAGS "${DBUS_CFLAGS} ${GLIB2_CFLAGS}"
+  )
+  target_link_libraries(spop_plugin_awesome ${DBUS_LIBRARIES} ${GLIB2_LIBRARIES})
+  set(targets ${targets} spop_plugin_awesome)
+endif(DBUS_FOUND)
+
 # Generic plugin: notify
 if(NOTIFY_FOUND)
   set(PLUGIN_NOTIFY
@@ -99,6 +114,7 @@ set(SRC
   ${SPOPD}
   ${AUDIO_OSS}
   ${AUDIO_AO}
+  ${PLUGIN_AWESOME}
   ${PLUGIN_NOTIFY}
 )
 set_source_files_properties(${SRC}
