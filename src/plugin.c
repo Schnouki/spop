@@ -23,6 +23,8 @@
 
 audio_delivery_func_ptr g_audio_delivery_func = NULL;
 
+static GList* g_plugins_close_functions = NULL;
+
 void plugins_init() {
     GString* module_name = NULL;
     GModule* module;
@@ -32,6 +34,7 @@ void plugins_init() {
     char** plugins;
     gsize size;
     void (*plugin_init)();
+    void (*plugin_close)();
 
     int i;
 
@@ -56,14 +59,21 @@ void plugins_init() {
         g_strstrip(plugins[i]);
         g_info("Loading plugin %s...", plugins[i]);
 
-        /* Load the module and the symbol */
+        /* Load the module and the symbols (spop_<module>_init and spop_<module>_close) */
         g_string_printf(module_name, "libspop_plugin_%s", plugins[i]);
         module = g_module_open(module_name->str, G_MODULE_BIND_LAZY);
         if (!module)
             g_error("Can't load plugin \"%s\": %s", plugins[i], g_module_error());
+
         g_string_printf(module_name, "spop_%s_init", plugins[i]);
         if (!g_module_symbol(module, module_name->str, (void**) &plugin_init))
             g_error("Can't find symbol \"%s\" in module \"%s\": %s", module_name->str, plugins[i], g_module_error());
+
+        g_string_printf(module_name, "spop_%s_close", plugins[i]);
+        if (g_module_symbol(module, module_name->str, (void**) &plugin_close))
+            g_plugins_close_functions = g_list_prepend(g_plugins_close_functions, plugin_close);
+        else
+            g_info("Module \"%s\" does not have a \"%s\" symbol: %s", plugins[i], module_name->str, g_module_error());
 
         /* Really init the plugin (hoping it will not blow up) */
         plugin_init();
@@ -71,4 +81,16 @@ void plugins_init() {
         g_debug("Plugin %s loaded and initialized", plugins[i]);
     }
     g_strfreev(plugins);
+}
+
+void plugins_close() {
+    GList* cur = g_plugins_close_functions;
+    void (*func)();
+
+    g_debug("Closing plugins...");
+    while (cur) {
+        func = cur->data;
+        func();
+        cur = cur->next;
+    }
 }

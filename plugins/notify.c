@@ -119,3 +119,10 @@ G_MODULE_EXPORT void spop_notify_init() {
     if (!interface_notify_add_callback(notification_callback, NULL))
         g_error("Could not add libnotify callback.");
 }
+
+G_MODULE_EXPORT void spop_notify_close() {
+    GError* err = NULL;
+    if (g_notif && !notify_notification_close(g_notif, &err))
+        g_warning("Can't close notification: %s", err->message);
+    notify_uninit();
+}

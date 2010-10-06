@@ -163,6 +163,8 @@ void exit_handler_init() {
 void exit_handler() {
     g_debug("Entering exit handler...");
 
+    plugins_close();
+
     g_message("Exiting.");
 }
 
