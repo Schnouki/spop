@@ -121,7 +121,7 @@ int main(int argc, char** argv) {
             g_error("Error while forking process: %s", g_strerror(errno));
         else if (pid > 0) {
             /* Parent process */
-            g_info("Forked to background with pid %d", pid);
+            g_message("Forked to background with pid %d", pid);
             return 0;
         }
         else {
@@ -171,9 +171,13 @@ void sighup_handler(int signum) {
 
 void spop_log_handler(const gchar* log_domain, GLogLevelFlags log_level, const gchar* message, gpointer user_data) {
     GString* log_line = NULL;
+    GDateTime* datetime;
+    gchar* timestr;
+
     GError* err = NULL;
     gchar* level = "";
 
+    /* Convert log_level to a string */
     if (log_level & G_LOG_LEVEL_ERROR)
         level = "ERR ";
     else if (log_level & G_LOG_LEVEL_CRITICAL)
@@ -195,13 +199,26 @@ void spop_log_handler(const gchar* log_domain, GLogLevelFlags log_level, const g
     else
         g_warn_if_reached();
 
+    /* Allocate memory and read date/time */
     log_line = g_string_sized_new(1024);
     if (!log_line)
         g_error("Can't allocate memory.");
 
+    datetime = g_date_time_new_now_local();
+    if (!datetime)
+        g_error("Can't get the current date.");
+    timestr = g_date_time_format(datetime, "%Y-%m-%d %H:%M:%S");
+    if (!timestr)
+        g_error("Can't format current date to a string.");
+
+    /* Format the message that will be displayed and logged */
     if (log_domain)
         g_string_printf(log_line, "%s ", log_domain);
-    g_string_append_printf(log_line, "[%s] %s\n", level, message);
+    g_string_append_printf(log_line, "%s [%s] %s\n", timestr, level, message);
+
+    /* Free memory used by datetime and timestr */
+    g_date_time_unref(datetime);
+    g_free(timestr);
     
     /* First display to stderr... */
     if (!i_am_daemon)
