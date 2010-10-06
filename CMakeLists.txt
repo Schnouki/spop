@@ -34,6 +34,8 @@ string(REPLACE ";" " " GTHREAD2_CFLAGS "${GTHREAD2_CFLAGS}")
 # Check for optional libraries
 pkg_check_modules(AO ao)
 string(REPLACE ";" " " AO_CFLAGS "${AO_CFLAGS}")
+pkg_check_modules(NOTIFY libnotify)
+string(REPLACE ";" " " NOTIFY_CFLAGS "${NOTIFY_CFLAGS}")
 
 # spop daemon
 set(SPOPD
@@ -78,11 +80,25 @@ if(AO_FOUND)
   set(targets ${targets} spop_audio_ao)
 endif(AO_FOUND)
 
+# Generic plugin: notify
+if(NOTIFY_FOUND)
+  set(PLUGIN_NOTIFY
+    plugins/notify.c
+  )
+  add_library(spop_plugin_notify MODULE ${PLUGIN_NOTIFY})
+  set_target_properties(spop_plugin_notify PROPERTIES
+    COMPILE_FLAGS "${GLIB2_CFLAGS} ${NOTIFY_CFLAGS}"
+  )
+  target_link_libraries(spop_plugin_notify ${GLIB2_LIBRARIES} ${NOTIFY_LIBRARIES})
+  set(targets ${targets} spop_plugin_notify)
+endif(NOTIFY_FOUND)
+
 # Common to all source files
 set(SRC
   ${SPOPD}
   ${AUDIO_OSS}
   ${AUDIO_AO}
+  ${PLUGIN_NOTIFY}
 )
 set_source_files_properties(${SRC}
   COMPILE_FLAGS "-O2 -Wall -Werror"
