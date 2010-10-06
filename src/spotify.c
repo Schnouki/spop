@@ -349,7 +349,7 @@ void cb_connection_error(sp_session* session, sp_error error) {
     g_warning("Connection error: %s\n", sp_error_message(error));
 }
 void cb_message_to_user(sp_session* session, const char* message) {
-    g_message(message);
+    g_message("%s", message);
 }
 void cb_notify_main_thread(sp_session* session) {
     g_idle_add_full(G_PRIORITY_DEFAULT, session_libspotify_event, NULL, NULL);
@@ -375,7 +375,7 @@ void cb_log_message(sp_session* session, const char* data) {
     gchar* c = g_strrstr(data, "\n");
     if (c)
         *c = '\0';
-    g_log_libspotify(data);
+    g_log_libspotify("%s", data);
 }
 void cb_end_of_track(sp_session* session) {
     g_debug("End of track.");

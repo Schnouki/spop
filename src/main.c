@@ -33,7 +33,7 @@ static const char* copyright_notice =
     "This program comes with ABSOLUTELY NO WARRANTY.\n"
     "This is free software, and you are welcome to redistribute it under certain conditions.\n"
     "See the COPYING file bundled with this program for details.\n"
-    "Powered by SPOTIFY(R) CORE\n\n";
+    "Powered by SPOTIFY(R) CORE\n";
 
 static gboolean daemon_mode  = TRUE;
 static gboolean i_am_daemon  = FALSE;
@@ -104,7 +104,7 @@ int main(int argc, char** argv) {
     g_set_prgname("spop");
     g_thread_init(NULL);
     
-    printf(copyright_notice);
+    printf("%s\n", copyright_notice);
 
     /* Log handler */
     logging_init();
@@ -205,7 +205,7 @@ void spop_log_handler(const gchar* log_domain, GLogLevelFlags log_level, const g
     
     /* First display to stderr... */
     if (!i_am_daemon)
-        fprintf(stderr, log_line->str);
+        fprintf(stderr, "%s", log_line->str);
     /* ... then to the log file. */
     if (g_log_channel) {
         if (g_io_channel_write_chars(g_log_channel, log_line->str, log_line->len, NULL, &err) != G_IO_STATUS_NORMAL)
