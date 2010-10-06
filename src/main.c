@@ -35,10 +35,18 @@ static const char* copyright_notice =
     "See the COPYING file bundled with this program for details.\n"
     "Powered by SPOTIFY(R) CORE\n";
 
+/***************************************
+ *** Static variables and prototypes ***
+ ***************************************/
 static gboolean daemon_mode  = TRUE;
 static gboolean i_am_daemon  = FALSE;
 static gboolean debug_mode   = FALSE;
 static gboolean verbose_mode = FALSE;
+
+static int real_main();
+static void exit_handler_init();
+static void exit_handler();
+static void sigint_handler(int signum);
 
 /* Logging stuff */
 static const gchar* g_log_file_path = NULL;
@@ -47,37 +55,10 @@ static void logging_init();
 static void sighup_handler(int signum);
 static void spop_log_handler(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data);
 
-int real_main() {
-    const char* username;
-    const char* password;
-    gboolean high_bitrate;
-    GMainLoop* main_loop;
 
-    /* Init essential stuff */
-    main_loop = g_main_loop_new(NULL, FALSE);
-
-    /* Read username and password */
-    username = config_get_string("spotify_username");
-    password = config_get_string("spotify_password");
-
-    high_bitrate = config_get_bool_opt("high_bitrate", TRUE);
-
-    /* Init plugins */
-    plugins_init();
-
-    /* Init login */
-    session_init(high_bitrate);
-    session_login(username, password);
-
-    /* Init various subsystems */
-    interface_init();
-
-    /* Event loop */
-    g_main_loop_run(main_loop);
-
-    return 0;
-}
-
+/**********************
+ *** Initialization ***
+ **********************/
 int main(int argc, char** argv) {
     /* Parse command line options */
     int opt;
@@ -134,9 +115,73 @@ int main(int argc, char** argv) {
     return real_main();    
 }
 
-void logging_init() {
-    struct sigaction act;
+int real_main() {
+    const char* username;
+    const char* password;
+    gboolean high_bitrate;
+    GMainLoop* main_loop;
 
+    /* Init essential stuff */
+    main_loop = g_main_loop_new(NULL, FALSE);
+    exit_handler_init();
+
+    /* Read username and password */
+    username = config_get_string("spotify_username");
+    password = config_get_string("spotify_password");
+
+    high_bitrate = config_get_bool_opt("high_bitrate", TRUE);
+
+    /* Init plugins */
+    plugins_init();
+
+    /* Init login */
+    session_init(high_bitrate);
+    session_login(username, password);
+
+    /* Init various subsystems */
+    interface_init();
+
+    /* Event loop */
+    g_main_loop_run(main_loop);
+
+    return 0;
+}
+
+
+/***************************************************
+ *** Exit handler (called on normal termination) ***
+ ***************************************************/
+void exit_handler_init() {
+    /* On normal exit, use exit_handler */
+    g_atexit(exit_handler);
+
+    /* Trap SIGINT (Ctrl+C) to also use exit_handler */
+    if (signal(SIGINT, sigint_handler) == SIG_ERR)
+        g_error("Can't install signal handler: %s", g_strerror(errno));
+}
+
+void exit_handler() {
+    g_debug("Entering exit handler...");
+
+    g_message("Exiting.");
+}
+
+void sigint_handler(int signum) {
+    g_info("Got SIGINT.");
+
+    exit_handler();
+
+    /* The proper way of doing this is to kill ourself (not to call exit()) */
+    if (signal(SIGINT, SIG_DFL) == SIG_ERR)
+        g_error("Can't install signal handler: %s", g_strerror(errno));
+    raise(SIGINT);
+}
+
+
+/**************************
+ *** Logging management ***
+ **************************/
+void logging_init() {
     /* Set the default handler */
     g_log_set_default_handler(spop_log_handler, NULL);
 
@@ -144,11 +189,7 @@ void logging_init() {
     g_log_file_path = config_get_string_opt("log_file", "/var/log/spopd.log");
     if (strlen(g_log_file_path) > 0) {
         /* Install a handler so that we can reopen the file on SIGHUP */
-        act.sa_handler = sighup_handler;
-        act.sa_flags = 0;
-        sigemptyset(&act.sa_mask);
-        sigaddset(&act.sa_mask, SIGHUP);
-        if (sigaction(SIGHUP, &act, NULL) == -1)
+        if (signal(SIGHUP, sighup_handler) == SIG_ERR)
             g_error("Can't install signal handler: %s", g_strerror(errno));
 
         /* And open the file using this handler :) */
