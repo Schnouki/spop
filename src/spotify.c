@@ -49,6 +49,17 @@ static unsigned int g_audio_time = 0;
 static unsigned int g_audio_samples = 0;
 static unsigned int g_audio_rate = 44100;
 
+/* Session load/unload callbacks */
+static GList* g_session_callbacks = NULL;
+typedef struct {
+    spop_session_callback_ptr func;
+    gpointer user_data;
+} session_callback;
+typedef struct {
+    session_callback_type type;
+    gpointer data;
+} session_callback_data;
+
 /* Application key -- defined in appkey.c */
 extern const uint8_t g_appkey[];
 extern const size_t g_appkey_size;
@@ -57,13 +68,13 @@ extern const size_t g_appkey_size;
 /****************************
  *** Callbacks structures ***
  ****************************/
-static sp_playlistcontainer_callbacks g_container_callbacks = {
+static sp_playlistcontainer_callbacks g_sp_container_callbacks = {
     NULL,
     NULL,
     NULL,
     &cb_container_loaded
 };
-static sp_session_callbacks g_session_callbacks = {
+static sp_session_callbacks g_sp_session_callbacks = {
     &cb_logged_in,
     &cb_logged_out,
     &cb_metadata_updated,
@@ -95,7 +106,7 @@ void session_init(gboolean high_bitrate) {
     config.application_key = g_appkey;
     config.application_key_size = g_appkey_size;
     config.user_agent = "spop " SPOP_VERSION;
-    config.callbacks = &g_session_callbacks;
+    config.callbacks = &g_sp_session_callbacks;
 
     error = sp_session_init(&config, &g_session);
     if (error != SP_ERROR_OK)
@@ -117,7 +128,7 @@ void session_init(gboolean high_bitrate) {
         g_error("Could not get the playlist container.");
 
     /* Callback to be able to wait until it is loaded */
-    sp_playlistcontainer_add_callbacks(g_container, &g_container_callbacks, NULL);
+    sp_playlistcontainer_add_callbacks(g_container, &g_sp_container_callbacks, NULL);
 }
 
 void session_login(const char* username, const char* password) {
@@ -132,9 +143,9 @@ void session_login(const char* username, const char* password) {
 }
 
 
-/**************************************************
- *** Functions used from commands and callbacks ***
- **************************************************/
+/***************************
+ *** Playlist management ***
+ ***************************/
 int playlists_len() {
     return sp_playlistcontainer_num_playlists(g_container);
 }
@@ -143,17 +154,39 @@ sp_playlist* playlist_get(int nb) {
     return sp_playlistcontainer_playlist(g_container, nb);
 }
 
+/**********************
+ * Session management *
+ **********************/
 void session_load(sp_track* track) {
     sp_error error;
+    session_callback_data scbd;
+
+    g_debug("Loading track.");
     
     error = sp_session_player_load(g_session, track);
     if (error != SP_ERROR_OK)
         g_error("Failed to load track: %s", sp_error_message(error));
 
+    /* Queue some events management */
     cb_notify_main_thread(NULL);
+
+    /* Then call callbacks */
+    scbd.type = SPOP_SESSION_LOAD;
+    scbd.data = track;
+    g_list_foreach(g_session_callbacks, session_call_callback, &scbd);
 }
 
 void session_unload() {
+    session_callback_data scbd;
+
+    g_debug("Unloading track.");
+
+    /* First call callbacks */
+    scbd.type = SPOP_SESSION_UNLOAD;
+    scbd.data = NULL;
+    g_list_foreach(g_session_callbacks, session_call_callback, &scbd);
+
+    /* Then really unload */
     sp_session_player_play(g_session, FALSE);
     g_audio_delivery_func(NULL, NULL, 0);
     sp_session_player_unload(g_session);
@@ -194,6 +227,41 @@ int session_play_time() {
     return g_audio_time + (g_audio_samples / g_audio_rate);
 }
 
+/********************************
+ * Session callbacks management *
+ ********************************/
+void session_call_callback(gpointer data, gpointer user_data) {
+    session_callback* scb = (session_callback*) data;
+    session_callback_data* scbd = (session_callback_data*) user_data;
+
+    scb->func(scbd->type, scbd->data, scb->user_data);
+}
+
+gboolean session_add_callback(spop_session_callback_ptr func, gpointer user_data) {
+    session_callback* scb;
+    GList* cur;
+
+    /* Is there already such a callback/data couple in the list? */
+    cur = g_session_callbacks;
+    while (cur != NULL) {
+        scb = cur->data;
+        if ((scb->func == func) && (scb->user_data == user_data))
+            return FALSE;
+        cur = cur->next;
+    }
+
+    /* Callback/data not in the list: add them */
+    scb = g_malloc(sizeof(session_callback));
+    scb->func = func;
+    scb->user_data = user_data;
+    g_session_callbacks = g_list_prepend(g_session_callbacks, scb);
+    return TRUE;
+}
+
+
+/*********************
+ * Tracks management *
+ *********************/
 GArray* tracks_get_playlist(sp_playlist* pl) {
     GArray* tracks;
     sp_track* tr;

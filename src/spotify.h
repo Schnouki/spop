@@ -33,20 +33,30 @@
 void session_init(gboolean high_bitrate);
 void session_login(const char* username, const char* password);
 
-/* Functions used from commands or callbacks */
+/* Playlist management */
 int playlists_len();
 sp_playlist* playlist_get(int nb);
-
 sp_playlistcontainer* session_playlistcontainer();
 
+/* Session management */
 void session_load(sp_track* track);
 void session_unload();
 void session_play(gboolean play);
 void session_seek(int pos);
 int session_play_time();
 
-GArray* tracks_get_playlist(sp_playlist* pl);
+/* Session callbacks management */
+typedef enum {
+    SPOP_SESSION_LOAD,
+    SPOP_SESSION_UNLOAD,
+} session_callback_type;
+typedef void (*spop_session_callback_ptr)(session_callback_type type, gpointer data, gpointer user_data);
+void session_call_callback(gpointer data, gpointer user_data);
+gboolean session_add_callback(spop_session_callback_ptr func, gpointer user_data);
+gboolean session_remove_callback(spop_session_callback_ptr func, gpointer user_data);
 
+/* Tracks management */
+GArray* tracks_get_playlist(sp_playlist* pl);
 void track_get_data(sp_track* track, const char** name, GString** artist, GString** album, GString** link, int* min, int* sec);
 
 /* Utility functions */
