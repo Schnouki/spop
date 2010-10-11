@@ -64,27 +64,33 @@ static void config_ready() {
 
 /* Read options from the config file. To avoid repetitions, this is put in an ugly macro :) */
 #define CONFIG_GET_FCT(rtype, dsptype, read_fct, fct_name)              \
-    rtype fct_name(const char* name) {                                  \
+    rtype fct_name##_group(const char* group, const char* name) {       \
         rtype value;                                                    \
         GError* err = NULL;                                             \
         config_ready();                                                 \
-        value = read_fct(g_config_file, g_get_prgname(), name, &err);   \
+        value = read_fct(g_config_file, group, name, &err);             \
         if (err)                                                        \
-            g_error("Error while reading " dsptype " \"%s\" in configuration file: %s", name, err->message); \
+            g_error("Error while reading " dsptype " \"%s::%s\" in configuration file: %s", group, name, err->message); \
         return value;                                                   \
     }                                                                   \
-    rtype fct_name##_opt(const char* name, rtype def_value) {           \
+    rtype fct_name(const char* name) {                                  \
+        return fct_name##_group(g_get_prgname(), name);                 \
+    }                                                                   \
+    rtype fct_name##_opt_group(const char* group, const char* name, rtype def_value) { \
         config_ready();                                                 \
-        if (g_key_file_has_key(g_config_file, g_get_prgname(), name, NULL)) \
+        if (g_key_file_has_key(g_config_file, group, name, NULL))       \
             return fct_name(name);                                      \
         else                                                            \
             return def_value;                                           \
     }                                                                   \
-    rtype* fct_name##_list(const char* name, gsize* length) {           \
+    rtype fct_name##_opt(const char* name, rtype def_value) {           \
+        return fct_name##_opt_group(g_get_prgname(), name, def_value);        \
+    }                                                                   \
+    rtype* fct_name##_list_group(const char* group, const char* name, gsize* length) { \
         rtype* value;                                                   \
         GError* err = NULL;                                             \
         config_ready();                                                 \
-        value = (rtype*) read_fct##_list(g_config_file, g_get_prgname(), name, length, &err); \
+        value = (rtype*) read_fct##_list(g_config_file, group, name, length, &err); \
         if (err) {                                                      \
             if (err->code == G_KEY_FILE_ERROR_KEY_NOT_FOUND) {          \
                 if (length) *length = 0;                                \
@@ -94,6 +100,9 @@ static void config_ready() {
                 g_error("Error while reading " dsptype "_list \"%s\" in configuration file: %s", name, err->message); \
         }                                                               \
         return value;                                                   \
+    }                                                                   \
+    rtype* fct_name##_list(const char* name, gsize* length) {           \
+        return fct_name##_list_group(g_get_prgname(), name, length);    \
     }
 
 CONFIG_GET_FCT(gboolean, "boolean", g_key_file_get_boolean, config_get_bool)

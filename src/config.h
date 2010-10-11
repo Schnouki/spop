@@ -31,8 +31,11 @@
 /* Prototypes for functions used to read options from the config file. To avoid
  * repetitions, this is put in an ugly macro :) */
 #define CONFIG_GET_FCT_PROTO(rtype, fct_name)                           \
+    rtype fct_name##_group(const char* group, const char* name);        \
     rtype fct_name(const char* name);                                   \
+    rtype fct_name##_opt_group(const char* group, const char* name, rtype def_value); \
     rtype fct_name##_opt(const char* name, rtype def_value);            \
+    rtype* fct_name##_list_group(const char* group, const char* name, gsize* length); \
     rtype* fct_name##_list(const char* name, gsize* length);
 
 CONFIG_GET_FCT_PROTO(gboolean, config_get_bool)
