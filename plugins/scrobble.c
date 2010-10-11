@@ -153,7 +153,6 @@ static void now_playing_callback(SoupSession* session, SoupMessage* msg, gpointe
     else {
         /* Success: do some cleanup */
         g_free((gpointer) nprd->artist);
-        g_free((gpointer) nprd->track);
         g_free((gpointer) nprd->album);
         g_free(nprd);
         return;
