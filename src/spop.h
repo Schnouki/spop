@@ -26,8 +26,14 @@
 #ifndef SPOP_H
 #define SPOP_H
 
+#include <glib.h>
+
 #define SPOP_VERSION "0.0.1"
 #define SPOP_YEAR    "2010"
+
+/* Verbosity */
+extern gboolean debug_mode;
+extern gboolean verbose_mode;
 
 /* Logging */
 #define G_LOG_LEVEL_LIBSPOTIFY (1 << (G_LOG_LEVEL_USER_SHIFT))

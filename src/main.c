@@ -49,8 +49,8 @@ static const char* copyright_notice =
  ***************************************/
 static gboolean daemon_mode  = TRUE;
 static gboolean i_am_daemon  = FALSE;
-static gboolean debug_mode   = FALSE;
-static gboolean verbose_mode = FALSE;
+gboolean debug_mode   = FALSE;
+gboolean verbose_mode = FALSE;
 
 static int real_main();
 static void exit_handler_init();
