@@ -54,6 +54,7 @@ static void set_text(const gchar* txt) {
                            G_TYPE_STRING, str->str,
                            G_TYPE_INVALID, G_TYPE_INVALID))
         g_warning("Could not send command to Awesome via D-Bus: %s", err->message);
+    g_string_free(str, TRUE);
 }
 
 static void notification_callback(const GString* status, gpointer data) {
