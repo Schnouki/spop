@@ -26,10 +26,12 @@
 #include <glib.h>
 #include <gmodule.h>
 #include <libsoup/soup.h>
+#include <libspotify/api.h>
 #include <string.h>
 
 #include "spop.h"
 #include "config.h"
+#include "spotify.h"
 
 #define SCROBBLE_CLIENT_ID      "tst"
 #define SCROBBLE_CLIENT_VERSION "1.0"
@@ -42,9 +44,132 @@ static gchar* g_nowplaying_url = NULL;
 static gchar* g_scrobble_url = NULL;
 
 /* Functions prototypes */
+static void session_callback(session_callback_type type, gpointer data, gpointer user_data);
+
+static void now_playing_request(sp_track* track);
+static gboolean now_playing_handler(gpointer data);
+static void now_playing_callback(SoupSession* session, SoupMessage* msg, gpointer user_data);
+
+static void scrobble_request();
+//static void scrobble_callback();
+
 static void token_request();
 static void token_callback(SoupSession* session, SoupMessage* msg, gpointer user_data);
 
+typedef struct {
+    const char* artist;
+    const char* track;
+    const char* album;
+    int length;
+} now_playing_request_data;
+
+
+/************************************
+ * Spop session callback management *
+ ************************************/
+static void session_callback(session_callback_type type, gpointer data, gpointer user_data) {
+    if (type == SPOP_SESSION_LOAD)
+        now_playing_request((sp_track*) data);
+    else if (type == SPOP_SESSION_UNLOAD)
+        scrobble_request();
+}
+
+/***************************************
+ * "Now playing" submission management *
+ ***************************************/
+static void now_playing_request(sp_track* track) {
+    now_playing_request_data* nprd = NULL;
+    GString* artist;
+    GString* album;
+    int min, sec;
+
+    g_debug("scrobble: Preparing a \"now playing\" request.");
+
+    /* Prepare the data structure to pass to the event handler */
+    nprd = g_malloc(sizeof(now_playing_request_data));
+    track_get_data(track, &nprd->track, &artist, &album, NULL, &min, &sec);
+    nprd->artist = artist->str;
+    nprd->album = album->str;
+    nprd->length = min*60 + sec;
+    g_string_free(artist, FALSE);
+    g_string_free(album, FALSE);
+
+    /* Try to submit the request; if it fails; try again in one second */
+    if (now_playing_handler(nprd))
+        g_timeout_add_seconds(1, now_playing_handler, nprd);
+}
+
+static gboolean now_playing_handler(gpointer data) {
+    now_playing_request_data* nprd = data;
+    GString* len;
+
+    SoupMessage* message;
+
+    g_debug("scrobble: Entering the \"now playing\" handler.");
+
+    /* Is there a valid session token? */
+    if (!g_token) {
+        if (!g_token_requested)
+            token_request();
+        return TRUE;
+    }
+
+    /* Validate data */
+    len = g_string_sized_new(5);
+    g_string_printf(len, "%d", nprd->length);
+
+    if (!nprd->artist) nprd->artist = g_strdup("");
+    if (!nprd->track)  nprd->track  = g_strdup("");
+    if (!nprd->album)  nprd->album  = g_strdup("");
+
+    /* Prepare the message and queue it */
+    message = soup_form_request_new("POST", g_nowplaying_url,
+                                    "s", g_token,
+                                    "a", nprd->artist,
+                                    "t", nprd->track,
+                                    "b", nprd->album,
+                                    "l", len->str,
+                                    "n", "",
+                                    "m", "",
+                                    NULL);
+    g_string_free(len, TRUE);
+    soup_session_queue_message(g_session, message, now_playing_callback, nprd);
+
+    return FALSE;
+}
+
+static void now_playing_callback(SoupSession* session, SoupMessage* msg, gpointer user_data) {
+    now_playing_request_data* nprd = user_data;
+
+    /* Success? */
+    if (msg->status_code != 200) {
+        g_info("scrobble: \"Now playing\" request ended with status code %d.", msg->status_code);
+    }
+    else if (strncmp(msg->response_body->data, "OK", 2) != 0) {
+        gchar* str = g_strndup(msg->response_body->data, msg->response_body->length);
+        g_info("scrobble: \"Now playing\" request failed: %s", str);
+        g_free(str);
+    }
+    else {
+        /* Success: do some cleanup */
+        g_free((gpointer) nprd->artist);
+        g_free((gpointer) nprd->track);
+        g_free((gpointer) nprd->album);
+        g_free(nprd);
+        return;
+    }
+
+    /* If we reach this point, there was an error: try again in one second */
+    g_free(g_token);
+    g_token = NULL;
+    g_timeout_add_seconds(1, now_playing_handler, nprd);
+}
+
+/*************************
+ * Scrobbling management *
+ *************************/
+static void scrobble_request() {
+}
 
 /****************************
  * Session token management *
@@ -114,7 +239,7 @@ static void token_request() {
     g_free(timestamp);
     g_free(auth_token_md5);    
 
-    /* Prepare the message and send it*/
+    /* Prepare the message and queue it*/
     message = soup_message_new_from_uri("GET", uri);
     soup_session_queue_message(g_session, message, token_callback, NULL);
     g_token_requested = TRUE;
@@ -131,7 +256,7 @@ static void token_callback(SoupSession* session, SoupMessage* msg, gpointer user
 
     /* Success? */
     if (msg->status_code != 200) {
-        g_warning("scrobble: Token request ended with status code %d.", msg->status_code);
+        g_info("scrobble: Token request ended with status code %d.", msg->status_code);
         goto token_fail;
     }
 
@@ -145,7 +270,7 @@ static void token_callback(SoupSession* session, SoupMessage* msg, gpointer user
     }
     if (strncmp(bol, "OK", eol-bol) != 0) {
         gchar* msg = g_strndup(bol, eol-bol);
-        g_warning("scrobble: Token request failed: %s", msg);
+        g_info("scrobble: Token request failed: %s", msg);
         g_free(msg);
         goto token_fail;
     }
@@ -220,6 +345,10 @@ G_MODULE_EXPORT void spop_scrobble_init() {
         soup_session_add_feature(g_session, SOUP_SESSION_FEATURE(logger));
         g_object_unref(logger);
     }
+
+    /* Register the session callback */
+    if (!session_add_callback(session_callback, NULL))
+        g_error("Could not add scrobble callback.");
 
     /* Request a session token */
     token_request();
