@@ -47,6 +47,8 @@ pkg_check_modules(DBUS dbus-glib-1)
 string(REPLACE ";" " " DBUS_CFLAGS "${DBUS_CFLAGS}")
 pkg_check_modules(NOTIFY libnotify)
 string(REPLACE ";" " " NOTIFY_CFLAGS "${NOTIFY_CFLAGS}")
+pkg_check_modules(SOUP libsoup-2.4)
+string(REPLACE ";" " " SOUP_CFLAGS "${SOUP_CFLAGS}")
 
 # spop daemon
 set(SPOPD
@@ -118,6 +120,19 @@ if(NOTIFY_FOUND)
   set(targets ${targets} spop_plugin_notify)
 endif(NOTIFY_FOUND)
 
+# Generic plugin: scrobble
+if(SOUP_FOUND)
+  set(PLUGIN_SCROBBLE
+    plugins/scrobble.c
+  )
+  add_library(spop_plugin_scrobble MODULE ${PLUGIN_SCROBBLE})
+  set_target_properties(spop_plugin_scrobble PROPERTIES
+    COMPILE_FLAGS "${GLIB2_CFLAGS} ${SOUP_CFLAGS}"
+  )
+  target_link_libraries(spop_plugin_scrobble ${GLIB2_LIBRARIES} ${SOUP_LIBRARIES})
+  set(targets ${targets} spop_plugin_scrobble)
+endif(SOUP_FOUND)
+
 # Common to all source files
 set(SRC
   ${SPOPD}
@@ -125,6 +140,7 @@ set(SRC
   ${AUDIO_AO}
   ${PLUGIN_AWESOME}
   ${PLUGIN_NOTIFY}
+  ${PLUGIN_SCROBBLE}
 )
 set_source_files_properties(${SRC}
   COMPILE_FLAGS "-O2 -Wall -Werror"

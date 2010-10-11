@@ -31,4 +31,12 @@ audio_output = oss
 #log_file = /var/log/spopd.log
 
 # Various plugins to load.
-#plugins = notify
+#plugins = notify;scrobble
+
+[scrobble]
+# API endpoint of the scrobbling service you're using.
+# - Last.FM: http://post.audioscrobbler.com:80/
+# - Libre.FM: http://turtle.libre.fm/
+api_endpoint = http://post.audioscrobbler.com:80/
+username = USERNAME
+password = PASSWORD
