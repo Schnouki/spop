@@ -3,7 +3,3 @@ appkey.c
 
 # Build directory
 build/
-
-# Auto-generated source files
-src/libspotify.h
-src/libspotify_wrapper.c
