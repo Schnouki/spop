@@ -45,6 +45,18 @@ static gboolean g_token_requested = FALSE;
 static gchar* g_nowplaying_url = NULL;
 static gchar* g_scrobble_url = NULL;
 
+static GList* g_tracks = NULL;
+typedef struct {
+    gchar* artist;
+    gchar* track;
+    gchar* album;
+    gchar* length;
+    gboolean np_submitted;
+    gboolean np_submitting;
+    gboolean scrobbled;
+    time_t start;
+} track_data;
+
 /* Functions prototypes */
 static void session_callback(session_callback_type type, gpointer data, gpointer user_data);
 
@@ -58,18 +70,41 @@ static void scrobble_request();
 static void token_request();
 static void token_callback(SoupSession* session, SoupMessage* msg, gpointer user_data);
 
-typedef struct {
-    gchar* artist;
-    gchar* track;
-    gchar* album;
-    int length;
-} now_playing_request_data;
-
 
 /************************************
  * Spop session callback management *
  ************************************/
 static void session_callback(session_callback_type type, gpointer data, gpointer user_data) {
+    GList* cur;
+    GList* next;
+    track_data* td;
+    gboolean first;
+
+    /* First do some cleanup.
+       - First item in the list: clean if both submitted and scrobbled
+       - Other items: clean if scrobbled (it won't be submitted anyway...)
+       - All of them: don't clean if the submission is in progress
+    */
+    cur = g_tracks;
+    first = TRUE;
+    while (cur != NULL) {
+        next = cur->next;
+        td = cur->data;
+
+        if (td->scrobbled && !td->np_submitting && ((first && td->np_submitted) || !first)) {
+            /* This item is not needed anymore */
+            g_debug("scrobble: Cleaning an item: \"%s - %s\".", td->artist, td->track);
+            g_free(td->artist);
+            g_free(td->track);
+            g_free(td->album);
+            g_free(td->length);
+            g_tracks = g_list_delete_link(g_tracks, cur);
+        }
+        first = FALSE;
+        cur = next;
+    }
+
+    /* Then handle the session event */
     if (type == SPOP_SESSION_LOAD)
         now_playing_request((sp_track*) data);
     else if (type == SPOP_SESSION_UNLOAD)
@@ -80,26 +115,44 @@ static void session_callback(session_callback_type type, gpointer data, gpointer
  * "Now playing" submission management *
  ***************************************/
 static void now_playing_request(sp_track* track) {
-    now_playing_request_data* nprd = NULL;
+    track_data* td = NULL;
     int min, sec;
+    GString* len;
 
     g_debug("scrobble: Preparing a \"now playing\" request.");
 
-    /* Prepare the data structure to pass to the event handler */
-    nprd = g_malloc(sizeof(now_playing_request_data));
-    track_get_data(track, &nprd->track, &nprd->artist, &nprd->album, NULL, &min, &sec);
-    nprd->length = min*60 + sec;
+    /* Get some informations about the current track */
+    td = g_malloc(sizeof(track_data));
+    track_get_data(track, &td->track, &td->artist, &td->album, NULL, &min, &sec);
+
+    len = g_string_sized_new(5);
+    g_string_printf(len, "%d", min*60 + sec);
+    td->length = len->str;
+    g_string_free(len, FALSE);
+
+    if (!td->artist) td->artist = g_strdup("");
+    if (!td->track)  td->track  = g_strdup("");
+    if (!td->album)  td->album  = g_strdup("");
+
+    td->np_submitted = FALSE;
+    td->np_submitting = FALSE;
+    td->scrobbled = TRUE;
+
+    td->start = time(NULL);
+    if (td->start == -1)
+        g_error("scrobble: Can't get current time: %s", g_strerror(errno));
+
+    /* Add these data to the list */
+    g_tracks = g_list_prepend(g_tracks, td);
 
     /* Try to submit the request; if it fails; try again in one second */
-    if (now_playing_handler(nprd))
-        g_timeout_add_seconds(1, now_playing_handler, nprd);
+    if (now_playing_handler(NULL))
+        g_timeout_add_seconds(1, now_playing_handler, NULL);
 }
 
 static gboolean now_playing_handler(gpointer data) {
-    now_playing_request_data* nprd = data;
-    GString* len;
-
     SoupMessage* message;
+    track_data* td;
 
     g_debug("scrobble: Entering the \"now playing\" handler.");
 
@@ -110,32 +163,36 @@ static gboolean now_playing_handler(gpointer data) {
         return TRUE;
     }
 
-    /* Validate data */
-    len = g_string_sized_new(5);
-    g_string_printf(len, "%d", nprd->length);
+    /* Get the latest track */
+    if (!g_tracks)
+        g_error("scrobble: No data for the current track.");
+    td = g_tracks->data;
 
-    if (!nprd->artist) nprd->artist = g_strdup("");
-    if (!nprd->track)  nprd->track  = g_strdup("");
-    if (!nprd->album)  nprd->album  = g_strdup("");
+    /* Was it already submitted, or is the submission in progress? */
+    if (td->np_submitted || td->np_submitting)
+        return FALSE;
 
     /* Prepare the message and queue it */
+    g_debug("scrobble: Sending \"Now playing\" request for \"%s - %s\"", td->artist, td->track);
     message = soup_form_request_new("POST", g_nowplaying_url,
                                     "s", g_token,
-                                    "a", nprd->artist,
-                                    "t", nprd->track,
-                                    "b", nprd->album,
-                                    "l", len->str,
+                                    "a", td->artist,
+                                    "t", td->track,
+                                    "b", td->album,
+                                    "l", td->length,
                                     "n", "",
                                     "m", "",
                                     NULL);
-    g_string_free(len, TRUE);
-    soup_session_queue_message(g_session, message, now_playing_callback, nprd);
+    soup_session_queue_message(g_session, message, now_playing_callback, td);
+    td->np_submitting = TRUE;
 
     return FALSE;
 }
 
 static void now_playing_callback(SoupSession* session, SoupMessage* msg, gpointer user_data) {
-    now_playing_request_data* nprd = user_data;
+    track_data* td = user_data;
+    
+    td->np_submitting = FALSE;
 
     /* Success? */
     if (msg->status_code != 200) {
@@ -147,18 +204,16 @@ static void now_playing_callback(SoupSession* session, SoupMessage* msg, gpointe
         g_free(str);
     }
     else {
-        /* Success: do some cleanup */
-        g_free(nprd->artist);
-        g_free(nprd->track);
-        g_free(nprd->album);
-        g_free(nprd);
+        /* Success: mark the track as submitted */
+        g_debug("scrobble: Marking track \"%s - %s\" as submitted.", td->artist, td->track);
+        td->np_submitted = TRUE;
         return;
     }
 
     /* If we reach this point, there was an error: try again in one second */
     g_free(g_token);
     g_token = NULL;
-    g_timeout_add_seconds(1, now_playing_handler, nprd);
+    g_timeout_add_seconds(1, now_playing_handler, NULL);
 }
 
 /*************************
