@@ -50,11 +50,13 @@ typedef struct {
     gchar* artist;
     gchar* track;
     gchar* album;
-    gchar* length;
+    int length;
     gboolean np_submitted;
     gboolean np_submitting;
     gboolean scrobbled;
+    gboolean scrobbling;
     time_t start;
+    int play_time;
 } track_data;
 
 /* Functions prototypes */
@@ -65,10 +67,13 @@ static gboolean now_playing_handler(gpointer data);
 static void now_playing_callback(SoupSession* session, SoupMessage* msg, gpointer user_data);
 
 static void scrobble_request();
-//static void scrobble_callback();
+static gboolean scrobble_handler(gpointer data);
+static void scrobble_callback(SoupSession* session, SoupMessage* msg, gpointer user_data);
 
 static void token_request();
 static void token_callback(SoupSession* session, SoupMessage* msg, gpointer user_data);
+
+static int min(int a, int b) { return a>b ? b : a; }
 
 
 /************************************
@@ -91,13 +96,12 @@ static void session_callback(session_callback_type type, gpointer data, gpointer
         next = cur->next;
         td = cur->data;
 
-        if (td->scrobbled && !td->np_submitting && ((first && td->np_submitted) || !first)) {
+        if (td->scrobbled && !td->scrobbling && !td->np_submitting && ((first && td->np_submitted) || !first)) {
             /* This item is not needed anymore */
             g_debug("scrobble: Cleaning an item: \"%s - %s\".", td->artist, td->track);
             g_free(td->artist);
             g_free(td->track);
             g_free(td->album);
-            g_free(td->length);
             g_tracks = g_list_delete_link(g_tracks, cur);
         }
         first = FALSE;
@@ -117,7 +121,6 @@ static void session_callback(session_callback_type type, gpointer data, gpointer
 static void now_playing_request(sp_track* track) {
     track_data* td = NULL;
     int min, sec;
-    GString* len;
 
     g_debug("scrobble: Preparing a \"now playing\" request.");
 
@@ -125,22 +128,21 @@ static void now_playing_request(sp_track* track) {
     td = g_malloc(sizeof(track_data));
     track_get_data(track, &td->track, &td->artist, &td->album, NULL, &min, &sec);
 
-    len = g_string_sized_new(5);
-    g_string_printf(len, "%d", min*60 + sec);
-    td->length = len->str;
-    g_string_free(len, FALSE);
-
     if (!td->artist) td->artist = g_strdup("");
     if (!td->track)  td->track  = g_strdup("");
     if (!td->album)  td->album  = g_strdup("");
 
+    td->length = 60*min + sec;
     td->np_submitted = FALSE;
     td->np_submitting = FALSE;
-    td->scrobbled = TRUE;
+    td->scrobbled = FALSE;
+    td->scrobbling = FALSE;
 
     td->start = time(NULL);
     if (td->start == -1)
         g_error("scrobble: Can't get current time: %s", g_strerror(errno));
+
+    td->play_time = -1;
 
     /* Add these data to the list */
     g_tracks = g_list_prepend(g_tracks, td);
@@ -153,6 +155,7 @@ static void now_playing_request(sp_track* track) {
 static gboolean now_playing_handler(gpointer data) {
     SoupMessage* message;
     track_data* td;
+    gchar* len;
 
     g_debug("scrobble: Entering the \"now playing\" handler.");
 
@@ -173,16 +176,18 @@ static gboolean now_playing_handler(gpointer data) {
         return FALSE;
 
     /* Prepare the message and queue it */
+    len = g_strdup_printf("%d", td->length);
     g_debug("scrobble: Sending \"Now playing\" request for \"%s - %s\"", td->artist, td->track);
     message = soup_form_request_new("POST", g_nowplaying_url,
                                     "s", g_token,
                                     "a", td->artist,
                                     "t", td->track,
                                     "b", td->album,
-                                    "l", td->length,
+                                    "l", len,
                                     "n", "",
                                     "m", "",
                                     NULL);
+    g_free(len);
     soup_session_queue_message(g_session, message, now_playing_callback, td);
     td->np_submitting = TRUE;
 
@@ -220,7 +225,155 @@ static void now_playing_callback(SoupSession* session, SoupMessage* msg, gpointe
  * Scrobbling management *
  *************************/
 static void scrobble_request() {
+    track_data* td = NULL;
+
+    g_debug("scrobble: Preparring a scrobbling request.");
+
+    if (!g_tracks)
+        g_error("scrobble: No data for the current track.");
+    td = g_tracks->data;
+
+    td->play_time = session_play_time();
+    /* Try to scrobble this. If it fails, try again in a second */
+    if (scrobble_handler(NULL))
+        g_timeout_add_seconds(1, scrobble_handler, NULL);
 }
+
+static gboolean scrobble_handler(gpointer data) {
+    GList* cur;
+    GList* scrobbles;
+    GHashTable* h;
+    int i;
+    SoupMessage* message;
+    track_data* td;
+
+    g_debug("scrobble: Entering the scrobbling handler.");
+
+    /* Is there a valid session token? */
+    if (!g_token) {
+        if (!g_token_requested)
+            token_request();
+        return TRUE;
+    }
+
+    /* Hash table used to store key/values for the scrobbling request */
+    h = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+    if (!h)
+        g_error("scrobble: Can't create a new hash table.");
+
+    /* Fill the hash table with values from g_tracks */
+    cur = g_list_last(g_tracks);
+    scrobbles = NULL;
+    i = 0;
+    while (cur != NULL) {
+        td = cur->data;
+        cur = cur->prev;
+
+        /* Should this track be scrobbled?
+           - longer than 30 seconds
+           - played for at least 240 seconds, or half of the track, whichever
+             comes first 
+           - not scrobbled yet */
+        if (td->scrobbled || td->scrobbling) {
+            continue;
+        }
+        else if ((td->length >= 30) && (td->play_time >= min(240, td->length/2))) {
+            /* Scrobble! */
+            g_debug("scrobble: Scrobbling \"%s - %s\".", td->artist, td->track);
+            scrobbles = g_list_prepend(scrobbles, td);
+            td->scrobbling = TRUE;
+
+            g_hash_table_insert(h,
+                                g_strdup_printf("a[%d]", i),
+                                g_strdup(td->artist));
+            g_hash_table_insert(h,
+                                g_strdup_printf("t[%d]", i),
+                                g_strdup(td->track)); 
+            g_hash_table_insert(h,
+                                g_strdup_printf("i[%d]", i),
+                                g_strdup_printf("%ld", td->start));
+            g_hash_table_insert(h,
+                                g_strdup_printf("o[%d]", i),
+                                g_strdup("P"));
+            g_hash_table_insert(h,
+                                g_strdup_printf("r[%d]", i),
+                                g_strdup(""));
+            g_hash_table_insert(h,
+                                g_strdup_printf("l[%d]", i),
+                                g_strdup_printf("%d", td->length));
+            g_hash_table_insert(h,
+                                g_strdup_printf("b[%d]", i),
+                                g_strdup(td->album));
+            g_hash_table_insert(h,
+                                g_strdup_printf("n[%d]", i),
+                                g_strdup(""));
+            g_hash_table_insert(h,
+                                g_strdup_printf("m[%d]", i),
+                                g_strdup(""));
+
+            i += 1;
+        }
+        else {
+            /* Don't scrobble. Mark as scrobbled so that it can be freed. */
+            td->scrobbled = TRUE;
+        }
+    }
+
+    if (i > 0) {
+        /* There is something to scrobble: prepare and send the message */
+        g_hash_table_insert(h, g_strdup("s"), g_strdup(g_token));
+        message = soup_form_request_new_from_hash("POST", g_scrobble_url, h);
+        soup_session_queue_message(g_session, message, scrobble_callback, scrobbles);
+    }
+
+    /* Cleanup */
+    g_hash_table_destroy(h);
+
+    return FALSE;
+}
+
+static void scrobble_callback(SoupSession* session, SoupMessage* msg, gpointer user_data) {
+    GList* scrobbles = user_data;
+    GList* cur;
+    track_data* td;
+
+    /* Remove the scrobbling flag */
+    cur = scrobbles;
+    while (cur != NULL) {
+        td = cur->data;
+        td->scrobbling = FALSE;
+        cur = cur->next;
+    }
+
+    /* Success? */
+    if (msg->status_code != 200) {
+        g_info("scrobble: Scrobbling request ended with status code %d.", msg->status_code);
+    }
+    else if (strncmp(msg->response_body->data, "OK", 2) != 0) {
+        gchar* str = g_strndup(msg->response_body->data, msg->response_body->length);
+        g_info("scrobble: Scrobbling request failed: %s", str);
+        g_free(str);
+    }
+    else {
+        /* Success: mark all the tracks as scrobbled */
+        int n=0;
+        cur = scrobbles;
+        while (cur != NULL) {
+            td = cur->data;
+            g_debug("scrobble: Marking track \"%s - %s\" as scrobbled.", td->artist, td->track);
+            td->scrobbled = TRUE;
+            cur = cur->next;
+            n += 1;
+        }
+        return;
+    }
+
+    /* If we reach this point, there was an error: try again in one second */
+    g_free(g_token);
+    g_token = NULL;
+    g_timeout_add_seconds(1, scrobble_handler, NULL);
+}
+
 
 /****************************
  * Session token management *
