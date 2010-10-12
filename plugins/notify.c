@@ -107,7 +107,7 @@ static void notification_callback(const GString* status, gpointer data) {
         notify_notification_update(g_notif, "spop update", body->str, NULL);
 
     if (!notify_notification_show(g_notif, &err))
-        g_error("Can't show notification: %s", err->message);
+        g_info("Can't show notification: %s", err->message);
 
     g_string_free(body, TRUE);
 }
