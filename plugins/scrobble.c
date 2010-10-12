@@ -23,11 +23,13 @@
  * Program grant you additional permission to convey the resulting work.
  */
 
+#include <errno.h>
 #include <glib.h>
 #include <gmodule.h>
 #include <libsoup/soup.h>
 #include <libspotify/api.h>
 #include <string.h>
+#include <time.h>
 
 #include "spop.h"
 #include "config.h"
@@ -172,12 +174,12 @@ static void scrobble_request() {
 static void token_request() {
     GString* auth_token;
     gchar* auth_token_md5;
-    GDateTime* dt;
     gchar* handshake_url;
     gchar* password;
     gchar* password_md5;
     gchar* username;
     gchar* timestamp;
+    time_t t;
 
     SoupMessage* message;
     SoupURI* uri;
@@ -193,14 +195,11 @@ static void token_request() {
     auth_token = g_string_new(password_md5);
     g_free(password_md5);
     
-    dt = g_date_time_new_now_local();
-    if (!dt)
-        g_error("scrobble: Can't get current date/time.");
+    t = time(NULL);
+    if (t == -1)
+        g_error("scrobble: Can't get current time: %s", g_strerror(errno));
 
-    timestamp = g_date_time_format(dt, "%s");
-    if (!timestamp)
-        g_error("scrobble: Could not convert date/time to a timestamp.");
-    g_date_time_unref(dt);
+    timestamp = g_strdup_printf("%ld", t);
 
     g_string_append(auth_token, timestamp);
     auth_token_md5 = g_compute_checksum_for_string(G_CHECKSUM_MD5, auth_token->str, -1);
