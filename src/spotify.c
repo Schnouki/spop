@@ -284,7 +284,7 @@ GArray* tracks_get_playlist(sp_playlist* pl) {
     return tracks;
 }
 
-void track_get_data(sp_track* track, const char** name, GString** artist, GString** album, GString** link, int* min, int* sec) {
+void track_get_data(sp_track* track, gchar** name, gchar** artist, gchar** album, gchar** link, int* min, int* sec) {
     sp_artist** art = NULL;
     sp_album* alb = NULL;
     sp_link* lnk;
@@ -301,7 +301,7 @@ void track_get_data(sp_track* track, const char** name, GString** artist, GStrin
 
     /* Begin loading everything */
     if (name) {
-        *name = sp_track_name(track);
+        *name = g_strdup(sp_track_name(track));
     }
     if (artist) {
         nb_art = sp_track_num_artists(track);
@@ -319,13 +319,16 @@ void track_get_data(sp_track* track, const char** name, GString** artist, GStrin
         sp_album_add_ref(alb);
     }
     if (link) {
+        GString* tmp;
         lnk = sp_link_create_from_track(track, 0);
         if (!lnk)
             g_error("Can't get URI from track.");
 
-        *link = g_string_sized_new(1024);
-        if (sp_link_as_string(lnk, (*link)->str, 1024) < 0)
+        tmp = g_string_sized_new(1024);
+        if (sp_link_as_string(lnk, tmp->str, 1024) < 0)
             g_error("Can't render URI from link.");
+        *link = tmp->str;
+        g_string_free(tmp, FALSE);
 
         sp_link_release(lnk);
     }
@@ -339,27 +342,26 @@ void track_get_data(sp_track* track, const char** name, GString** artist, GStrin
 
     /* Now create destination strings */
     if (artist) {
+        GString* tmp = g_string_new("");
         for (i=0; i < nb_art; i++) {
             if (sp_artist_is_loaded(art[i]))
                 s = sp_artist_name(art[i]);
             else
                 s = "[artist not loaded]";
 
-            if (i == 0) {
-                *artist = g_string_new(s);
-            }
-            else {
-                g_string_append(*artist, ", ");
-                g_string_append(*artist, s);
-            }
+            if (i != 0)
+                g_string_append(tmp, ", ");
+            g_string_append(tmp, s);
             sp_artist_release(art[i]);
         }
+        *artist = tmp->str;
+        g_string_free(tmp, FALSE);
     }
     if (album) {
         if (sp_album_is_loaded(alb))
-            *album = g_string_new(sp_album_name(alb));
+            *album = g_strdup(sp_album_name(alb));
         else
-            *album = g_string_new("[album not loaded]");
+            *album = g_strdup("[album not loaded]");
         sp_album_release(alb);
     }
 

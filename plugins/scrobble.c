@@ -57,9 +57,9 @@ static void token_request();
 static void token_callback(SoupSession* session, SoupMessage* msg, gpointer user_data);
 
 typedef struct {
-    const char* artist;
-    const char* track;
-    const char* album;
+    gchar* artist;
+    gchar* track;
+    gchar* album;
     int length;
 } now_playing_request_data;
 
@@ -79,20 +79,14 @@ static void session_callback(session_callback_type type, gpointer data, gpointer
  ***************************************/
 static void now_playing_request(sp_track* track) {
     now_playing_request_data* nprd = NULL;
-    GString* artist;
-    GString* album;
     int min, sec;
 
     g_debug("scrobble: Preparing a \"now playing\" request.");
 
     /* Prepare the data structure to pass to the event handler */
     nprd = g_malloc(sizeof(now_playing_request_data));
-    track_get_data(track, &nprd->track, &artist, &album, NULL, &min, &sec);
-    nprd->artist = artist->str;
-    nprd->album = album->str;
+    track_get_data(track, &nprd->track, &nprd->artist, &nprd->album, NULL, &min, &sec);
     nprd->length = min*60 + sec;
-    g_string_free(artist, FALSE);
-    g_string_free(album, FALSE);
 
     /* Try to submit the request; if it fails; try again in one second */
     if (now_playing_handler(nprd))
@@ -152,8 +146,9 @@ static void now_playing_callback(SoupSession* session, SoupMessage* msg, gpointe
     }
     else {
         /* Success: do some cleanup */
-        g_free((gpointer) nprd->artist);
-        g_free((gpointer) nprd->album);
+        g_free(nprd->artist);
+        g_free(nprd->track);
+        g_free(nprd->album);
         g_free(nprd);
         return;
     }

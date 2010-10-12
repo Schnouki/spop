@@ -85,13 +85,11 @@ static void notification_callback(const GString* status, gpointer data) {
     else {
         /* Read more data */
         int track_min, track_sec, pos_min, pos_sec;
-        const char* track_name;
-        GString* track_artist = NULL;
-        GString* track_album = NULL;
-        GString* track_link = NULL;
+        gchar* track_name;
+        gchar* track_artist;
         GString* short_title = NULL;
 
-        track_get_data(cur_track, &track_name, &track_artist, &track_album, &track_link, &track_min, &track_sec);
+        track_get_data(cur_track, &track_name, &track_artist, NULL, NULL, &track_min, &track_sec);
         pos_sec = session_play_time();
         pos_min = pos_sec / 60;
         pos_sec %= 60;
@@ -107,14 +105,13 @@ static void notification_callback(const GString* status, gpointer data) {
         g_string_append_printf(text,
                                "[<b>" col("#afd", "%d") ":</b> " col("#adf", "%s") " / " col("#fad", "%s") "]"
                                " [<b>" col("#dfa", "%d:%02d") "</b>/" col("#dfa", "%d:%02d") "]%s",
-                               cur_track_nb+1, track_artist->str, short_title->str,
+                               cur_track_nb+1, track_artist, short_title->str,
                                pos_min, pos_sec, track_min, track_sec, rep_shuf->str);
 
         /* Free some memory */
         g_string_free(short_title, TRUE);
-        g_string_free(track_artist, TRUE);
-        g_string_free(track_album, TRUE);
-        g_string_free(track_link, TRUE);
+        g_free(track_name);
+        g_free(track_artist);
     }
     g_string_free(rep_shuf, TRUE);
 

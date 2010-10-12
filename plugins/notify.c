@@ -60,14 +60,13 @@ static void notification_callback(const GString* status, gpointer data) {
         /* Read more data */
         gboolean repeat, shuffle;
         int track_min, track_sec;
-        const char* track_name;
-        GString* track_artist = NULL;
-        GString* track_album = NULL;
-        GString* track_link = NULL;
+        gchar* track_name;
+        gchar* track_artist;
+        gchar* track_album;
 
         repeat = queue_get_repeat();
         shuffle = queue_get_shuffle();
-        track_get_data(cur_track, &track_name, &track_artist, &track_album, &track_link, &track_min, &track_sec);
+        track_get_data(cur_track, &track_name, &track_artist, &track_album, NULL, &track_min, &track_sec);
 
         /* Prepare data to display */
         if (qs == PAUSED)
@@ -77,7 +76,7 @@ static void notification_callback(const GString* status, gpointer data) {
                                "\t<b>" col("#fad", "%s") "</b>\n"    /* title */
                                "by\t<b>" col("#adf", "%s") "</b>\n"  /* artist */
                                "from\t" col("#fda", "%s"),           /* album */
-                               cur_track_nb+1, tot_tracks, track_name, track_artist->str, track_album->str);
+                               cur_track_nb+1, tot_tracks, track_name, track_artist, track_album);
         if (repeat || shuffle) {
             g_string_append(body, "\n\nMode: ");
             if (repeat) {
@@ -90,9 +89,9 @@ static void notification_callback(const GString* status, gpointer data) {
         }
 
         /* Free some memory */
-        g_string_free(track_artist, TRUE);
-        g_string_free(track_album, TRUE);
-        g_string_free(track_link, TRUE);
+        g_free(track_name);
+        g_free(track_artist);
+        g_free(track_album);
     }
 
     /* Replace "&" with "&amp;" */

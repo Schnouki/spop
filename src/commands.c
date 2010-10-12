@@ -95,10 +95,10 @@ void status(GString* result) {
     int track_nb, total_tracks;
     queue_status qs;
     int track_min, track_sec, pos_min, pos_sec;
-    const char* track_name;
-    GString* track_artist = NULL;
-    GString* track_album = NULL;
-    GString* track_link = NULL;
+    gchar* track_name;
+    gchar* track_artist;
+    gchar* track_album;
+    gchar* track_link;
 
     qs = queue_get_status(&track, &track_nb, &total_tracks);
 
@@ -132,12 +132,13 @@ void status(GString* result) {
         pos_sec %= 60;
 
         g_string_append_printf(result, "Artist: %s\nTitle: %s\nAlbum: %s\n",
-                               track_artist->str, track_name, track_album->str);
+                               track_artist, track_name, track_album);
         g_string_append_printf(result, "Duration: %d:%02d\nPosition: %d:%02d\nURI: %s\n",
-                               track_min, track_sec, pos_min, pos_sec, track_link->str);
-        g_string_free(track_artist, TRUE);
-        g_string_free(track_album, TRUE);
-        g_string_free(track_link, TRUE);
+                               track_min, track_sec, pos_min, pos_sec, track_link);
+        g_free(track_name);
+        g_free(track_artist);
+        g_free(track_album);
+        g_free(track_link);
     }
 }
 
@@ -321,10 +322,10 @@ void format_tracks_array(GArray* tracks, GString* dst) {
 
     bool track_available;
     int track_min, track_sec;
-    const char* track_name;
-    GString* track_artist = NULL;
-    GString* track_album = NULL;
-    GString* track_link = NULL;
+    gchar* track_name;
+    gchar* track_artist;
+    gchar* track_album;
+    gchar* track_link;
 
     /* If the playlist is empty, just add a newline (an empty string would mean "error") */
     if (tracks->len == 0) {
@@ -341,12 +342,13 @@ void format_tracks_array(GArray* tracks, GString* dst) {
         track_get_data(track, &track_name, &track_artist, &track_album, &track_link, &track_min, &track_sec);
 
         g_string_append_printf(dst, "%d%s %s -- \"%s\" -- \"%s\" (%d:%02d) URI:%s\n",
-                               i+1, (track_available ? "" : "-"), track_artist->str,
-                               track_album->str, track_name, track_min, track_sec, 
-                               track_link->str);
-        g_string_free(track_artist, TRUE);
-        g_string_free(track_album, TRUE);
-        g_string_free(track_link, TRUE);
+                               i+1, (track_available ? "" : "-"), track_artist,
+                               track_album, track_name, track_min, track_sec, 
+                               track_link);
+        g_free(track_name);
+        g_free(track_artist);
+        g_free(track_album);
+        g_free(track_link);
     }
 }
 
