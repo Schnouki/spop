@@ -167,8 +167,10 @@ static gboolean now_playing_handler(gpointer data) {
     }
 
     /* Get the latest track */
-    if (!g_tracks)
-        g_error("scrobble: No data for the current track.");
+    if (!g_tracks) {
+        g_warning("scrobble: No data for the current track.");
+        return FALSE;
+    }
     td = g_tracks->data;
 
     /* Was it already submitted, or is the submission in progress? */
@@ -229,8 +231,10 @@ static void scrobble_request() {
 
     g_debug("scrobble: Preparring a scrobbling request.");
 
-    if (!g_tracks)
-        g_error("scrobble: No data for the current track.");
+    if (!g_tracks) {
+        g_warning("scrobble: No data for the current track.");
+        return;
+    }
     td = g_tracks->data;
 
     td->play_time = session_play_time();
