@@ -80,7 +80,7 @@ int main(int argc, char** argv) {
         case 'f':
             daemon_mode = FALSE; break;
         default:
-            printf("Usage: spopd [options\n"
+            printf("Usage: spopd [options]\n"
                    "Options:\n"
                    "  -d        debug mode (implies -f and -v)\n"
                    "  -f        run in foreground (default: fork to background)\n"
