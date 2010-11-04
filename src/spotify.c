@@ -84,7 +84,12 @@ static sp_session_callbacks g_sp_session_callbacks = {
     &cb_music_delivery,
     &cb_play_token_lost,
     &cb_log_message,
-    &cb_end_of_track
+    &cb_end_of_track,
+    NULL, /* streaming_error */
+    NULL, /* userinfo_updated */
+    NULL, /* start_playback */
+    NULL, /* stop_playback */
+    NULL  /* get_audio_buffer_stats */
 };
 
 
@@ -95,6 +100,8 @@ void session_init(gboolean high_bitrate) {
     sp_error error;
     sp_session_config config;
     gchar* cache_path;
+
+    g_debug("Creating session...");
 
     /* Cache path */
     cache_path = g_build_filename(g_get_user_cache_dir(), g_get_prgname(), NULL);
@@ -108,7 +115,7 @@ void session_init(gboolean high_bitrate) {
     config.user_agent = "spop " SPOP_VERSION;
     config.callbacks = &g_sp_session_callbacks;
 
-    error = sp_session_init(&config, &g_session);
+    error = sp_session_create(&config, &g_session);
     if (error != SP_ERROR_OK)
         g_error("Failed to create session: %s", sp_error_message(error));
 
@@ -122,18 +129,14 @@ void session_init(gboolean high_bitrate) {
         sp_session_preferred_bitrate(g_session, SP_BITRATE_160k);
     }
 
-    /* Get the playlists container */
-    g_container = sp_session_playlistcontainer(g_session);
-    if (!g_container)
-        g_error("Could not get the playlist container.");
+    g_debug("Session created.");
 
-    /* Callback to be able to wait until it is loaded */
-    sp_playlistcontainer_add_callbacks(g_container, &g_sp_container_callbacks, NULL);
 }
 
 void session_login(const char* username, const char* password) {
     sp_error error;
 
+    g_debug("Logging in...");
     if (!g_session)
         g_error("Session is not ready.");
 
@@ -368,6 +371,10 @@ void track_get_data(sp_track* track, gchar** name, gchar** artist, gchar** album
     sp_track_release(track);
 }
 
+gboolean track_available(sp_track* track) {
+    return sp_track_is_available(g_session, track);
+}
+
 
 /*************************
  *** Utility functions ***
@@ -416,6 +423,17 @@ void cb_logged_in(sp_session* session, sp_error error) {
     if (error != SP_ERROR_OK)
         g_warning("Login failed: %s", sp_error_message(error));
     else g_info("Logged in.");
+
+    /* Get the playlists container */
+    g_debug("Getting playlist container...");
+    g_container = sp_session_playlistcontainer(g_session);
+    if (!g_container)
+        g_error("Could not get the playlist container.");
+
+    /* Callback to be able to wait until it is loaded */
+    sp_playlistcontainer_add_callbacks(g_container, &g_sp_container_callbacks, NULL);
+
+    g_debug("Playlist container ready.");
 }
 
 void cb_logged_out(sp_session* session) {

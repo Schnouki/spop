@@ -320,7 +320,7 @@ void format_tracks_array(GArray* tracks, GString* dst) {
     int i;
     sp_track* track;
 
-    bool track_available;
+    bool track_avail;
     int track_min, track_sec;
     gchar* track_name;
     gchar* track_artist;
@@ -338,11 +338,11 @@ void format_tracks_array(GArray* tracks, GString* dst) {
         track = g_array_index(tracks, sp_track*, i);
         if (!sp_track_is_loaded(track)) continue;
 
-        track_available = sp_track_is_available(track);
+        track_avail = track_available(track);
         track_get_data(track, &track_name, &track_artist, &track_album, &track_link, &track_min, &track_sec);
 
         g_string_append_printf(dst, "%d%s %s -- \"%s\" -- \"%s\" (%d:%02d) URI:%s\n",
-                               i+1, (track_available ? "" : "-"), track_artist,
+                               i+1, (track_avail ? "" : "-"), track_artist,
                                track_album, track_name, track_min, track_sec, 
                                track_link);
         g_free(track_name);

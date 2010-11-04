@@ -57,7 +57,7 @@ void queue_set_track(gboolean notif, sp_track* track) {
         return;
     }
 
-    if (!sp_track_is_available(track)) {
+    if (!track_available(track)) {
         sp_track_release(track);
         g_debug("Track is not available.");
         return;
@@ -80,7 +80,7 @@ void queue_add_track(gboolean notif, sp_track* track) {
         return;
     }
 
-    if (!sp_track_is_available(track)) {
+    if (!track_available(track)) {
         sp_track_release(track);
         g_debug("Track is not available.");
         return;
@@ -112,7 +112,7 @@ void queue_set_playlist(gboolean notif, sp_playlist* pl) {
 
     for (i=0; i < tracks->len; i++) {
         track = g_array_index(tracks, sp_track*, i);
-        if (sp_track_is_loaded(track) && sp_track_is_available(track))
+        if (sp_track_is_loaded(track) && track_available(track))
             g_queue_push_tail(&g_queue, track);
     }
     g_array_free(tracks, TRUE);
@@ -137,7 +137,7 @@ void queue_add_playlist(gboolean notif, sp_playlist* pl) {
 
     for (i=0; i < tracks->len; i++) {
         track = g_array_index(tracks, sp_track*, i);
-        if (sp_track_is_loaded(track) && sp_track_is_available(track))
+        if (sp_track_is_loaded(track) && track_available(track))
             g_queue_push_tail(&g_queue, track);
     }
     g_array_free(tracks, TRUE);
