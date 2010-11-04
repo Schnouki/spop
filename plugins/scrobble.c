@@ -35,8 +35,8 @@
 #include "config.h"
 #include "spotify.h"
 
-#define SCROBBLE_CLIENT_ID      "tst"
-#define SCROBBLE_CLIENT_VERSION "1.0"
+#define SCROBBLE_CLIENT_ID      "spp"
+#define SCROBBLE_CLIENT_VERSION SPOP_VERSION "a"
 
 /* Global variables */
 static SoupSession* g_session = NULL;
