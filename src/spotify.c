@@ -114,6 +114,8 @@ void session_init(gboolean high_bitrate) {
     config.application_key_size = g_appkey_size;
     config.user_agent = "spop " SPOP_VERSION;
     config.callbacks = &g_sp_session_callbacks;
+    config.userdata = NULL;
+    config.tiny_settings = 0;
 
     error = sp_session_create(&config, &g_session);
     if (error != SP_ERROR_OK)
