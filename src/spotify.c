@@ -159,6 +159,14 @@ sp_playlist* playlist_get(int nb) {
     return sp_playlistcontainer_playlist(g_container, nb);
 }
 
+sp_playlist_type playlist_type(int nb) {
+    return sp_playlistcontainer_playlist_type(g_container, nb);
+}
+
+const char* playlist_folder_name(int nb) {
+    return sp_playlistcontainer_playlist_folder_name(g_container, nb);
+}
+
 /**********************
  * Session management *
  **********************/

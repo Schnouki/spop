@@ -40,6 +40,9 @@
 void list_playlists(GString* result) {
     int i, n, t;
     sp_playlist* pl;
+    sp_playlist_type pt;
+    const char* pn;
+    gboolean in_folder = FALSE;
 
     if (!container_loaded()) {
         g_string_assign(result, "- playlists container not loaded yet\n");
@@ -53,17 +56,50 @@ void list_playlists(GString* result) {
     }
 
     for (i=0; i<n; i++) {
-        pl = playlist_get(i);
-        if (!pl) {
-            g_debug("Got NULL pointer when loading playlist %d.", i);
-            continue;
+        pt = playlist_type(i);
+        switch(pt) {
+        case SP_PLAYLIST_TYPE_START_FOLDER:
+            g_debug("Playlist %d is a folder start", i);
+            in_folder = TRUE;
+            g_string_append_printf(result, "%d + %s\n",
+                                   i+1, playlist_folder_name(i));
+            break;
+
+        case SP_PLAYLIST_TYPE_END_FOLDER:
+            g_debug("Playlist %d is a folder end", i);
+            in_folder = FALSE;
+            g_string_append_printf(result, "%d `--\n", i+1);
+            break;
+
+        case SP_PLAYLIST_TYPE_PLAYLIST:
+            pl = playlist_get(i);
+            if (!pl) {
+                g_debug("Got NULL pointer when loading playlist %d.", i);
+                break;
+            }
+            if (!sp_playlist_is_loaded(pl)) {
+                g_debug("Playlist %d is not loaded.", i);
+                break;
+            }
+            t = sp_playlist_num_tracks(pl);
+            pn = sp_playlist_name(pl);
+
+            if (g_strcmp0("-", pn)) {
+                /* Regular playlist */
+                g_string_append_printf(result, "%d %s%s (%d)\n",
+                                       i+1, in_folder ? "| " : "",
+                                       pn, t);
+            }
+            else {
+                /* Playlist separator */
+                g_string_append_printf(result, "%d %s--------------------\n",
+                                       i+1, in_folder ? "| " : "");
+            }
+            break;
+
+        default:
+            g_debug("Playlist %d is a placeholder", i);
         }
-        if (!sp_playlist_is_loaded(pl)) {
-            g_debug("Playlist %d is not loaded.", i);
-            continue;
-        }
-        t = sp_playlist_num_tracks(pl);
-        g_string_append_printf(result, "%d %s (%d)\n", i+1, sp_playlist_name(pl), t);
     }
 }
 
@@ -81,7 +117,7 @@ void list_tracks(int idx, GString* result) {
     /* Get the tracks array */
     tracks = tracks_get_playlist(pl);
     if (!tracks) {
-        g_string_assign(result, "- playlist not laoded yet\n");
+        g_string_assign(result, "- playlist not loaded yet\n");
         return;
     }
 
@@ -180,7 +216,13 @@ void remove_queue_items(int first, int nb, GString* result) {
 void play_playlist(int idx, GString* result) {
     sp_playlist* pl;
 
-    /* First get the playlist */
+    /* First check the playlist type */
+    if (playlist_type(idx-1) != SP_PLAYLIST_TYPE_PLAYLIST) {
+        g_string_assign(result, "- not a playlist\n");
+        return;
+    }
+
+    /* Then get the playlist */
     pl = playlist_get(idx-1);
 
     if (!pl) {
@@ -200,7 +242,13 @@ void play_track(int pl_idx, int tr_idx, GString* result) {
     sp_track* tr;
     GArray* tracks;
 
-    /* First get the playlist */
+    /* First check the playlist type */
+    if (playlist_type(pl_idx-1) != SP_PLAYLIST_TYPE_PLAYLIST) {
+        g_string_assign(result, "- not a playlist\n");
+        return;
+    }
+
+    /* Then get the playlist */
     pl = playlist_get(pl_idx-1);
     if (!pl) {
         g_string_assign(result, "- invalid playlist\n");
@@ -233,7 +281,13 @@ void add_playlist(int idx, GString* result) {
     sp_playlist* pl;
     int tot;
 
-    /* First get the playlist */
+    /* First check the playlist type */
+    if (playlist_type(idx-1) != SP_PLAYLIST_TYPE_PLAYLIST) {
+        g_string_assign(result, "- not a playlist\n");
+        return;
+    }
+
+    /* Then get the playlist */
     pl = playlist_get(idx-1);
 
     if (!pl) {
@@ -254,7 +308,13 @@ void add_track(int pl_idx, int tr_idx, GString* result) {
     GArray* tracks;
     int tot;
 
-    /* First get the playlist */
+    /* First check the playlist type */
+    if (playlist_type(pl_idx-1) != SP_PLAYLIST_TYPE_PLAYLIST) {
+        g_string_assign(result, "- not a playlist\n");
+        return;
+    }
+
+    /* Then get the playlist */
     pl = playlist_get(pl_idx-1);
     if (!pl) {
         g_string_assign(result, "- invalid playlist\n");

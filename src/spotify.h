@@ -36,7 +36,8 @@ void session_login(const char* username, const char* password);
 /* Playlist management */
 int playlists_len();
 sp_playlist* playlist_get(int nb);
-sp_playlistcontainer* session_playlistcontainer();
+sp_playlist_type playlist_type(int nb);
+const char* playlist_folder_name(int nb);
 
 /* Session management */
 void session_load(sp_track* track);
