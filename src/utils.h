@@ -30,5 +30,6 @@
 
 /* String manipulation */
 void g_string_replace(GString* str, const char* old, const gchar* new);
+void g_string_append_line_number(GString* str, int nb, int max_nb);
 
 #endif

@@ -47,3 +47,12 @@ void g_string_replace(GString* str, const char* old, const gchar* new) {
         pos_beg = pos_ptr + len_new;
     }
 }
+
+/* Add a line number with a fixed width determined by the greatest possible value */
+void g_string_append_line_number(GString* str, int nb, int max_nb) {
+    gchar fs[10];
+    int nb_digits = 0;
+    while (max_nb > 0) { max_nb /= 10; nb_digits += 1; }
+    g_snprintf(fs, sizeof(fs), "%%%dd", nb_digits);
+    g_string_append_printf(str, fs, nb);
+}

@@ -33,6 +33,7 @@
 #include "commands.h"
 #include "queue.h"
 #include "spotify.h"
+#include "utils.h"
 
 /****************
  *** Commands ***
@@ -61,14 +62,16 @@ void list_playlists(GString* result) {
         case SP_PLAYLIST_TYPE_START_FOLDER:
             g_debug("Playlist %d is a folder start", i);
             in_folder = TRUE;
-            g_string_append_printf(result, "%d + %s\n",
-                                   i+1, playlist_folder_name(i));
+            g_string_append_line_number(result, i+1, n+1);
+            g_string_append_printf(result, " + %s\n",
+                                   playlist_folder_name(i));
             break;
 
         case SP_PLAYLIST_TYPE_END_FOLDER:
             g_debug("Playlist %d is a folder end", i);
             in_folder = FALSE;
-            g_string_append_printf(result, "%d `--\n", i+1);
+            g_string_append_line_number(result, i+1, n+1);
+            g_string_append_printf(result, " `--\n");
             break;
 
         case SP_PLAYLIST_TYPE_PLAYLIST:
@@ -83,17 +86,18 @@ void list_playlists(GString* result) {
             }
             t = sp_playlist_num_tracks(pl);
             pn = sp_playlist_name(pl);
+            g_string_append_line_number(result, i+1, n+1);
 
             if (g_strcmp0("-", pn)) {
                 /* Regular playlist */
-                g_string_append_printf(result, "%d %s%s (%d)\n",
-                                       i+1, in_folder ? "| " : "",
+                g_string_append_printf(result, " %s%s (%d)\n",
+                                       in_folder ? "| " : "",
                                        pn, t);
             }
             else {
                 /* Playlist separator */
-                g_string_append_printf(result, "%d %s--------------------\n",
-                                       i+1, in_folder ? "| " : "");
+                g_string_append_printf(result, " %s--------------------\n",
+                                       in_folder ? "| " : "");
             }
             break;
 
@@ -401,8 +405,9 @@ void format_tracks_array(GArray* tracks, GString* dst) {
         track_avail = track_available(track);
         track_get_data(track, &track_name, &track_artist, &track_album, &track_link, &track_min, &track_sec);
 
-        g_string_append_printf(dst, "%d%s %s -- \"%s\" -- \"%s\" (%d:%02d) URI:%s\n",
-                               i+1, (track_avail ? "" : "-"), track_artist,
+        g_string_append_line_number(dst, i+1, tracks->len+1);
+        g_string_append_printf(dst, "%s %s -- \"%s\" -- \"%s\" (%d:%02d) URI:%s\n",
+                               (track_avail ? "" : "-"), track_artist,
                                track_album, track_name, track_min, track_sec, 
                                track_link);
         g_free(track_name);
