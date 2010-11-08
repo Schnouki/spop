@@ -406,7 +406,7 @@ gboolean session_libspotify_event(gpointer data) {
 
     do {
         sp_session_process_events(g_session, &timeout);
-    } while (timeout == 0);
+    } while (timeout <= 1);
 
     /* Add next timeout */
     evid = g_timeout_add(timeout, session_libspotify_event, NULL);
