@@ -115,7 +115,9 @@ void session_init(gboolean high_bitrate) {
     config.user_agent = "spop " SPOP_VERSION;
     config.callbacks = &g_sp_session_callbacks;
     config.userdata = NULL;
-    config.tiny_settings = 0;
+    config.compress_playlists = FALSE;
+    config.dont_save_metadata_for_playlists = FALSE;
+    config.initially_unload_playlists = FALSE;
 
     error = sp_session_create(&config, &g_session);
     if (error != SP_ERROR_OK)
@@ -136,15 +138,11 @@ void session_init(gboolean high_bitrate) {
 }
 
 void session_login(const char* username, const char* password) {
-    sp_error error;
-
     g_debug("Logging in...");
     if (!g_session)
         g_error("Session is not ready.");
 
-    error = sp_session_login(g_session, username, password);
-    if (error != SP_ERROR_OK)
-        g_error("Failed to log in: %s", sp_error_message(error));
+    sp_session_login(g_session, username, password);
 }
 
 
@@ -163,8 +161,17 @@ sp_playlist_type playlist_type(int nb) {
     return sp_playlistcontainer_playlist_type(g_container, nb);
 }
 
-const char* playlist_folder_name(int nb) {
-    return sp_playlistcontainer_playlist_folder_name(g_container, nb);
+gchar* playlist_folder_name(int nb) {
+    sp_error error;
+    gchar* name;
+    gsize len = 512 * sizeof(gchar);
+
+    name = g_malloc(len);
+    error = sp_playlistcontainer_playlist_folder_name(g_container, nb, name, len);
+    if (error != SP_ERROR_OK)
+        g_error("Failed to get playlist folder name: %s", sp_error_message(error));
+
+    return name;
 }
 
 /**********************
@@ -209,11 +216,7 @@ void session_unload() {
 }
 
 void session_play(gboolean play) {
-    sp_error error;
-
-    error = sp_session_player_play(g_session, play);
-    if (error != SP_ERROR_OK)
-        g_error("Failed to play: %s", sp_error_message(error));
+    sp_session_player_play(g_session, play);
 
     if (!play)
         /* Force pause in the audio plugin */
@@ -223,15 +226,9 @@ void session_play(gboolean play) {
 }
 
 void session_seek(int pos) {
-    sp_error error;
-
-    error = sp_session_player_seek(g_session, pos*1000);
-    if (error != SP_ERROR_OK)
-        g_warning("Seek failed: %s", sp_error_message(error));
-    else {
-        g_audio_time = pos;
-        g_audio_samples = 0;
-    }
+    sp_session_player_seek(g_session, pos*1000);
+    g_audio_time = pos;
+    g_audio_samples = 0;
 
     cb_notify_main_thread(NULL);
 }

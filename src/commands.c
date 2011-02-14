@@ -43,6 +43,7 @@ void list_playlists(GString* result) {
     sp_playlist* pl;
     sp_playlist_type pt;
     const char* pn;
+    gchar* pfn;
     gboolean in_folder = FALSE;
 
     if (!container_loaded()) {
@@ -63,8 +64,9 @@ void list_playlists(GString* result) {
             g_debug("Playlist %d is a folder start", i);
             in_folder = TRUE;
             g_string_append_line_number(result, i+1, n+1);
-            g_string_append_printf(result, " + %s\n",
-                                   playlist_folder_name(i));
+            pfn = playlist_folder_name(i);
+            g_string_append_printf(result, " + %s\n", pfn);
+            g_free(pfn);
             break;
 
         case SP_PLAYLIST_TYPE_END_FOLDER:
