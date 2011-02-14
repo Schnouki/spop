@@ -42,6 +42,7 @@
  ************************/
 static sp_playlistcontainer* g_container;
 static gboolean g_container_loaded = FALSE;
+static sp_playlist* g_starred_playlist = NULL;
 
 static sp_session* g_session = NULL;
 
@@ -150,26 +151,39 @@ void session_login(const char* username, const char* password) {
  *** Playlist management ***
  ***************************/
 int playlists_len() {
-    return sp_playlistcontainer_num_playlists(g_container);
+    return sp_playlistcontainer_num_playlists(g_container) + 1; /* +1 for "starred" playlist */
 }
 
 sp_playlist* playlist_get(int nb) {
-    return sp_playlistcontainer_playlist(g_container, nb);
+    if (nb == 0) {
+        if (g_starred_playlist == NULL)
+            g_starred_playlist = sp_session_starred_create(g_session);
+        return g_starred_playlist;
+    }
+    else
+        return sp_playlistcontainer_playlist(g_container, nb-1);
 }
 
 sp_playlist_type playlist_type(int nb) {
-    return sp_playlistcontainer_playlist_type(g_container, nb);
+    if (nb == 0)
+        return SP_PLAYLIST_TYPE_PLAYLIST;
+    else
+        return sp_playlistcontainer_playlist_type(g_container, nb-1);
 }
 
 gchar* playlist_folder_name(int nb) {
     sp_error error;
     gchar* name;
-    gsize len = 512 * sizeof(gchar);
 
-    name = g_malloc(len);
-    error = sp_playlistcontainer_playlist_folder_name(g_container, nb, name, len);
-    if (error != SP_ERROR_OK)
-        g_error("Failed to get playlist folder name: %s", sp_error_message(error));
+    if (nb == 0)
+        name = g_strdup("Starred");
+    else {
+        gsize len = 512 * sizeof(gchar);
+        name = g_malloc(len);
+        error = sp_playlistcontainer_playlist_folder_name(g_container, nb-1, name, len);
+        if (error != SP_ERROR_OK)
+            g_error("Failed to get playlist folder name: %s", sp_error_message(error));
+    }
 
     return name;
 }
