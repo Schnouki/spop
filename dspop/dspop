@@ -1,0 +1,167 @@
+#!/bin/zsh
+# Copyright (C) 2010 Thomas Jost
+#
+# This file is part of spop.
+#
+# spop is free software: you can redistribute it and/or modify it under the
+# terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# spop is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+# A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along with
+# spop. If not, see <http://www.gnu.org/licenses/>.
+#
+# Additional permission under GNU GPL version 3 section 7
+#
+# If you modify this Program, or any covered work, by linking or combining it
+# with libspotify (or a modified version of that library), containing parts
+# covered by the terms of the Libspotify Terms of Use, the licensors of this
+# Program grant you additional permission to convey the resulting work.
+
+# {{{ Init
+zmodload zsh/net/tcp
+
+local conn line
+HOST=localhost
+PORT=6602
+[[ $# -ge 1 ]] && (host=$1; shift)
+[[ $# -ge 1 ]] && (port=$1; shift)
+
+ztcp $HOST $PORT
+conn=$REPLY
+read -r line <&$conn
+echo $line
+
+# %n%: number - %A%: artist - %T%: title - %a%: album - %d%: duration - %U%: URI
+TRACKFMT="%n% - %A% - %T% (%d%)"
+
+DMENUOPTS="-i -l 40"
+# }}}
+# {{{ Helpers
+function menu() {
+    local arr ret i
+    arr=("$@")
+    ret=$(echo ${(F)arr} | dmenu ${=DMENUOPTS})
+    [[ $? -ne 0 ]] && return -1
+    for ((i=1; i<=$#arr; i++)) do
+        [[ "$ret" == "$arr[$i]" ]] && return $i
+    done
+    return -1
+}
+
+function single_command() {
+    local line
+    print "$*" >&$conn
+    line=" "
+    until [[ ("$line[1]" == "-") || ("$line[1]" == "+") ]]; do
+        read -r line <&$conn
+    done
+}
+
+function format_track() {
+    local line nb artist title album dur uri
+    line="$1"
+
+    nb=${line/ */}
+    line=${line:$#nb+1}
+
+    artist=${line/ -- \"*/}
+    line=${line:$#artist+5}
+
+    album=${line/\" -- \"*/}
+    line=${line:$#album+6}
+
+    title=${line/\" \(*/}
+    line=${line:$#title+3}
+
+    dur=${line/\)*/}
+    uri=${line/*URI:/}
+
+    line=$TRACKFMT
+    line=${line/\%n\%/$nb}
+    line=${line/\%A\%/$artist}
+    line=${line/\%T\%/$title}
+    line=${line/\%a\%/$album}
+    line=${line/\%d\%/$dur}
+    line=${line/\%U\%/$uri}
+    echo "$line"    
+}
+# }}}
+# {{{ Sub-menus
+function menu_queue() {
+    local q line ent res
+    q=("[ Clear queue ]")
+
+    print "qls" >&$conn
+    while true; do
+        read -r line <&$conn
+        [[ ($#line == 0) || ("$line[1]" == "+") ]] && break
+        ent=$(format_track "$line")
+        q+="$ent"
+    done
+
+    menu $q
+    res=$?
+    case $res in
+        -1) return ;;
+        1) single_command "qclear" ;;
+        *)  single_command "goto" $(( $res-1 )) ;;
+    esac
+}
+
+function menu_playlist() {
+    local idx pl line ent
+    idx=$1
+    pl=("[ Set as queue ]" "[ Add to queue ]")
+
+    print "ls" $idx >&$conn
+    while true; do
+        read -r line <&$conn
+        [[ ($#line == 0) || ("$line[1]" == "+") ]] && break
+        ent=$(format_track "$line")
+        pl+="$ent"
+    done
+
+    menu $pl
+    res=$?
+    case $res in
+        -1) return ;;
+        1) single_command "play" $idx ;;
+        2) single_command "add" $idx ;;
+        *) single_command "play" $idx $(( $res-2 )) ;;
+    esac
+}
+
+function menu_playlists() {
+    local pl line
+    pl=()
+    
+    print "ls" >&$conn
+    while true; do
+        read -r line <&$conn
+        [[ ($#line == 0) || ("$line[1]" == "+") ]] && break
+        pl+="${(S)line/* /}"
+    done
+
+    menu $pl
+    res=$?
+    [[ $res -gt 0 ]] && menu_playlist $(( $res-1 ))
+}
+# }}}
+# {{{ Main menu
+function main_menu() {
+    menu "[ Queue ]>" "[ Playlists ]>" "[ Repeat ]" "[ Shuffle ]"
+    case $? in
+        1) menu_queue     ;;
+        2) menu_playlists ;;
+        3) single_command "repeat"  ; main_menu ;;
+        4) single_command "shuffle" ; main_menu ;;
+    esac
+}
+
+main_menu
+# }}}
