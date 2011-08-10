@@ -107,7 +107,7 @@ function menu_queue() {
     menu $q
     res=$?
     case $res in
-        -1) return ;;
+        -1) return 1 ;;
         1) single_command "qclear" ;;
         *)  single_command "goto" $(( $res-1 )) ;;
     esac
@@ -129,7 +129,7 @@ function menu_playlist() {
     menu $pl
     res=$?
     case $res in
-        -1) return ;;
+        -1) return 1 ;;
         1) single_command "play" $idx ;;
         2) single_command "add" $idx ;;
         *) single_command "play" $idx $(( $res-2 )) ;;
@@ -137,7 +137,7 @@ function menu_playlist() {
 }
 
 function menu_playlists() {
-    local pl line
+    local pl line res
     pl=()
     
     print "ls" >&$conn
@@ -149,15 +149,15 @@ function menu_playlists() {
 
     menu $pl
     res=$?
-    [[ $res -gt 0 ]] && menu_playlist $(( $res-1 ))
+    [[ $res -gt 0 ]] && (menu_playlist $(( $res-1 )) || menu_playlists)
 }
 # }}}
 # {{{ Main menu
 function main_menu() {
     menu "[ Queue ]>" "[ Playlists ]>" "[ Repeat ]" "[ Shuffle ]"
     case $? in
-        1) menu_queue     ;;
-        2) menu_playlists ;;
+        1) menu_queue     || main_menu ;;
+        2) menu_playlists || main_menu ;;
         3) single_command "repeat"  ; main_menu ;;
         4) single_command "shuffle" ; main_menu ;;
     esac
