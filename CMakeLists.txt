@@ -105,6 +105,7 @@ if(DBUS_FOUND)
   )
   target_link_libraries(spop_plugin_awesome ${DBUS_LIBRARIES} ${GLIB2_LIBRARIES})
   set(targets ${targets} spop_plugin_awesome)
+  install(DIRECTORY awesome DESTINATION share/spop)
 endif(DBUS_FOUND)
 
 # Generic plugin: notify
@@ -132,6 +133,9 @@ if(SOUP_FOUND)
   target_link_libraries(spop_plugin_scrobble ${GLIB2_LIBRARIES} ${SOUP_LIBRARIES})
   set(targets ${targets} spop_plugin_scrobble)
 endif(SOUP_FOUND)
+
+# dspop client
+install(PROGRAMS dspop/dspop DESTINATION bin)
 
 # Common to all source files
 set(SRC
