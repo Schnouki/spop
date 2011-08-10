@@ -99,7 +99,7 @@ static void notification_callback(const GString* status, gpointer data) {
 
     /* Create or update the notification */
     if (!g_notif) {
-        g_notif = notify_notification_new("spop update", body->str, NULL, NULL);
+        g_notif = notify_notification_new("spop update", body->str, NULL);
         notify_notification_set_timeout(g_notif, 8000);
         notify_notification_set_urgency(g_notif, NOTIFY_URGENCY_LOW);
     }
