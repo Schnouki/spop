@@ -120,19 +120,17 @@ static void session_callback(session_callback_type type, gpointer data, gpointer
  ***************************************/
 static void now_playing_request(sp_track* track) {
     track_data* td = NULL;
-    int min, sec;
 
     g_debug("scrobble: Preparing a \"now playing\" request.");
 
     /* Get some informations about the current track */
     td = g_malloc(sizeof(track_data));
-    track_get_data(track, &td->track, &td->artist, &td->album, NULL, &min, &sec);
+    track_get_data(track, &td->track, &td->artist, &td->album, NULL, &td->length);
 
     if (!td->artist) td->artist = g_strdup("");
     if (!td->track)  td->track  = g_strdup("");
     if (!td->album)  td->album  = g_strdup("");
 
-    td->length = 60*min + sec;
     td->np_submitted = FALSE;
     td->np_submitting = FALSE;
     td->scrobbled = FALSE;

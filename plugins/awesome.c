@@ -89,8 +89,10 @@ static void notification_callback(const GString* status, gpointer data) {
         gchar* track_artist;
         GString* short_title = NULL;
 
-        track_get_data(cur_track, &track_name, &track_artist, NULL, NULL, &track_min, &track_sec);
+        track_get_data(cur_track, &track_name, &track_artist, NULL, NULL, &track_sec);
         pos_sec = session_play_time();
+        track_min = track_sec / 60;
+        track_sec %= 60;
         pos_min = pos_sec / 60;
         pos_sec %= 60;
 

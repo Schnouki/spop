@@ -59,14 +59,13 @@ static void notification_callback(const GString* status, gpointer data) {
     else {
         /* Read more data */
         gboolean repeat, shuffle;
-        int track_min, track_sec;
         gchar* track_name;
         gchar* track_artist;
         gchar* track_album;
 
         repeat = queue_get_repeat();
         shuffle = queue_get_shuffle();
-        track_get_data(cur_track, &track_name, &track_artist, &track_album, NULL, &track_min, &track_sec);
+        track_get_data(cur_track, &track_name, &track_artist, &track_album, NULL, NULL);
 
         /* Prepare data to display */
         if (qs == PAUSED)

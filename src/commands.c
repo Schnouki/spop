@@ -168,8 +168,10 @@ void status(GString* result) {
     if (qs != STOPPED) {
         g_string_append_printf(result, "Current track: %d\n", track_nb+1);
 
-        track_get_data(track, &track_name, &track_artist, &track_album, &track_link, &track_min, &track_sec);
+        track_get_data(track, &track_name, &track_artist, &track_album, &track_link, &track_sec);
         pos_sec = session_play_time();
+        track_min = track_sec / 60;
+        track_sec %= 60;
         pos_min = pos_sec / 60;
         pos_sec %= 60;
 
@@ -409,7 +411,9 @@ void format_tracks_array(GArray* tracks, GString* dst) {
         if (!sp_track_is_loaded(track)) continue;
 
         track_avail = track_available(track);
-        track_get_data(track, &track_name, &track_artist, &track_album, &track_link, &track_min, &track_sec);
+        track_get_data(track, &track_name, &track_artist, &track_album, &track_link, &track_sec);
+        track_min = track_sec / 60;
+        track_sec %= 60;
 
         g_string_append_line_number(dst, i+1, tracks->len+1);
         g_string_append_printf(dst, "%s %s -- \"%s\" -- \"%s\" (%d:%02d) URI:%s\n",
