@@ -88,19 +88,16 @@ static void json_tracks_array(GArray* tracks, JsonBuilder* jb) {
 /****************
  *** Commands ***
  ****************/
-void list_playlists(GString* result) {
+void list_playlists(JsonBuilder* jb) {
     int i, n, t;
     sp_playlist* pl;
     sp_playlist_type pt;
     const char* pn;
     gchar* pfn;
 
-    JsonBuilder* jb = json_builder_new();
-    json_builder_begin_object(jb);
-
     if (!container_loaded()) {
         jb_add_string(jb, "error", "playlists container not loaded yet");
-        goto lpl_end;
+        return;
     }
 
     n = playlists_len();
@@ -167,39 +164,24 @@ void list_playlists(GString* result) {
     }
 
     json_builder_end_array(jb);
-
- lpl_end:
-    json_builder_end_object(jb);
-
-    JsonGenerator *gen = json_generator_new();
-    json_generator_set_root(gen, json_builder_get_root(jb));
-    gchar *str = json_generator_to_data(gen, NULL);
-    g_string_assign(result, str);
-
-    g_object_unref(gen);
-    g_object_unref(jb);
-    g_free(str);
 }
 
-void list_tracks(GString* result, int idx) {
+void list_tracks(JsonBuilder* jb, int idx) {
     sp_playlist* pl;
     GArray* tracks;
-
-    JsonBuilder* jb = json_builder_new();
-    json_builder_begin_object(jb);
 
     /* Get the playlist */
     pl = playlist_get(idx);
     if (!pl) {
         jb_add_string(jb, "error", "invalid playlist");
-        goto lt_end;
+        return;
     }
     
     /* Get the tracks array */
     tracks = tracks_get_playlist(pl);
     if (!tracks) {
         jb_add_string(jb, "error", "playlist not loaded yet");
-        goto lt_end;
+        return;
     }
 
     json_builder_set_member_name(jb, "tracks");
@@ -208,22 +190,10 @@ void list_tracks(GString* result, int idx) {
     json_builder_end_array(jb);
 
     g_array_free(tracks, TRUE);
-
-lt_end:
-    json_builder_end_object(jb);
-
-    JsonGenerator *gen = json_generator_new();
-    json_generator_set_root(gen, json_builder_get_root(jb));
-    gchar *str = json_generator_to_data(gen, NULL);
-    g_string_assign(result, str);
-
-    g_object_unref(gen);
-    g_object_unref(jb);
-    g_free(str);
 }
 
 
-void status(GString* result) {
+void status(JsonBuilder* jb) {
     sp_track* track;
     int track_nb, total_tracks, track_duration, track_position;
     queue_status qs;
@@ -232,9 +202,6 @@ void status(GString* result) {
     gchar* track_album;
     gchar* track_link;
     
-    JsonBuilder* jb = json_builder_new();
-    json_builder_begin_object(jb);
-
     qs = queue_get_status(&track, &track_nb, &total_tracks);
 
     jb_add_string(jb, "status",
@@ -262,80 +229,56 @@ void status(GString* result) {
         g_free(track_album);
         g_free(track_link);
     }
-
-  json_builder_end_object(jb);
-
-  JsonGenerator *gen = json_generator_new();
-  json_generator_set_root(gen, json_builder_get_root(jb));
-  gchar *str = json_generator_to_data(gen, NULL);
-  g_string_assign(result, str);
-
-  g_object_unref(gen);
-  g_object_unref(jb);
-  g_free(str);
 }
 
-void repeat(GString* result) {
+void repeat(JsonBuilder* jb) {
     gboolean r = queue_get_repeat();
     queue_set_repeat(TRUE, !r);
-    status(result);
+    status(jb);
 }
 
-void shuffle(GString* result) {
+void shuffle(JsonBuilder* jb) {
     gboolean s = queue_get_shuffle();
     queue_set_shuffle(TRUE, !s);
-    status(result);
+    status(jb);
 }
 
 
-void list_queue(GString* result) {
+void list_queue(JsonBuilder* jb) {
     GArray* tracks;
 
     tracks = queue_tracks();
     if (!tracks)
         g_error("Couldn't read queue.");
 
-    JsonBuilder* jb = json_builder_new();
-    json_builder_begin_object(jb);
     json_builder_set_member_name(jb, "tracks");
     json_builder_begin_array(jb);
     json_tracks_array(tracks, jb);
     json_builder_end_array(jb);
     g_array_free(tracks, TRUE);
-
-    json_builder_end_object(jb);
-
-    JsonGenerator *gen = json_generator_new();
-    json_generator_set_root(gen, json_builder_get_root(jb));
-    gchar *str = json_generator_to_data(gen, NULL);
-    g_string_assign(result, str);
-
-    g_object_unref(gen);
-    g_object_unref(jb);
-    g_free(str);
 }
 
-void clear_queue(GString* result) {
+void clear_queue(JsonBuilder* jb) {
     queue_clear(TRUE);
-    status(result);
+    status(jb);
 }
 
-void remove_queue_item(GString* result, int idx) {
-    remove_queue_items(result, idx, idx);
+void remove_queue_item(JsonBuilder* jb, int idx) {
+    remove_queue_items(jb, idx, idx);
 }
 
-void remove_queue_items(GString* result, int first, int last) {
+void remove_queue_items(JsonBuilder* jb, int first, int last) {
     queue_remove_tracks(TRUE, first, last-first+1);
-    status(result);
+    status(jb);
 }
 
 
-void play_playlist(GString* result, int idx) {
+void play_playlist(JsonBuilder* jb, int idx) {
     sp_playlist* pl;
 
     /* First check the playlist type */
     if (playlist_type(idx) != SP_PLAYLIST_TYPE_PLAYLIST) {
-        g_string_assign(result, "- not a playlist\n");
+        jb_add_string(jb, "error", "not a playlist");
         return;
     }
 
@@ -343,7 +286,7 @@ void play_playlist(GString* result, int idx) {
     pl = playlist_get(idx);
 
     if (!pl) {
-        g_string_assign(result, "- invalid playlist\n");
+        jb_add_string(jb, "error", "invalid playlist");
         return;
     }
 
@@ -351,35 +294,35 @@ void play_playlist(GString* result, int idx) {
     queue_set_playlist(FALSE, pl);
     queue_play(TRUE);
 
-    status(result);
+    status(jb);
 }
 
-void play_track(GString* result, int pl_idx, int tr_idx) {
+void play_track(JsonBuilder* jb, int pl_idx, int tr_idx) {
     sp_playlist* pl;
     sp_track* tr;
     GArray* tracks;
 
     /* First check the playlist type */
     if (playlist_type(pl_idx) != SP_PLAYLIST_TYPE_PLAYLIST) {
-        g_string_assign(result, "- not a playlist\n");
+        jb_add_string(jb, "error", "not a playlist");
         return;
     }
 
     /* Then get the playlist */
     pl = playlist_get(pl_idx);
     if (!pl) {
-        g_string_assign(result, "- invalid playlist\n");
+        jb_add_string(jb, "error", "invalid playlist");
         return;
     }
 
     /* Then get the track itself */
     tracks = tracks_get_playlist(pl);
     if (!tracks) {
-        g_string_assign(result, "- playlist not loaded yet.\n");
+        jb_add_string(jb, "error", "playlist not loaded yet");
         return;
     }
     if ((tr_idx <= 0) || (tr_idx > tracks->len)) {
-        g_string_assign(result, "- invalid track number\n");
+        jb_add_string(jb, "error", "invalid track number");
         g_array_free(tracks, TRUE);
         return;
     }
@@ -391,16 +334,16 @@ void play_track(GString* result, int pl_idx, int tr_idx) {
     queue_set_track(FALSE, tr);
     queue_play(TRUE);
 
-    status(result);
+    status(jb);
 }
 
-void add_playlist(GString* result, int idx) {
+void add_playlist(JsonBuilder* jb, int idx) {
     sp_playlist* pl;
     int tot;
 
     /* First check the playlist type */
     if (playlist_type(idx) != SP_PLAYLIST_TYPE_PLAYLIST) {
-        g_string_assign(result, "- not a playlist\n");
+        jb_add_string(jb, "error", "not a playlist");
         return;
     }
 
@@ -408,7 +351,7 @@ void add_playlist(GString* result, int idx) {
     pl = playlist_get(idx);
 
     if (!pl) {
-        g_string_assign(result, "- invalid playlist\n");
+        jb_add_string(jb, "error", "invalid playlist");
         return;
     }
 
@@ -416,10 +359,10 @@ void add_playlist(GString* result, int idx) {
     queue_add_playlist(TRUE, pl);
 
     queue_get_status(NULL, NULL, &tot);
-    g_string_printf(result, "Total tracks: %d\n", tot);
+    jb_add_int(jb, "total_tracks", tot);
 }
 
-void add_track(GString* result, int pl_idx, int tr_idx) {
+void add_track(JsonBuilder* jb, int pl_idx, int tr_idx) {
     sp_playlist* pl;
     sp_track* tr;
     GArray* tracks;
@@ -427,25 +370,25 @@ void add_track(GString* result, int pl_idx, int tr_idx) {
 
     /* First check the playlist type */
     if (playlist_type(pl_idx) != SP_PLAYLIST_TYPE_PLAYLIST) {
-        g_string_assign(result, "- not a playlist\n");
+        jb_add_string(jb, "error", "not a playlist");
         return;
     }
 
     /* Then get the playlist */
     pl = playlist_get(pl_idx);
     if (!pl) {
-        g_string_assign(result, "- invalid playlist\n");
+        jb_add_string(jb, "error", "invalid playlist");
         return;
     }
 
     /* Then get the track itself */
     tracks = tracks_get_playlist(pl);
     if (!tracks) {
-        g_string_assign(result, "- playlist not loaded yet.\n");
+        jb_add_string(jb, "error", "playlist not loaded yet");
         return;
     }
     if ((tr_idx <= 0) || (tr_idx > tracks->len)) {
-        g_string_assign(result, "- invalid track number\n");
+        jb_add_string(jb, "error", "invalid track number");
         g_array_free(tracks, TRUE);
         return;
     }
@@ -456,35 +399,35 @@ void add_track(GString* result, int pl_idx, int tr_idx) {
     queue_add_track(TRUE, tr);
 
     queue_get_status(NULL, NULL, &tot);
-    g_string_printf(result, "Total tracks: %d\n", tot);
+    jb_add_int(jb, "total_tracks", tot);
 }
 
-void play(GString* result) {
+void play(JsonBuilder* jb) {
     queue_play(TRUE);
-    status(result);
+    status(jb);
 }
-void stop(GString* result) {
+void stop(JsonBuilder* jb) {
     queue_stop(TRUE);
-    status(result);
+    status(jb);
 }
-void toggle(GString* result) {
+void toggle(JsonBuilder* jb) {
     queue_toggle(TRUE);
-    status(result);
+    status(jb);
 }
-void seek(GString* result, int pos) {
+void seek(JsonBuilder* jb, int pos) {
     queue_seek(pos);
-    status(result);
+    status(jb);
 }
 
-void goto_next(GString* result) {
+void goto_next(JsonBuilder* jb) {
     queue_next(TRUE);
-    status(result);
+    status(jb);
 }
-void goto_prev(GString* result) {
+void goto_prev(JsonBuilder* jb) {
     queue_prev(TRUE);
-    status(result);
+    status(jb);
 }
-void goto_nb(GString* result, int nb) {
+void goto_nb(JsonBuilder* jb, int nb) {
     queue_goto(TRUE, nb-1, TRUE);
-    status(result);
+    status(jb);
 }

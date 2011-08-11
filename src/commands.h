@@ -27,33 +27,34 @@
 #define COMMANDS_H
 
 #include <glib.h>
+#include <json-glib/json-glib.h>
 
 /* Commands */
-void list_playlists(GString* result);
-void list_tracks(GString* result, int idx);
+void list_playlists(JsonBuilder* jb);
+void list_tracks(JsonBuilder* jb, int idx);
 
-void status(GString* result);
-void repeat(GString* result);
-void shuffle(GString* result);
+void status(JsonBuilder* jb);
+void repeat(JsonBuilder* jb);
+void shuffle(JsonBuilder* jb);
 
-void list_queue(GString* result);
-void clear_queue(GString* result);
-void remove_queue_item(GString* result, int idx);
-void remove_queue_items(GString* result, int first, int last);
+void list_queue(JsonBuilder* jb);
+void clear_queue(JsonBuilder* jb);
+void remove_queue_item(JsonBuilder* jb, int idx);
+void remove_queue_items(JsonBuilder* jb, int first, int last);
 
-void play_playlist(GString* result, int idx);
-void play_track(GString* result, int pl_idx, int tr_idx);
+void play_playlist(JsonBuilder* jb, int idx);
+void play_track(JsonBuilder* jb, int pl_idx, int tr_idx);
 
-void add_playlist(GString* result, int idx);
-void add_track(GString* result, int pl_idx, int tr_idx);
+void add_playlist(JsonBuilder* jb, int idx);
+void add_track(JsonBuilder* jb, int pl_idx, int tr_idx);
 
-void play(GString* result);
-void toggle(GString* result);
-void stop(GString* result);
-void seek(GString* result, int pos);
+void play(JsonBuilder* jb);
+void toggle(JsonBuilder* jb);
+void stop(JsonBuilder* jb);
+void seek(JsonBuilder* jb, int pos);
 
-void goto_next(GString* result);
-void goto_prev(GString* result);
-void goto_nb(GString* result, int nb);
+void goto_next(JsonBuilder* jb);
+void goto_prev(JsonBuilder* jb);
+void goto_nb(JsonBuilder* jb, int nb);
 
 #endif

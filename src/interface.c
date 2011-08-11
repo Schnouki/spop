@@ -26,6 +26,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <glib.h>
+#include <json-glib/json-glib.h>
 #include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -257,16 +258,16 @@ gboolean interface_handle_command(gchar* command, GString* result, gboolean* mus
     gint argc;
     gchar** argv;
     gchar *endptr;
-    gboolean ret = TRUE;
+    gchar* cmd;
 
     /* Parse the command in a shell-like fashion */
     if (!g_shell_parse_argv(g_strstrip(command), &argc, &argv, &err)) {
         g_debug("Command parser error: %s", err->message);
-        g_string_assign(result, "- invalid command\n");
+        g_string_assign(result, "{ \"error\": \"invalid command\" }");
         return TRUE;
     }
-
-    g_debug("Command: [%s] with %d parameter(s)", argv[0], argc-1);
+    cmd = g_strdup(argv[0]);
+    g_debug("Command: [%s] with %d parameter(s)", cmd, argc-1);
 
     /* Parse arguments as needed */
     int arg1=-1, arg2=-1;
@@ -274,63 +275,85 @@ gboolean interface_handle_command(gchar* command, GString* result, gboolean* mus
         arg1 = strtol(argv[1], &endptr, 0);
         if ((endptr == argv[1]) || (arg1 < 0)) {
             g_debug("Invalid argument: %s", argv[1]);
-            g_string_assign(result, "- invalid argument 1\n");
-            goto ihc_clean;
+            g_string_assign(result, "{ \"error\": \"invalid argument 1\" }");
+            g_strfreev(argv);
+            return TRUE;
         }
     }
     if (argc >= 3) {
         arg2 = strtol(argv[2], &endptr, 0);
         if ((endptr == argv[2]) || (arg2 < 0)) {
             g_debug("Invalid argument: %s", argv[2]);
-            g_string_assign(result, "- invalid argument 2\n");
-            goto ihc_clean;
+            g_string_assign(result, "{ \"error\": \"invalid argument 2\" }");
+            g_strfreev(argv);
+            return TRUE;
         }
     }
+    g_strfreev(argv);
 
     /* Now execute the command */
     size_t i;
     command_descriptor* cmd_desc = NULL;
-    void (*cmd0)(GString*);
-    void (*cmd1)(GString*, int);
-    void (*cmd2)(GString*, int, int);
+    void (*cmd0)(JsonBuilder*);
+    void (*cmd1)(JsonBuilder*, int);
+    void (*cmd2)(JsonBuilder*, int, int);
 
     for (i=0; g_commands[i].name != NULL; i++) {
-        if ((strcmp(g_commands[i].name, argv[0]) == 0) && (g_commands[i].nb_args == argc-1)) {
+        if ((strcmp(g_commands[i].name, cmd) == 0) && (g_commands[i].nb_args == argc-1)) {
             cmd_desc = &(g_commands[i]);
             break;
         }
     }
     if (!cmd_desc) {
-        g_string_assign(result, "- unknown command\n");
-        goto ihc_clean;
+        g_string_assign(result, "{ \"error\": \"unknown command\" }");
+        return TRUE;
     }
 
     /* Handle "normal" and "special" commands separately. */
     switch (cmd_desc->type) {
-    case FUNC:
+    case FUNC: {
+        JsonBuilder* jb = json_builder_new();
+        json_builder_begin_object(jb);
+
         switch (cmd_desc->nb_args) {
         case 0:
             cmd0 = cmd_desc->func;
-            cmd0(result);
+            cmd0(jb);
             break;
         case 1:
             cmd1 = cmd_desc->func;
-            cmd1(result, arg1);
+            cmd1(jb, arg1);
             break;
         case 2:
             cmd2 = cmd_desc->func;
-            cmd2(result, arg1, arg2);
+            cmd2(jb, arg1, arg2);
             break;
         default:
-            g_string_assign(result, "- invalid number of arguments\n");
-            goto ihc_clean;
+            g_object_unref(jb);
+            g_string_assign(result, "{ \"error\": \"invalid number of arguments\" }");
+            return TRUE;
         }
+
+        json_builder_end_object(jb);
+
+        /* Set result using the JSON object */
+        JsonGenerator *gen = json_generator_new();
+        json_generator_set_root(gen, json_builder_get_root(jb));
+
+        gchar *str = json_generator_to_data(gen, NULL);
+        g_string_assign(result, str);
+        g_string_append(result, "\n");
+
+        g_object_unref(gen);
+        g_object_unref(jb);
+        g_free(str);
+
         break;
+    }
 
     case BYE:
-        g_string_assign(result, "+ OK Bye bye!\n");
-        ret = FALSE;
-        goto ihc_clean;
+        g_string_assign(result, "Bye bye!");
+        return FALSE;
 
     case QUIT:
         g_message("Got a quit command, exiting...");
@@ -338,33 +361,31 @@ gboolean interface_handle_command(gchar* command, GString* result, gboolean* mus
 
     case IDLE:
         *must_idle = TRUE;
-        goto ihc_clean;
+        return TRUE;
     }
 
-    /* FIXME: check if necessary... */
-    if (result->len == 0)
-        g_string_append(result, "- ERR\n");
-    else if ((result->str[0] != '-') && (result->str[0] != '+')) {
-        /* Is there something to add ?... */
-        gchar* needle = "\n";
-        gchar* pos = g_strrstr_len(result->str, result->len-1, needle);
-        if (!pos || (pos && (pos < &(result->str[result->len])) && (pos[1] != '+') && (pos[1] != '-')))
-            g_string_append(result, "+ OK\n");
-    }
-
- ihc_clean:
-    if (argv)
-        g_strfreev(argv);
-
-    return ret;
+    return TRUE;
 }
 
 /* Notify clients (channels or plugins) that are waiting for an update */
 void interface_notify() {
     GString* str = g_string_sized_new(1024);
+    JsonBuilder* jb = json_builder_new();
 
-    status(str);
-    g_string_append(str, "+ OK\n");
+    json_builder_begin_object(jb);
+    status(jb);
+    json_builder_end_object(jb);
+
+    JsonGenerator *gen = json_generator_new();
+    json_generator_set_root(gen, json_builder_get_root(jb));
+
+    gchar *tmp = json_generator_to_data(gen, NULL);
+    g_string_assign(str, tmp);
+    g_string_append(str, "\n");
+
+    g_object_unref(gen);
+    g_object_unref(jb);
+    g_free(tmp);
 
     /* First notify idle channels */
     g_list_foreach(g_idle_channels, interface_notify_chan, str);
