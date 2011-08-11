@@ -49,6 +49,42 @@ typedef struct {
     gpointer data;
 } notification_callback;
 
+typedef struct {
+    gchar* name;
+    int    nb_args;
+    void*  func;
+} command_descriptor;
+static command_descriptor g_commands[] = {
+    { "ls",      0, list_playlists },
+    { "ls",      1, list_tracks },
+
+    { "status",  0, status },
+    { "repeat",  0, repeat },
+    { "shuffle", 0, shuffle },
+
+    { "qls",     0, list_queue },
+    { "qclear",  0, clear_queue },
+    { "qrm",     1, remove_queue_item },
+    { "qrm",     2, remove_queue_items },
+
+    { "play",    1, play_playlist },
+    { "play",    2, play_track },
+
+    { "add",     1, add_playlist },
+    { "add",     2, add_track },
+
+    { "play",    0, play },
+    { "toggle",  0, toggle },
+    { "stop",    0, stop },
+    { "seek",    1, seek },
+
+    { "next",    0, goto_next },
+    { "prev",    0, goto_prev },
+    { "goto",    1, goto_nb },
+
+    {  NULL, 0, NULL }
+};
+
 /* Functions called directly from spop */
 void interface_init() {
     const char* ip_addr;
@@ -261,91 +297,55 @@ gboolean interface_handle_command(gchar** command, GString* result, gboolean* mu
     }
 
     /* Now parse the command... */
-    if (strcmp(cmd, "ls") == 0) {
-        if (arg1 == -1)
-            list_playlists(result);
-        else
-            list_tracks(result, arg1);
+    size_t i;
+    command_descriptor* cmd_desc = NULL;
+    void (*cmd0)(GString*);
+    void (*cmd1)(GString*, int);
+    void (*cmd2)(GString*, int, int);
+
+    for (i=0; g_commands[i].name != NULL; i++) {
+        if ((strcmp(g_commands[i].name, cmd) == 0) && (g_commands[i].nb_args == len-1)) {
+            cmd_desc = &(g_commands[i]);
+            break;
+        }
     }
-    else if (strcmp(cmd, "add") == 0) {
-        if (arg1 == -1) {
-            g_string_assign(result, "- missing argument\n");
+
+    if (cmd_desc) {
+        switch (cmd_desc->nb_args) {
+        case 0:
+            cmd0 = cmd_desc->func;
+            cmd0(result);
+            break;
+        case 1:
+            cmd1 = cmd_desc->func;
+            cmd1(result, arg1);
+            break;
+        case 2:
+            cmd2 = cmd_desc->func;
+            cmd2(result, arg1, arg2);
+            break;
+        default:
+            g_string_assign(result, "- invalid number of arguments\n");
             return TRUE;
         }
-        else if (arg2 == -1)
-            add_playlist(result, arg1);
-        else
-            add_track(result, arg1, arg2);
-    }
-    else if (strcmp(cmd, "play") == 0) {
-        if (arg1 == -1)
-            play(result);
-        else if (arg2 == -1)
-            play_playlist(result, arg1);
-        else
-            play_track(result, arg1, arg2);
-    }
-    else if (strcmp(cmd, "seek") == 0) {
-        if (arg1 == -1) {
-            g_string_assign(result, "- missing argument\n");
-            return TRUE;
-        }
-        else
-            seek(result, arg1);
-    }
-    else if ((strcmp(cmd, "toggle") == 0) || (strcmp(cmd, "pause") == 0))
-        toggle(result);
-    else if (strcmp(cmd, "stop") == 0)
-        stop(result);
-    else if (strcmp(cmd, "next") == 0)
-        goto_next(result);
-    else if (strcmp(cmd, "prev") == 0)
-        goto_prev(result);
-    else if (strcmp(cmd, "goto") == 0) {
-        if (arg1 == -1) {
-            g_string_assign(result, "- missing argument\n");
-            return TRUE;
-        }
-        else
-            goto_nb(result, arg1);
-    }
-    else if (strcmp(cmd, "status") == 0)
-        status(result);
-    else if (strcmp(cmd, "idle") == 0) {
-        *must_idle = TRUE;
-        return TRUE;
-    }
-    else if (strcmp(cmd, "repeat") == 0)
-        repeat(result);
-    else if (strcmp(cmd, "shuffle") == 0)
-        shuffle(result);
-    else if (strcmp(cmd, "qls") == 0)
-        list_queue(result);
-    else if (strcmp(cmd, "qclear") == 0)
-        clear_queue(result);
-    else if (strcmp(cmd, "qrm") == 0) {
-        if ((arg1 == -1)) {
-            g_string_assign(result, "- missing argument\n");
-            return TRUE;
-        }
-        else {
-            if (arg2 == -1)
-                remove_queue_item(result, arg1);
-            else
-                remove_queue_items(result, arg1, arg2);
-        }
-    }
-    else if (strcmp(cmd, "quit") == 0) {
-        g_message("Got a quit command, exiting...");
-        exit(0);
-    }
-    else if (strcmp(cmd, "bye") == 0) {
-        g_string_assign(result, "+ OK Bye bye!\n");
-        return FALSE;
     }
     else {
-        g_string_assign(result, "- unknown command\n");
-        return TRUE;
+        if (strcmp(cmd, "idle") == 0) {
+            *must_idle = TRUE;
+            return TRUE;
+        }
+        else if (strcmp(cmd, "quit") == 0) {
+            g_message("Got a quit command, exiting...");
+            exit(0);
+        }
+        else if (strcmp(cmd, "bye") == 0) {
+            g_string_assign(result, "+ OK Bye bye!\n");
+            return FALSE;
+        }
+        else {
+            g_string_assign(result, "- unknown command\n");
+            return TRUE;
+        }
     }
 
     if (result->len == 0)
