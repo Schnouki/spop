@@ -10,11 +10,13 @@ it with your keyboard and a few scripts, and just forget about it.
 - **Uses libspotify:** stable, reliable. Not free (a Spotify [premium account][]
   is required), but quite cheap.
 - **Written in plain C:** as lightweight as possible, only 300 kB when compiled
-  *with debuggin symbols*...
-- **Few dependencies:** only requires [libspotify][], [Glib][] and [libao][]
-  (not required for OSS audio output).
+  *with debugging symbols*...
+- **Few dependencies:** only requires [libspotify][], [Glib][], [JSON-GLib][]
+  and [libao][] (not required for OSS audio output).
 - **Powerful plugin system:** you can write your own plugin in a few dozens
   lines of code.
+- **Simple protocol:** open a TCP connection to the daemon, write a simple
+  plain-text command, get an easily parsable JSON output.
 - **Portable:** designed to be platform-agnostic, it should work on any platform
   supported both by Glib and libspotify. (But so far it has only been tested on
   Linux.)
@@ -22,7 +24,7 @@ it with your keyboard and a few scripts, and just forget about it.
   GPLv3 license (or, at your option, any later version), with an exception
   allowing to distribute code linked against libspotify. Everyone is welcome to
   contribute!
-  
+
 ## Plugins
 Right now, several plugins are available:
 
@@ -110,6 +112,7 @@ ask me if you have any question regarding spop!
 
 [Awesome]: http://awesome.naquadah.org/
 [Glib]: http://library.gnome.org/devel/glib/
+[JSON-GLib]: http://live.gnome.org/JsonGlib
 [libspotify]: http://developer.spotify.com/en/libspotify/overview/
 [libao]: http://www.xiph.org/ao/
 [libnotify]: http://library.gnome.org/devel/libnotify/
