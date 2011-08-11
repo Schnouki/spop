@@ -56,7 +56,4 @@ void goto_next(GString* result);
 void goto_prev(GString* result);
 void goto_nb(GString* result, int nb);
 
-/* Helper functions */
-void format_tracks_array(GArray* tracks, GString* dst);
-
 #endif

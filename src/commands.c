@@ -49,6 +49,42 @@
     json_builder_set_member_name(jb, name); \
     json_builder_add_string_value(jb, val); }
 
+static void json_tracks_array(GArray* tracks, JsonBuilder* jb) {
+    int i;
+    sp_track* track;
+
+    bool track_avail;
+    int track_duration;
+    gchar* track_name;
+    gchar* track_artist;
+    gchar* track_album;
+    gchar* track_link;
+
+    /* For each track, add an object to the JSON array */
+    for (i=0; i < tracks->len; i++) {
+        track = g_array_index(tracks, sp_track*, i);
+        if (!sp_track_is_loaded(track)) continue;
+
+        track_avail = track_available(track);
+        track_get_data(track, &track_name, &track_artist, &track_album, &track_link, &track_duration);
+
+        json_builder_begin_object(jb);
+        jb_add_string(jb, "artist", track_artist);
+        jb_add_string(jb, "title", track_name);
+        jb_add_string(jb, "album", track_album);
+        jb_add_int(jb, "duration", track_duration);
+        jb_add_string(jb, "uri", track_link);
+        jb_add_bool(jb, "available", track_avail);
+        jb_add_int(jb, "index", i+1);
+        json_builder_end_object(jb);
+
+        g_free(track_name);
+        g_free(track_artist);
+        g_free(track_album);
+        g_free(track_link);
+    }
+}
+
 /****************
  *** Commands ***
  ****************/
@@ -149,22 +185,41 @@ void list_tracks(GString* result, int idx) {
     sp_playlist* pl;
     GArray* tracks;
 
+    JsonBuilder* jb = json_builder_new();
+    json_builder_begin_object(jb);
+
     /* Get the playlist */
     pl = playlist_get(idx);
     if (!pl) {
-        g_string_assign(result, "- invalid playlist\n");
-        return;
+        jb_add_string(jb, "error", "invalid playlist");
+        goto lt_end;
     }
     
     /* Get the tracks array */
     tracks = tracks_get_playlist(pl);
     if (!tracks) {
-        g_string_assign(result, "- playlist not loaded yet\n");
-        return;
+        jb_add_string(jb, "error", "playlist not loaded yet");
+        goto lt_end;
     }
 
-    format_tracks_array(tracks, result);
+    json_builder_set_member_name(jb, "tracks");
+    json_builder_begin_array(jb);
+    json_tracks_array(tracks, jb);
+    json_builder_end_array(jb);
+
     g_array_free(tracks, TRUE);
+
+lt_end:
+    json_builder_end_object(jb);
+
+    JsonGenerator *gen = json_generator_new();
+    json_generator_set_root(gen, json_builder_get_root(jb));
+    gchar *str = json_generator_to_data(gen, NULL);
+    g_string_assign(result, str);
+
+    g_object_unref(gen);
+    g_object_unref(jb);
+    g_free(str);
 }
 
 
@@ -240,8 +295,24 @@ void list_queue(GString* result) {
     if (!tracks)
         g_error("Couldn't read queue.");
 
-    format_tracks_array(tracks, result);
+    JsonBuilder* jb = json_builder_new();
+    json_builder_begin_object(jb);
+    json_builder_set_member_name(jb, "tracks");
+    json_builder_begin_array(jb);
+    json_tracks_array(tracks, jb);
+    json_builder_end_array(jb);
     g_array_free(tracks, TRUE);
+
+    json_builder_end_object(jb);
+
+    JsonGenerator *gen = json_generator_new();
+    json_generator_set_root(gen, json_builder_get_root(jb));
+    gchar *str = json_generator_to_data(gen, NULL);
+    g_string_assign(result, str);
+
+    g_object_unref(gen);
+    g_object_unref(jb);
+    g_free(str);
 }
 
 void clear_queue(GString* result) {
@@ -417,47 +488,3 @@ void goto_nb(GString* result, int nb) {
     queue_goto(TRUE, nb-1, TRUE);
     status(result);
 }
-
-
-/************************
- *** Helper functions ***
- ************************/
-void format_tracks_array(GArray* tracks, GString* dst) {
-    int i;
-    sp_track* track;
-
-    bool track_avail;
-    int track_min, track_sec;
-    gchar* track_name;
-    gchar* track_artist;
-    gchar* track_album;
-    gchar* track_link;
-
-    /* If the playlist is empty, just add a newline (an empty string would mean "error") */
-    if (tracks->len == 0) {
-        g_string_assign(dst, "\n");
-        return;
-    }
-
-    /* For each track, add a line to the dst string */
-    for (i=0; i < tracks->len; i++) {
-        track = g_array_index(tracks, sp_track*, i);
-        if (!sp_track_is_loaded(track)) continue;
-
-        track_avail = track_available(track);
-        track_get_data(track, &track_name, &track_artist, &track_album, &track_link, &track_sec);
-        track_min = track_sec / 60;
-        track_sec %= 60;
-
-        g_string_append_line_number(dst, i+1, tracks->len+1);
-        g_string_append_printf(dst, "%s %s -- \"%s\" -- \"%s\" (%d:%02d) URI:%s\n",
-                               (track_avail ? "" : "-"), track_artist,
-                               track_album, track_name, track_min, track_sec, 
-                               track_link);
-        g_free(track_name);
-        g_free(track_artist);
-        g_free(track_album);
-        g_free(track_link);
-    }
-}
-
