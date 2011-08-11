@@ -213,8 +213,12 @@ void clear_queue(GString* result) {
     status(result);
 }
 
-void remove_queue_items(GString* result, int first, int nb) {
-    queue_remove_tracks(TRUE, first, nb);
+void remove_queue_item(GString* result, int idx) {
+    remove_queue_items(result, idx, idx);
+}
+
+void remove_queue_items(GString* result, int first, int last) {
+    queue_remove_tracks(TRUE, first, last-first+1);
     status(result);
 }
 

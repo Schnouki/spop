@@ -330,7 +330,7 @@ gboolean interface_handle_command(gchar** command, GString* result, gboolean* mu
         }
         else {
             if (arg2 == -1)
-                remove_queue_items(result, arg1, 1);
+                remove_queue_item(result, arg1);
             else
                 remove_queue_items(result, arg1, arg2);
         }

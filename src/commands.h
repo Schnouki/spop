@@ -38,7 +38,8 @@ void shuffle(GString* result);
 
 void list_queue(GString* result);
 void clear_queue(GString* result);
-void remove_queue_items(GString* result, int first, int nb);
+void remove_queue_item(GString* result, int idx);
+void remove_queue_items(GString* result, int first, int last);
 
 void play_playlist(GString* result, int idx);
 void play_track(GString* result, int pl_idx, int tr_idx);
