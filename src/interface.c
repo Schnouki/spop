@@ -182,7 +182,6 @@ gboolean interface_client_event(GIOChannel* source, GIOCondition condition, gpoi
     GString* buffer = NULL;
     GError* err = NULL;
     GIOStatus status;
-    gchar** command;
     GString* result;
     int client;
     gboolean keep_alive = TRUE;
@@ -210,15 +209,11 @@ gboolean interface_client_event(GIOChannel* source, GIOCondition condition, gpoi
     buffer->str[buffer->len-1] = '\0';
     g_debug("[%d] Received command: %s", client, buffer->str);
     buffer->str[buffer->len-1] = '\n';
-
-    /* Extract commands */
-    command = g_strsplit(g_strstrip(buffer->str), " ", 0);
     
     /* Parse and run the command, send its result to the IO channel */
     result = g_string_sized_new(1024);
     g_string_assign(result, "");
-    keep_alive = interface_handle_command(command, result, &must_idle);
-    g_strfreev(command);
+    keep_alive = interface_handle_command(buffer->str, result, &must_idle);
 
     /* "idle" command? */
     if (must_idle) {
@@ -257,52 +252,42 @@ gboolean interface_client_event(GIOChannel* source, GIOCondition condition, gpoi
 }
 
 /* Parse the command and execute it */
-gboolean interface_handle_command(gchar** command, GString* result, gboolean* must_idle) {
-    int len;
-    gchar* cmd;
-    gchar* endptr;
-    int arg1 = -1;
-    int arg2 = -1;
+gboolean interface_handle_command(gchar* command, GString* result, gboolean* must_idle) {
+    GError* err = NULL;
+    gint argc;
+    gchar** argv;
+    gchar *endptr;
+    gboolean ret = TRUE;
 
-    /* Number of items in the command array */
-    len = g_strv_length(command);
-    if (len == 0)
+    /* Parse the command in a shell-like fashion */
+    if (!g_shell_parse_argv(g_strstrip(command), &argc, &argv, &err)) {
+        g_debug("Command parser error: %s", err->message);
+        g_string_assign(result, "- invalid command\n");
         return TRUE;
+    }
 
-    cmd = command[0];
-    g_debug("Command: [%s]", cmd);
+    g_debug("Command: [%s] with %d parameter(s)", argv[0], argc-1);
 
-    /* Parse the 2 optional numeric arguments */
-    if (len >= 2) {
-        arg1 = strtol(command[1], &endptr, 0);
-        if (endptr == command[1]) {
-            arg1 = -1;
-            g_debug("Invalid argument: %s", command[1]);
+    /* Parse arguments as needed */
+    int arg1=-1, arg2=-1;
+    if (argc >= 2) {
+        arg1 = strtol(argv[1], &endptr, 0);
+        if ((endptr == argv[1]) || (arg1 < 0)) {
+            g_debug("Invalid argument: %s", argv[1]);
             g_string_assign(result, "- invalid argument 1\n");
-            return TRUE;
-        }
-        else if (arg1 < 0) {
-            g_debug("Invalid value for command argument: %s", command[1]);
-            g_string_assign(result, "- invalid value for argument 1\n");
-            return TRUE;
+            goto ihc_clean;
         }
     }
-    if (len >= 3) {
-        arg2 = strtol(command[2], &endptr, 0);
-        if (endptr == command[2]) {
-            arg2 = -1;
-            g_debug("Invalid argument: %s", command[2]);
+    if (argc >= 3) {
+        arg2 = strtol(argv[2], &endptr, 0);
+        if ((endptr == argv[2]) || (arg2 < 0)) {
+            g_debug("Invalid argument: %s", argv[2]);
             g_string_assign(result, "- invalid argument 2\n");
-            return TRUE;
-        }
-        else if (arg2 < 0) {
-            g_debug("Invalid value for command argument: %s", command[2]);
-            g_string_assign(result, "- invalid value for argument 2\n");
-            return TRUE;
+            goto ihc_clean;
         }
     }
 
-    /* Now parse the command... */
+    /* Now execute the command */
     size_t i;
     command_descriptor* cmd_desc = NULL;
     void (*cmd0)(GString*);
@@ -310,14 +295,14 @@ gboolean interface_handle_command(gchar** command, GString* result, gboolean* mu
     void (*cmd2)(GString*, int, int);
 
     for (i=0; g_commands[i].name != NULL; i++) {
-        if ((strcmp(g_commands[i].name, cmd) == 0) && (g_commands[i].nb_args == len-1)) {
+        if ((strcmp(g_commands[i].name, argv[0]) == 0) && (g_commands[i].nb_args == argc-1)) {
             cmd_desc = &(g_commands[i]);
             break;
         }
     }
     if (!cmd_desc) {
         g_string_assign(result, "- unknown command\n");
-        return TRUE;
+        goto ihc_clean;
     }
 
     /* Handle "normal" and "special" commands separately. */
@@ -338,13 +323,14 @@ gboolean interface_handle_command(gchar** command, GString* result, gboolean* mu
             break;
         default:
             g_string_assign(result, "- invalid number of arguments\n");
-            return TRUE;
+            goto ihc_clean;
         }
         break;
 
     case BYE:
         g_string_assign(result, "+ OK Bye bye!\n");
-        return FALSE;
+        ret = FALSE;
+        goto ihc_clean;
 
     case QUIT:
         g_message("Got a quit command, exiting...");
@@ -352,7 +338,7 @@ gboolean interface_handle_command(gchar** command, GString* result, gboolean* mu
 
     case IDLE:
         *must_idle = TRUE;
-        return TRUE;
+        goto ihc_clean;
     }
 
     /* FIXME: check if necessary... */
@@ -365,7 +351,12 @@ gboolean interface_handle_command(gchar** command, GString* result, gboolean* mu
         if (!pos || (pos && (pos < &(result->str[result->len])) && (pos[1] != '+') && (pos[1] != '-')))
             g_string_append(result, "+ OK\n");
     }
-    return TRUE;
+
+ ihc_clean:
+    if (argv)
+        g_strfreev(argv);
+
+    return ret;
 }
 
 /* Notify clients (channels or plugins) that are waiting for an update */

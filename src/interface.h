@@ -34,7 +34,7 @@ void interface_init();
 /* Internal functions used to manage the network interface */
 gboolean interface_event(GIOChannel* source, GIOCondition condition, gpointer data);
 gboolean interface_client_event(GIOChannel* source, GIOCondition condition, gpointer data);
-gboolean interface_handle_command(gchar** command, GString* result, gboolean* must_idle);
+gboolean interface_handle_command(gchar* command, GString* result, gboolean* must_idle);
 
 /* Notify clients (channels or plugins) that are waiting for an update */
 void interface_notify();
