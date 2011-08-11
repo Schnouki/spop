@@ -148,56 +148,54 @@ void list_tracks(GString* result, int idx) {
 
 void status(GString* result) {
     sp_track* track;
-    int track_nb, total_tracks;
+    int track_nb, total_tracks, track_duration, track_position;
     queue_status qs;
-    int track_min, track_sec, pos_min, pos_sec;
     gchar* track_name;
     gchar* track_artist;
     gchar* track_album;
     gchar* track_link;
+    
+    JsonBuilder* jb = json_builder_new();
+    json_builder_begin_object(jb);
 
     qs = queue_get_status(&track, &track_nb, &total_tracks);
 
-    g_string_assign(result, "Status: ");
-    if (qs == PLAYING) g_string_append(result, "playing");
-    else if (qs == PAUSED) g_string_append(result, "paused");
-    else g_string_append(result, "stopped");
+    jb_add_string(jb, "status",
+                  (qs == PLAYING) ? "playing"
+                  : ((qs == PAUSED) ? "paused" : "stopped"));
 
-    g_string_append_printf(result, "\nTotal tracks: %d\n", total_tracks);
-
-    g_string_append(result, "Mode: ");
-    if (queue_get_repeat()) {
-        g_string_append(result, "repeat");
-        if (queue_get_shuffle())
-            g_string_append(result, " shuffle");
-    }
-    else {
-        if (queue_get_shuffle())
-            g_string_append(result, "shuffle");
-        else
-            g_string_append(result, "normal");
-    }
-    g_string_append(result, "\n");
+    jb_add_bool(jb, "repeat", queue_get_repeat());
+    jb_add_bool(jb, "shuffle", queue_get_shuffle());
+    jb_add_int(jb, "total_tracks", total_tracks);
 
     if (qs != STOPPED) {
-        g_string_append_printf(result, "Current track: %d\n", track_nb+1);
+        jb_add_int(jb, "current_track", track_nb+1);
 
-        track_get_data(track, &track_name, &track_artist, &track_album, &track_link, &track_sec);
-        pos_sec = session_play_time();
-        track_min = track_sec / 60;
-        track_sec %= 60;
-        pos_min = pos_sec / 60;
-        pos_sec %= 60;
+        track_get_data(track, &track_name, &track_artist, &track_album, &track_link, &track_duration);
+        track_position = session_play_time();
 
-        g_string_append_printf(result, "Artist: %s\nTitle: %s\nAlbum: %s\n",
-                               track_artist, track_name, track_album);
-        g_string_append_printf(result, "Duration: %d:%02d\nPosition: %d:%02d\nURI: %s\n",
-                               track_min, track_sec, pos_min, pos_sec, track_link);
+        jb_add_string(jb, "artist", track_artist);
+        jb_add_string(jb, "title", track_name);
+        jb_add_string(jb, "album", track_album);
+        jb_add_int(jb, "duration", track_duration);
+        jb_add_int(jb, "position", track_position);
+        jb_add_string(jb, "uri", track_link);
         g_free(track_name);
         g_free(track_artist);
         g_free(track_album);
         g_free(track_link);
     }
+
+  json_builder_end_object(jb);
+
+  JsonGenerator *gen = json_generator_new();
+  json_generator_set_root(gen, json_builder_get_root(jb));
+  gchar *str = json_generator_to_data(gen, NULL);
+  g_string_assign(result, str);
+
+  g_object_unref(gen);
+  g_object_unref(jb);
+  g_free(str);
 }
 
 void repeat(GString* result) {
