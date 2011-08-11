@@ -24,6 +24,7 @@
  */
 
 #include <glib.h>
+#include <json-glib/json-glib.h>
 #include <libspotify/api.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,6 +35,19 @@
 #include "queue.h"
 #include "spotify.h"
 #include "utils.h"
+
+/********************
+ *** JSON helpers ***
+ ********************/
+#define jb_add_bool(jb, name, val) {\
+    json_builder_set_member_name(jb, name); \
+    json_builder_add_boolean_value(jb, val); }
+#define jb_add_int(jb, name, val) {\
+    json_builder_set_member_name(jb, name); \
+    json_builder_add_int_value(jb, val); }
+#define jb_add_string(jb, name, val) {\
+    json_builder_set_member_name(jb, name); \
+    json_builder_add_string_value(jb, val); }
 
 /****************
  *** Commands ***
