@@ -49,40 +49,46 @@ typedef struct {
     gpointer data;
 } notification_callback;
 
+typedef enum { FUNC=0, BYE, QUIT, IDLE } command_type;
 typedef struct {
-    gchar* name;
-    int    nb_args;
-    void*  func;
+    gchar*       name;
+    int          nb_args;
+    command_type type;
+    void*        func;
 } command_descriptor;
 static command_descriptor g_commands[] = {
-    { "ls",      0, list_playlists },
-    { "ls",      1, list_tracks },
+    { "ls",      0, FUNC, list_playlists },
+    { "ls",      1, FUNC, list_tracks },
 
-    { "status",  0, status },
-    { "repeat",  0, repeat },
-    { "shuffle", 0, shuffle },
+    { "status",  0, FUNC, status },
+    { "repeat",  0, FUNC, repeat },
+    { "shuffle", 0, FUNC, shuffle },
 
-    { "qls",     0, list_queue },
-    { "qclear",  0, clear_queue },
-    { "qrm",     1, remove_queue_item },
-    { "qrm",     2, remove_queue_items },
+    { "qls",     0, FUNC, list_queue },
+    { "qclear",  0, FUNC, clear_queue },
+    { "qrm",     1, FUNC, remove_queue_item },
+    { "qrm",     2, FUNC, remove_queue_items },
 
-    { "play",    1, play_playlist },
-    { "play",    2, play_track },
+    { "play",    1, FUNC, play_playlist },
+    { "play",    2, FUNC, play_track },
 
-    { "add",     1, add_playlist },
-    { "add",     2, add_track },
+    { "add",     1, FUNC, add_playlist },
+    { "add",     2, FUNC, add_track },
 
-    { "play",    0, play },
-    { "toggle",  0, toggle },
-    { "stop",    0, stop },
-    { "seek",    1, seek },
+    { "play",    0, FUNC, play },
+    { "toggle",  0, FUNC, toggle },
+    { "stop",    0, FUNC, stop },
+    { "seek",    1, FUNC, seek },
 
-    { "next",    0, goto_next },
-    { "prev",    0, goto_prev },
-    { "goto",    1, goto_nb },
+    { "next",    0, FUNC, goto_next },
+    { "prev",    0, FUNC, goto_prev },
+    { "goto",    1, FUNC, goto_nb },
 
-    {  NULL, 0, NULL }
+    { "bye",     0, BYE,  NULL },
+    { "quit",    0, QUIT, NULL },
+    { "idle",    0, IDLE, NULL },
+
+    {  NULL, 0, 0, NULL }
 };
 
 /* Functions called directly from spop */
@@ -309,8 +315,14 @@ gboolean interface_handle_command(gchar** command, GString* result, gboolean* mu
             break;
         }
     }
+    if (!cmd_desc) {
+        g_string_assign(result, "- unknown command\n");
+        return TRUE;
+    }
 
-    if (cmd_desc) {
+    /* Handle "normal" and "special" commands separately. */
+    switch (cmd_desc->type) {
+    case FUNC:
         switch (cmd_desc->nb_args) {
         case 0:
             cmd0 = cmd_desc->func;
@@ -328,26 +340,22 @@ gboolean interface_handle_command(gchar** command, GString* result, gboolean* mu
             g_string_assign(result, "- invalid number of arguments\n");
             return TRUE;
         }
-    }
-    else {
-        if (strcmp(cmd, "idle") == 0) {
-            *must_idle = TRUE;
-            return TRUE;
-        }
-        else if (strcmp(cmd, "quit") == 0) {
-            g_message("Got a quit command, exiting...");
-            exit(0);
-        }
-        else if (strcmp(cmd, "bye") == 0) {
-            g_string_assign(result, "+ OK Bye bye!\n");
-            return FALSE;
-        }
-        else {
-            g_string_assign(result, "- unknown command\n");
-            return TRUE;
-        }
+        break;
+
+    case BYE:
+        g_string_assign(result, "+ OK Bye bye!\n");
+        return FALSE;
+
+    case QUIT:
+        g_message("Got a quit command, exiting...");
+        exit(0);
+
+    case IDLE:
+        *must_idle = TRUE;
+        return TRUE;
     }
 
+    /* FIXME: check if necessary... */
     if (result->len == 0)
         g_string_append(result, "- ERR\n");
     else if ((result->str[0] != '-') && (result->str[0] != '+')) {
