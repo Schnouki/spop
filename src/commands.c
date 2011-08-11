@@ -58,69 +58,91 @@ void list_playlists(GString* result) {
     sp_playlist_type pt;
     const char* pn;
     gchar* pfn;
-    gboolean in_folder = FALSE;
+
+    JsonBuilder* jb = json_builder_new();
+    json_builder_begin_object(jb);
 
     if (!container_loaded()) {
-        g_string_assign(result, "- playlists container not loaded yet\n");
-        return;
+        jb_add_string(jb, "error", "playlists container not loaded yet");
+        goto lpl_end;
     }
 
     n = playlists_len();
-    if (n == -1) {
-        g_warning("Could not determine the number of playlists");
-        return;
-    }
+    json_builder_set_member_name(jb, "playlists");
+    json_builder_begin_array(jb);
 
     for (i=0; i<n; i++) {
         pt = playlist_type(i);
         switch(pt) {
         case SP_PLAYLIST_TYPE_START_FOLDER:
             g_debug("Playlist %d is a folder start", i);
-            in_folder = TRUE;
-            g_string_append_line_number(result, i, n);
+
+            json_builder_begin_object(jb);
             pfn = playlist_folder_name(i);
-            g_string_append_printf(result, " + %s\n", pfn);
+            jb_add_string(jb, "name", pfn);
             g_free(pfn);
+
+            jb_add_string(jb, "type", "folder");
+
+            json_builder_set_member_name(jb, "playlists");
+            json_builder_begin_array(jb);
             break;
 
         case SP_PLAYLIST_TYPE_END_FOLDER:
             g_debug("Playlist %d is a folder end", i);
-            in_folder = FALSE;
-            g_string_append_line_number(result, i, n);
-            g_string_append_printf(result, " `--\n");
+            json_builder_end_array(jb);
+            json_builder_end_object(jb);
             break;
 
         case SP_PLAYLIST_TYPE_PLAYLIST:
             pl = playlist_get(i);
+            json_builder_begin_object(jb);
             if (!pl) {
                 g_debug("Got NULL pointer when loading playlist %d.", i);
+                json_builder_end_object(jb);
                 break;
             }
             if (!sp_playlist_is_loaded(pl)) {
                 g_debug("Playlist %d is not loaded.", i);
+                json_builder_end_object(jb);
                 break;
             }
-            t = sp_playlist_num_tracks(pl);
             pn = sp_playlist_name(pl);
-            g_string_append_line_number(result, i, n);
 
             if (g_strcmp0("-", pn)) {
                 /* Regular playlist */
-                g_string_append_printf(result, " %s%s (%d)\n",
-                                       in_folder ? "| " : "",
-                                       pn, t);
+                t = sp_playlist_num_tracks(pl);
+
+                jb_add_string(jb, "type", "playlist");
+                jb_add_string(jb, "name", pn);
+                jb_add_int(jb, "tracks", t);
+                jb_add_int(jb, "index", i);
             }
             else {
                 /* Playlist separator */
-                g_string_append_printf(result, " %s--------------------\n",
-                                       in_folder ? "| " : "");
+                jb_add_string(jb, "type", "separator");
             }
+            json_builder_end_object(jb);
             break;
 
         default:
             g_debug("Playlist %d is a placeholder", i);
         }
     }
+
+    json_builder_end_array(jb);
+
+ lpl_end:
+    json_builder_end_object(jb);
+
+    JsonGenerator *gen = json_generator_new();
+    json_generator_set_root(gen, json_builder_get_root(jb));
+    gchar *str = json_generator_to_data(gen, NULL);
+    g_string_assign(result, str);
+
+    g_object_unref(gen);
+    g_object_unref(jb);
+    g_free(str);
 }
 
 void list_tracks(GString* result, int idx) {
