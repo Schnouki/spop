@@ -265,7 +265,7 @@ gboolean interface_handle_command(gchar** command, GString* result, gboolean* mu
         if (arg1 == -1)
             list_playlists(result);
         else
-            list_tracks(arg1, result);
+            list_tracks(result, arg1);
     }
     else if (strcmp(cmd, "add") == 0) {
         if (arg1 == -1) {
@@ -273,17 +273,17 @@ gboolean interface_handle_command(gchar** command, GString* result, gboolean* mu
             return TRUE;
         }
         else if (arg2 == -1)
-            add_playlist(arg1, result);
+            add_playlist(result, arg1);
         else
-            add_track(arg1, arg2, result);
+            add_track(result, arg1, arg2);
     }
     else if (strcmp(cmd, "play") == 0) {
         if (arg1 == -1)
             play(result);
         else if (arg2 == -1)
-            play_playlist(arg1, result);
+            play_playlist(result, arg1);
         else
-            play_track(arg1, arg2, result);
+            play_track(result, arg1, arg2);
     }
     else if (strcmp(cmd, "seek") == 0) {
         if (arg1 == -1) {
@@ -291,7 +291,7 @@ gboolean interface_handle_command(gchar** command, GString* result, gboolean* mu
             return TRUE;
         }
         else
-            seek(arg1, result);
+            seek(result, arg1);
     }
     else if ((strcmp(cmd, "toggle") == 0) || (strcmp(cmd, "pause") == 0))
         toggle(result);
@@ -330,9 +330,9 @@ gboolean interface_handle_command(gchar** command, GString* result, gboolean* mu
         }
         else {
             if (arg2 == -1)
-                remove_queue_items(arg1, 1, result);
+                remove_queue_items(result, arg1, 1);
             else
-                remove_queue_items(arg1, arg2, result);
+                remove_queue_items(result, arg1, arg2);
         }
     }
     else if (strcmp(cmd, "quit") == 0) {

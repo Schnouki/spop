@@ -109,7 +109,7 @@ void list_playlists(GString* result) {
     }
 }
 
-void list_tracks(int idx, GString* result) {
+void list_tracks(GString* result, int idx) {
     sp_playlist* pl;
     GArray* tracks;
 
@@ -213,13 +213,13 @@ void clear_queue(GString* result) {
     status(result);
 }
 
-void remove_queue_items(int first, int nb, GString* result) {
+void remove_queue_items(GString* result, int first, int nb) {
     queue_remove_tracks(TRUE, first, nb);
     status(result);
 }
 
 
-void play_playlist(int idx, GString* result) {
+void play_playlist(GString* result, int idx) {
     sp_playlist* pl;
 
     /* First check the playlist type */
@@ -243,7 +243,7 @@ void play_playlist(int idx, GString* result) {
     status(result);
 }
 
-void play_track(int pl_idx, int tr_idx, GString* result) {
+void play_track(GString* result, int pl_idx, int tr_idx) {
     sp_playlist* pl;
     sp_track* tr;
     GArray* tracks;
@@ -283,7 +283,7 @@ void play_track(int pl_idx, int tr_idx, GString* result) {
     status(result);
 }
 
-void add_playlist(int idx, GString* result) {
+void add_playlist(GString* result, int idx) {
     sp_playlist* pl;
     int tot;
 
@@ -308,7 +308,7 @@ void add_playlist(int idx, GString* result) {
     g_string_printf(result, "Total tracks: %d\n", tot);
 }
 
-void add_track(int pl_idx, int tr_idx, GString* result) {
+void add_track(GString* result, int pl_idx, int tr_idx) {
     sp_playlist* pl;
     sp_track* tr;
     GArray* tracks;
@@ -360,7 +360,7 @@ void toggle(GString* result) {
     queue_toggle(TRUE);
     status(result);
 }
-void seek(int pos, GString* result) {
+void seek(GString* result, int pos) {
     queue_seek(pos);
     status(result);
 }

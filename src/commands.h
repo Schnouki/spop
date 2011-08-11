@@ -30,7 +30,7 @@
 
 /* Commands */
 void list_playlists(GString* result);
-void list_tracks(int idx, GString* result);
+void list_tracks(GString* result, int idx);
 
 void status(GString* result);
 void repeat(GString* result);
@@ -38,18 +38,18 @@ void shuffle(GString* result);
 
 void list_queue(GString* result);
 void clear_queue(GString* result);
-void remove_queue_items(int first, int nb, GString* result);
+void remove_queue_items(GString* result, int first, int nb);
 
-void play_playlist(int idx, GString* result);
-void play_track(int pl_idx, int tr_idx, GString* result);
+void play_playlist(GString* result, int idx);
+void play_track(GString* result, int pl_idx, int tr_idx);
 
-void add_playlist(int idx, GString* result);
-void add_track(int pl_idx, int tr_idx, GString* result);
+void add_playlist(GString* result, int idx);
+void add_track(GString* result, int pl_idx, int tr_idx);
 
 void play(GString* result);
 void toggle(GString* result);
 void stop(GString* result);
-void seek(int pos, GString* result);
+void seek(GString* result, int pos);
 
 void goto_next(GString* result);
 void goto_prev(GString* result);
