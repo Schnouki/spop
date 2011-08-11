@@ -173,6 +173,7 @@ void exit_handler() {
     g_debug("Entering exit handler...");
 
     plugins_close();
+    session_logout();
 
     g_message("Exiting.");
 }

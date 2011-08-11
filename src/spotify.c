@@ -145,6 +145,11 @@ void session_login(const char* username, const char* password) {
 
     sp_session_login(g_session, username, password);
 }
+void session_logout() {
+    g_debug("Logging out...");
+    if (g_session)
+        sp_session_logout(g_session);
+}
 
 
 /***************************

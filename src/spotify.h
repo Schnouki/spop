@@ -32,6 +32,7 @@
 /* Init functions */
 void session_init(gboolean high_bitrate);
 void session_login(const char* username, const char* password);
+void session_logout();
 
 /* Playlist management */
 int playlists_len();
