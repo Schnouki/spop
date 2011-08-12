@@ -86,6 +86,8 @@ static command_descriptor g_commands[] = {
     { "prev",    0, FUNC, goto_prev },
     { "goto",    1, FUNC, goto_nb },
 
+    { "image",   0, FUNC, image },
+
     { "bye",     0, BYE,  NULL },
     { "quit",    0, QUIT, NULL },
     { "idle",    0, IDLE, NULL },

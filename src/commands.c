@@ -431,3 +431,27 @@ void goto_nb(JsonBuilder* jb, int nb) {
     queue_goto(TRUE, nb-1, TRUE);
     status(jb);
 }
+
+void image(JsonBuilder* jb) {
+    sp_track* track = NULL;
+    guchar* img_data;
+    gsize len;
+    gboolean res;
+
+    queue_get_status(&track, NULL, NULL);
+    res = track_get_image_data(track, (gpointer*) &img_data, &len);
+    if (!res) {
+        jb_add_string(jb, "status", "not-loaded");
+    }
+    else if (!img_data) {
+        jb_add_string(jb, "status", "absent");
+    }
+    else {
+        gchar* b64data = g_base64_encode(img_data, len);
+        jb_add_string(jb, "status", "ok");
+        jb_add_string(jb, "data", b64data);
+        
+        g_free(b64data);
+        g_free(img_data);
+    }
+}

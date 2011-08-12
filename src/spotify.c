@@ -396,6 +396,61 @@ gboolean track_available(sp_track* track) {
     return sp_track_is_available(g_session, track);
 }
 
+sp_image* track_get_image(sp_track* track) {
+    sp_album* alb = NULL;
+    sp_image* img = NULL;
+    const void* img_id = NULL;
+
+    /* Get album */
+    alb = sp_track_album(track);
+    if (!alb)
+        g_error("Can't get track album.");
+    sp_album_add_ref(alb);
+
+    if (!sp_album_is_loaded(alb))
+        g_error("Album not loaded.");
+
+    /* Get image */
+    img_id = sp_album_cover(alb);
+    if (!img_id) {
+        /* Since the album is loaded, a NULL here indicates that there is no
+           cover for this album. */
+        sp_album_release(alb);
+        return NULL;
+    }
+
+    img = sp_image_create(g_session, img_id);
+    sp_album_release(alb);
+
+    if (!img)
+        g_error("Can't create image.");
+    return img;
+}
+
+gboolean track_get_image_data(sp_track* track, gpointer* data, gsize* len) {
+    sp_image* img;
+    const guchar* img_data = NULL;
+
+    img = track_get_image(track);
+    if (!img) {
+        /* No cover */
+        *data = NULL;
+        *len = 0;
+        return TRUE;
+    }
+
+    if (!sp_image_is_loaded(img))
+        return FALSE;
+
+    img_data = sp_image_data(img, len);
+    if (!img_data)
+        g_error("Can't read image data");
+
+    *data = g_memdup(img_data, *len);
+    sp_image_release(img);
+    return TRUE;
+}
+
 
 /*************************
  *** Utility functions ***

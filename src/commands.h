@@ -57,4 +57,6 @@ void goto_next(JsonBuilder* jb);
 void goto_prev(JsonBuilder* jb);
 void goto_nb(JsonBuilder* jb, int nb);
 
+void image(JsonBuilder* jb);
+
 #endif

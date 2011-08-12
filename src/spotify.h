@@ -62,6 +62,9 @@ GArray* tracks_get_playlist(sp_playlist* pl);
 void track_get_data(sp_track* track, gchar** name, gchar** artist, gchar** album, gchar** link, int* duration);
 gboolean track_available(sp_track* track);
 
+sp_image* track_get_image(sp_track* track);
+gboolean track_get_image_data(sp_track* track, gpointer* data, gsize* len);
+
 /* Utility functions */
 gboolean container_loaded();
 
