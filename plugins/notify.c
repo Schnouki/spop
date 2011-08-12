@@ -34,15 +34,80 @@
 #include "spotify.h"
 #include "utils.h"
 
+#define NOTIF_TITLE         "spop update"
+#define NOTIF_TIMEOUT       8000
+#define NOTIF_IMAGE_TIMEOUT 100
+
 static NotifyNotification* g_notif = NULL;
+static gchar* g_notif_image_path = NULL;
 
 #define col(c, txt) "<span foreground=\"" c "\">" txt "</span>"
+
+/* Callback to update the notification once a track cover is loaded */
+typedef struct {
+    gchar* body;
+    sp_track* track;
+    guint nb_calls;
+} notif_image_data;
+static gboolean notif_image_callback(notif_image_data* nid) {
+    queue_status qs;
+    sp_track* cur_track;
+    GError* err = NULL;
+
+    g_debug("notif: in image callback...");
+
+    /* Is this timeout still valid/relevant? */
+    qs = queue_get_status(&cur_track, NULL, NULL);
+    if ((qs != STOPPED) && (cur_track == nid->track) &&
+        (NOTIF_TIMEOUT - (nid->nb_calls * NOTIF_IMAGE_TIMEOUT))) {
+        /* Yes: check if the image is loaded */
+        guchar* img_data = NULL;
+        gsize img_size;
+
+        if (track_get_image_data(cur_track, (gpointer*) &img_data, &img_size)) {
+            if (img_data) {
+                /* An image is present: save it to a file and update the notification */
+                g_debug("notif: image loaded!");
+                if (g_file_set_contents(g_notif_image_path, (gchar*) img_data, img_size, &err)) {
+                    notify_notification_update(g_notif, NOTIF_TITLE, nid->body, g_notif_image_path);
+                    notify_notification_set_timeout(g_notif, NOTIF_TIMEOUT - (nid->nb_calls*NOTIF_IMAGE_TIMEOUT));
+                    if (!notify_notification_show(g_notif, &err))
+                        g_info("Can't show notification: %s", err->message);
+                }
+                else
+                    g_info("Can't save image to file: %s", err->message);
+            }
+            else
+                /* No cover: clean this timeout */
+                g_debug("notif: destroying useless image callback");
+            goto nic_destroy;
+        }
+        else {
+            /* Not loaded yet: wait again... */
+            nid->nb_calls++;
+            return TRUE;
+        }
+    }
+    else {
+        /* No: clean it */
+        g_debug("notif: destroying old image callback");
+        goto nic_destroy;
+    }
+
+ nic_destroy:
+    g_free(nid->body);
+    g_free(nid);
+    return FALSE;
+}
 
 static void notification_callback(const GString* status, gpointer data) {
     queue_status qs;
     sp_track* cur_track;
     int cur_track_nb;
     int tot_tracks;
+    guchar* img_data = NULL;
+    gsize img_size;
+    gchar* img_path = NULL;
 
     GString* body;
 
@@ -91,19 +156,42 @@ static void notification_callback(const GString* status, gpointer data) {
         g_free(track_name);
         g_free(track_artist);
         g_free(track_album);
-    }
 
-    /* Replace "&" with "&amp;" */
-    g_string_replace(body, "&", "&amp;");
+        /* Replace "&" with "&amp;" */
+        g_string_replace(body, "&", "&amp;");
+
+        /* Try to load the cover image */
+        if (track_get_image_data(cur_track, (gpointer*) &img_data, &img_size)) {
+            /* Does this track have a cover? */
+            if (img_data) {
+                /* An image is present: save it to a file */
+                if (g_file_set_contents(g_notif_image_path, (gchar*) img_data, img_size, &err))
+                    img_path = g_notif_image_path;
+                else
+                    g_info("Can't save image to file: %s", err->message);
+            }
+            /* If no cover, nothing to do: img_path is already NULL */
+        }
+        else {
+            /* Not loaded yet: add a timeout that will update the notification later */
+            notif_image_data* nid = g_malloc(sizeof(notif_image_data));
+            nid->body = g_strdup(body->str);
+            nid->track = cur_track;
+            nid->nb_calls = 1;
+            g_timeout_add(100, (GSourceFunc) notif_image_callback, (gpointer) nid);
+        }
+    }
 
     /* Create or update the notification */
     if (!g_notif) {
-        g_notif = notify_notification_new("spop update", body->str, NULL);
-        notify_notification_set_timeout(g_notif, 8000);
+        g_notif = notify_notification_new(NOTIF_TITLE, body->str, img_path);
+        notify_notification_set_timeout(g_notif, NOTIF_TIMEOUT);
         notify_notification_set_urgency(g_notif, NOTIFY_URGENCY_LOW);
     }
-    else
-        notify_notification_update(g_notif, "spop update", body->str, NULL);
+    else {
+        notify_notification_update(g_notif, NOTIF_TITLE, body->str, img_path);
+        notify_notification_set_timeout(g_notif, NOTIF_TIMEOUT);
+    }
 
     if (!notify_notification_show(g_notif, &err))
         g_info("Can't show notification: %s", err->message);
@@ -117,6 +205,8 @@ G_MODULE_EXPORT void spop_notify_init() {
 
     if (!interface_notify_add_callback(notification_callback, NULL))
         g_error("Could not add libnotify callback.");
+
+    g_notif_image_path = g_build_filename(g_get_user_cache_dir(), g_get_prgname(), "notify-image.jpg", NULL);
 }
 
 G_MODULE_EXPORT void spop_notify_close() {
@@ -124,4 +214,5 @@ G_MODULE_EXPORT void spop_notify_close() {
     if (g_notif && !notify_notification_close(g_notif, &err))
         g_warning("Can't close notification: %s", err->message);
     notify_uninit();
+    g_free(g_notif_image_path);
 }
