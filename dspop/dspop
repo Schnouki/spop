@@ -1,5 +1,6 @@
-#!/bin/zsh
-# Copyright (C) 2010 Thomas Jost
+#!/usr/bin/env python3
+
+# Copyright (C) 2010, 2011, 2011 Thomas Jost
 #
 # This file is part of spop.
 #
@@ -22,146 +23,163 @@
 # covered by the terms of the Libspotify Terms of Use, the licensors of this
 # Program grant you additional permission to convey the resulting work.
 
-# {{{ Init
-zmodload zsh/net/tcp
+import json
+import socket
+import subprocess
 
-local conn line
-HOST=localhost
-PORT=6602
-[[ $# -ge 1 ]] && (host=$1; shift)
-[[ $# -ge 1 ]] && (port=$1; shift)
-
-ztcp $HOST $PORT
-conn=$REPLY
-read -r line <&$conn
-echo $line
-
+# {{{ Parameters
 # %n%: number - %A%: artist - %T%: title - %a%: album - %d%: duration - %U%: URI
-TRACKFMT="%n% - %A% - %T% (%d%)"
+TRACK_FMT="%n% - %A% - %T% (%d%)"
 
-DMENUOPTS="-i -l 40"
+DMENU_OPTS=["-i",  "-l", "40"]
 # }}}
-# {{{ Helpers
-function menu() {
-    local arr ret i
-    arr=("$@")
-    ret=$(echo ${(F)arr} | dmenu ${=DMENUOPTS})
-    [[ $? -ne 0 ]] && return -1
-    for ((i=1; i<=$#arr; i++)) do
-        [[ "$ret" == "$arr[$i]" ]] && return $i
-    done
-    return -1
-}
+# {{{ Spop client
+class SpopClient:
+    def __init__(self, host, port):
+        self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._sock.connect((host, port))
+        self.greeting = self._sock.recv(1024).decode().strip()
 
-function single_command() {
-    local line
-    print "$*" >&$conn
-    line=" "
-    until [[ ("$line[1]" == "-") || ("$line[1]" == "+") ]]; do
-        read -r line <&$conn
-    done
-}
+    def _command(self, command, *args):
+        esc_args = ['"'+arg.replace('"', '\"')+'"' if type(arg) is str else str(arg) for arg in args]
+        esc_args.insert(0, command)
+        cmd = " ".join(esc_args) + "\n"
+        self._sock.send(cmd.encode())
 
-function format_track() {
-    local line nb artist title album dur uri
-    line="$1"
+        buf = b""
+        while True:
+            tmp = self._sock.recv(128)
+            buf += tmp
+            if len(tmp) < 128:
+                try:
+                    obj = json.loads(buf.decode())
+                    return obj
+                except:
+                    pass
 
-    nb=${line/ */}
-    line=${line:$#nb+1}
-
-    artist=${line/ -- \"*/}
-    line=${line:$#artist+5}
-
-    album=${line/\" -- \"*/}
-    line=${line:$#album+6}
-
-    title=${line/\" \(*/}
-    line=${line:$#title+3}
-
-    dur=${line/\)*/}
-    uri=${line/*URI:/}
-
-    line=$TRACKFMT
-    line=${line/\%n\%/$nb}
-    line=${line/\%A\%/$artist}
-    line=${line/\%T\%/$title}
-    line=${line/\%a\%/$album}
-    line=${line/\%d\%/$dur}
-    line=${line/\%U\%/$uri}
-    echo "$line"    
-}
+    def __getattr__(self, name):
+        if name in ("repeat", "shuffle", "qclear", "qls", "ls", "goto", "add", "play"):
+            def func(*attrs):
+                return self._command(name, *attrs)
+            return func
+        else:
+            raise AttributeError
 # }}}
-# {{{ Sub-menus
-function menu_queue() {
-    local q line ent res
-    q=("[ Clear queue ]")
+# {{{ Dmenu interaction
+def dmenu(items):
+    args = ["dmenu"]
+    args.extend(DMENU_OPTS)
+    p = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    for it in items:
+        p.stdin.write((it+"\n").encode())
 
-    print "qls" >&$conn
-    while true; do
-        read -r line <&$conn
-        [[ ($#line == 0) || ("$line[1]" == "+") ]] && break
-        ent=$(format_track "$line")
-        q+="$ent"
-    done
+    out, _ = p.communicate()
 
-    menu $q
-    res=$?
-    case $res in
-        -1) return 1 ;;
-        1) single_command "qclear" ;;
-        *)  single_command "goto" $(( $res-1 )) ;;
-    esac
-}
+    if len(out) == 0:
+        return None
 
-function menu_playlist() {
-    local idx pl line ent
-    idx=$1
-    pl=("[ Set as queue ]" "[ Add to queue ]")
+    out = out[:-1].decode()
+    return items.index(out)
 
-    print "ls" $idx >&$conn
-    while true; do
-        read -r line <&$conn
-        [[ ($#line == 0) || ("$line[1]" == "+") ]] && break
-        ent=$(format_track "$line")
-        pl+="$ent"
-    done
+def format_track(track):
+    s = TRACK_FMT
+    s = s.replace("%n%", str(track["index"]))
+    s = s.replace("%A%", track["artist"])
+    s = s.replace("%T%", track["title"])
+    s = s.replace("%a%", track["album"])
+    s = s.replace("%d%", "%d:%02d" % divmod(track["duration"], 60))
+    s = s.replace("%U%", track["uri"])
 
-    menu $pl
-    res=$?
-    case $res in
-        -1) return 1 ;;
-        1) single_command "play" $idx ;;
-        2) single_command "add" $idx ;;
-        *) single_command "play" $idx $(( $res-2 )) ;;
-    esac
-}
+    return s
 
-function menu_playlists() {
-    local pl line res
-    pl=()
-    
-    print "ls" >&$conn
-    while true; do
-        read -r line <&$conn
-        [[ ($#line == 0) || ("$line[1]" == "+") ]] && break
-        pl+="${(S)line/* /}"
-    done
-
-    menu $pl
-    res=$?
-    [[ $res -gt 0 ]] && (menu_playlist $(( $res-1 )) || menu_playlists)
-}
+def format_folder(items, indent=0):
+    dst, indices = [], []
+    for it in items:
+        if it["type"] == "separator":
+            dst.append(" "*indent + "-"*40)
+            indices.append(None)
+        elif it["type"] == "folder":
+            dst.append(" "*indent + "+ " + it["name"])
+            indices.append(None)
+            rdst, rind = format_folder(it["playlists"], indent+2)
+            dst.extend(rdst)
+            indices.extend(rind)
+        elif it["type"] == "playlist":
+            dst.append(" "*indent + "%s (%d)" % (it["name"], it["tracks"]))
+            indices.append(it["index"])
+    return dst, indices
 # }}}
-# {{{ Main menu
-function main_menu() {
-    menu "[ Queue ]>" "[ Playlists ]>" "[ Repeat ]" "[ Shuffle ]"
-    case $? in
-        1) menu_queue     || main_menu ;;
-        2) menu_playlists || main_menu ;;
-        3) single_command "repeat"  ; main_menu ;;
-        4) single_command "shuffle" ; main_menu ;;
-    esac
-}
+# {{{ Menus
+def main_menu(sc):
+    done = False
+    while not done:
+        choice = dmenu(["[ Queue ]>", "[ Playlists ]>", "[ Repeat ]", "[ Shuffle ]"])
 
-main_menu
+        if choice is None:
+            done = True
+        elif choice == 0:
+            done = menu_queue(sc)
+        elif choice == 1:
+            done = menu_playlists(sc)
+        elif choice == 3:
+            sc.repeat()
+        else:
+            sc.shuffle()
+
+def menu_queue(sc):
+    items = ["[ Clear queue ]"]
+
+    tracks = sc.qls()["tracks"]
+    items.extend(map(format_track, tracks))
+
+    choice = dmenu(items)
+
+    if choice is None:
+        return False
+    elif choice == 0:
+        sc.qclear()
+        return False
+    else:
+        sc.goto(choice)
+        return True
+
+def menu_playlists(sc):
+    pls = sc.ls()["playlists"]
+    items, indices = format_folder(pls)
+
+    done = False
+    while not done:
+        choice = dmenu(items)
+        if choice is None:
+            return False
+        else:
+            idx = indices[choice]
+            if idx is None:
+                continue
+            done = menu_playlist(sc, idx)
+    return True
+
+def menu_playlist(sc, idx):
+    tracks = sc.ls(idx)["tracks"]
+
+    # TODO: handle unavailable tracks
+    items = ["[ Set as queue ]", "[ Add to queue ]"]
+    items.extend(map(format_track, tracks))
+
+    choice = dmenu(items)
+    if choice is None:
+        return False
+    elif choice == 0:
+        sc.play(idx)
+        return False
+    elif choice == 1:
+        sc.add(idx)
+        return False
+    else:
+        sc.play(idx, choice-1)
+        return True        
 # }}}
+
+if __name__ == "__main__":
+    sc = SpopClient("localhost", 6602)
+    main_menu(sc)
