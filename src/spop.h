@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Thomas Jost
+ * Copyright (C) 2010, 2011 Thomas Jost
  *
  * This file is part of spop.
  *
@@ -29,7 +29,7 @@
 #include <glib.h>
 
 #define SPOP_VERSION "0.0.1"
-#define SPOP_YEAR    "2010"
+#define SPOP_YEAR    "2010, 2011"
 
 /* Verbosity */
 extern gboolean debug_mode;
