@@ -29,6 +29,7 @@
 #include <libspotify/api.h>
 
 #include "spop.h"
+#include "config.h"
 #include "interface.h"
 #include "queue.h"
 #include "spotify.h"
@@ -69,7 +70,8 @@ static gboolean notif_set_image(sp_track* track) {
         return TRUE;
     }
 
-    pb = gdk_pixbuf_new_from_file(g_notif_image_path, &err);
+    gint wh = config_get_int_opt_group("notify", "image_size", 120);
+    pb = gdk_pixbuf_new_from_file_at_size(g_notif_image_path, wh, wh, &err);
     if (!pb) {
         g_info("notif: can't create pixbuf from file: %s", err->message);
         return TRUE;
@@ -191,7 +193,7 @@ static void notification_callback(const GString* status, gpointer data) {
     notify_notification_set_image_from_pixbuf(g_notif, NULL);
 
     /* Add an image if needed */
-    if (qs != STOPPED) {
+    if ((qs != STOPPED) && config_get_bool_opt_group("notify", "use_images", TRUE)) {
         if (!notif_set_image(cur_track)) {
             /* Not loaded: add a timeout to try again later */
             notif_image_data* nid = g_malloc(sizeof(notif_image_data));

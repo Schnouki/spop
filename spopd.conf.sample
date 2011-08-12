@@ -44,3 +44,11 @@ audio_output = oss
 api_endpoint = http://post.audioscrobbler.com:80/
 username = USERNAME
 password = PASSWORD
+
+[notify]
+# Enable or disable notification images. Enabled by default.
+#use_images = true
+
+# Size of images in notifications. libspotify provides 300x300 images, which is
+# probably too much for most people, so the default value is 120x120.
+#image_size = 120
