@@ -79,7 +79,7 @@ static void config_ready() {
     rtype fct_name##_opt_group(const char* group, const char* name, rtype def_value) { \
         config_ready();                                                 \
         if (g_key_file_has_key(g_config_file, group, name, NULL))       \
-            return fct_name(name);                                      \
+            return fct_name##_group(group, name);                       \
         else                                                            \
             return def_value;                                           \
     }                                                                   \
