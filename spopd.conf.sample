@@ -33,6 +33,10 @@ audio_output = oss
 # Various plugins to load.
 #plugins = notify;scrobble
 
+# Pretty-print the JSON output. This makes the output easier to read, which may
+# be useful when debugging or using spop using only a telnet client...
+# pretty_json = false
+
 [scrobble]
 # API endpoint of the scrobbling service you're using.
 # - Last.FM: http://post.audioscrobbler.com:80/

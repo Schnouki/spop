@@ -37,6 +37,7 @@
 #include "spop.h"
 #include "commands.h"
 #include "config.h"
+#include "config.h"
 #include "interface.h"
 
 const char proto_greetings[] = "spop " SPOP_VERSION "\n";
@@ -338,6 +339,7 @@ gboolean interface_handle_command(gchar* command, GString* result, gboolean* mus
 
         /* Set result using the JSON object */
         JsonGenerator *gen = json_generator_new();
+        g_object_set(gen, "pretty", config_get_bool_opt("pretty_json", FALSE), NULL);
         json_generator_set_root(gen, json_builder_get_root(jb));
 
         gchar *str = json_generator_to_data(gen, NULL);
@@ -377,6 +379,7 @@ void interface_notify() {
     json_builder_end_object(jb);
 
     JsonGenerator *gen = json_generator_new();
+    g_object_set(gen, "pretty", config_get_bool_opt("pretty_json", FALSE), NULL);
     json_generator_set_root(gen, json_builder_get_root(jb));
 
     gchar *tmp = json_generator_to_data(gen, NULL);
