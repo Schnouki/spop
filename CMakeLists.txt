@@ -39,6 +39,8 @@ pkg_check_modules(GMODULE2 REQUIRED gmodule-2.0)
 string(REPLACE ";" " " GMODULE2_CFLAGS "${GMODULE2_CFLAGS}")
 pkg_check_modules(GTHREAD2 REQUIRED gthread-2.0)
 string(REPLACE ";" " " GTHREAD2_CFLAGS "${GTHREAD2_CFLAGS}")
+pkg_check_modules(JSON_GLIB REQUIRED json-glib-1.0>=0.12)
+string(REPLACE ";" " " JSON_GLIB_CFLAGS "${JSON_GLIB_CFLAGS}")
 
 # Check for optional libraries
 pkg_check_modules(AO ao)
@@ -65,9 +67,10 @@ set(SPOPD
 add_executable(spopd ${SPOPD})
 
 set_target_properties(spopd PROPERTIES
-  COMPILE_FLAGS "${SPOTIFY_CFLAGS} ${GLIB2_CFLAGS} ${GMODULE2_CFLAGS} ${GTHREAD2_CFLAGS}"
+  COMPILE_FLAGS "${SPOTIFY_CFLAGS} ${GLIB2_CFLAGS} ${GMODULE2_CFLAGS} ${GTHREAD2_CFLAGS} ${JSON_GLIB_CFLAGS}"
 )
-target_link_libraries(spopd dl ${SPOTIFY_LIBRARIES} ${GLIB2_LIBRARIES} ${GMODULE2_LIBRARIES} ${GTHREAD2_LIBRARIES})
+target_link_libraries(spopd dl ${SPOTIFY_LIBRARIES} ${GLIB2_LIBRARIES}
+  ${GMODULE2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${JSON_GLIB_LIBRARIES})
 set(targets ${targets} spopd)
 
 # Audio plugin: OSS
