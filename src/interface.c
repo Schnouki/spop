@@ -266,7 +266,7 @@ gboolean interface_handle_command(gchar* command, GString* result, gboolean* mus
     /* Parse the command in a shell-like fashion */
     if (!g_shell_parse_argv(g_strstrip(command), &argc, &argv, &err)) {
         g_debug("Command parser error: %s", err->message);
-        g_string_assign(result, "{ \"error\": \"invalid command\" }");
+        g_string_assign(result, "{ \"error\": \"invalid command\" }\n");
         return TRUE;
     }
     cmd = g_strdup(argv[0]);
@@ -278,7 +278,7 @@ gboolean interface_handle_command(gchar* command, GString* result, gboolean* mus
         arg1 = strtol(argv[1], &endptr, 0);
         if ((endptr == argv[1]) || (arg1 < 0)) {
             g_debug("Invalid argument: %s", argv[1]);
-            g_string_assign(result, "{ \"error\": \"invalid argument 1\" }");
+            g_string_assign(result, "{ \"error\": \"invalid argument 1\" }\n");
             g_strfreev(argv);
             return TRUE;
         }
@@ -287,7 +287,7 @@ gboolean interface_handle_command(gchar* command, GString* result, gboolean* mus
         arg2 = strtol(argv[2], &endptr, 0);
         if ((endptr == argv[2]) || (arg2 < 0)) {
             g_debug("Invalid argument: %s", argv[2]);
-            g_string_assign(result, "{ \"error\": \"invalid argument 2\" }");
+            g_string_assign(result, "{ \"error\": \"invalid argument 2\" }\n");
             g_strfreev(argv);
             return TRUE;
         }
@@ -308,7 +308,7 @@ gboolean interface_handle_command(gchar* command, GString* result, gboolean* mus
         }
     }
     if (!cmd_desc) {
-        g_string_assign(result, "{ \"error\": \"unknown command\" }");
+        g_string_assign(result, "{ \"error\": \"unknown command\" }\n");
         return TRUE;
     }
 
@@ -356,7 +356,7 @@ gboolean interface_handle_command(gchar* command, GString* result, gboolean* mus
     }
 
     case BYE:
-        g_string_assign(result, "Bye bye!");
+        g_string_assign(result, "Bye bye!\n");
         return FALSE;
 
     case QUIT:
