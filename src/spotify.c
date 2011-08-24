@@ -169,6 +169,10 @@ sp_playlist* playlist_get(int nb) {
         return sp_playlistcontainer_playlist(g_container, nb-1);
 }
 
+sp_playlist* playlist_get_from_link(sp_link* lnk) {
+    return sp_playlist_create(g_session, lnk);
+}
+
 sp_playlist_type playlist_type(int nb) {
     if (nb == 0)
         return SP_PLAYLIST_TYPE_PLAYLIST;
@@ -449,6 +453,14 @@ gboolean track_get_image_data(sp_track* track, gpointer* data, gsize* len) {
     *data = g_memdup(img_data, *len);
     sp_image_release(img);
     return TRUE;
+}
+
+
+/**********************
+ *** Album browsing ***
+ **********************/
+sp_albumbrowse* albumbrowse_create(sp_album* album, albumbrowse_complete_cb* callback, gpointer userdata) {
+    return sp_albumbrowse_create(g_session, album, callback, userdata);
 }
 
 

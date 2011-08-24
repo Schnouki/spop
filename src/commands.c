@@ -90,6 +90,10 @@ static void json_tracks_array(GArray* tracks, JsonBuilder* jb) {
 /***************************
  *** Commands management ***
  ***************************/
+
+#define CMD_CALLBACK_WAIT_TIME 100
+#define CMD_CALLBACK_MAX_CALLS  30
+
 /* Run the given command with the given arguments */
 gboolean command_run(GIOChannel* chan, command_descriptor* desc, int argc, char** argv) {
     gboolean ret = TRUE;
@@ -548,4 +552,270 @@ gboolean image(command_context* ctx) {
         g_free(img_data);
     }
     return TRUE;
+}
+
+/* Callback (from uri_info) to get album data */
+static void _uri_info_album_cb(sp_albumbrowse* ab, gpointer userdata) {
+    command_context* ctx = (command_context*) userdata;
+
+    sp_album* album = sp_albumbrowse_album(ab);
+    sp_artist* artist = sp_albumbrowse_artist(ab);
+
+    jb_add_string(ctx->jb, "title", sp_album_name(album));
+    jb_add_string(ctx->jb, "artist", sp_artist_name(artist));
+    jb_add_int(ctx->jb, "year", sp_album_year(album));
+        
+    sp_albumtype type = sp_album_type(album);
+    json_builder_set_member_name(ctx->jb, "album_type");
+    if (type == SP_ALBUMTYPE_ALBUM)
+        json_builder_add_string_value(ctx->jb, "album");
+    else if (type == SP_ALBUMTYPE_SINGLE)
+        json_builder_add_string_value(ctx->jb, "single");
+    else if (type == SP_ALBUMTYPE_COMPILATION)
+        json_builder_add_string_value(ctx->jb, "compilation");
+    else
+        json_builder_add_string_value(ctx->jb, "unknown");
+
+    GArray* tracks;
+    int n = sp_albumbrowse_num_tracks(ab);
+    tracks = g_array_sized_new(FALSE, FALSE, sizeof(sp_track*), n);
+    if (!tracks)
+        g_error("Can't allocate array of %d tracks.", n);
+
+    size_t i;
+    for (i=0; i < n; i++) {
+        sp_track* tr = sp_albumbrowse_track(ab, i);
+        g_array_append_val(tracks, tr);
+    }
+    json_builder_set_member_name(ctx->jb, "tracks");
+    json_builder_begin_array(ctx->jb);
+    json_tracks_array(tracks, ctx->jb);
+    json_builder_end_array(ctx->jb);
+    g_array_free(tracks, TRUE);
+
+    jb_add_string(ctx->jb, "review", sp_albumbrowse_review(ab));
+
+    sp_albumbrowse_release(ab);
+    command_end(ctx);
+}
+
+/* Callback (from uri_info or timeout) to get artist data */
+static gboolean _uri_info_artist_cb(gpointer* data) {
+    command_context* ctx = data[0];
+    size_t count = (size_t) ++data[1];
+    sp_artist* artist = data[2];
+    sp_link* lnk = data[3];
+
+    /* If not loaded, wait a little more */
+    if (!sp_artist_is_loaded(artist)) {
+        if (count < CMD_CALLBACK_MAX_CALLS)
+            return TRUE;
+        else {
+            jb_add_string(ctx->jb, "error", "artist not loaded");
+            goto _uiacb_clean;
+        }
+    }
+    
+    jb_add_string(ctx->jb, "artist", sp_artist_name(artist));
+
+ _uiacb_clean:
+    sp_link_release(lnk);
+    g_free(data);
+    command_end(ctx);
+    return FALSE;
+}
+
+/* Callback (from uri_info or timeout) to get playlist data */
+static gboolean _uri_info_playlist_cb(gpointer* data) {
+    command_context* ctx = data[0];
+    size_t count = (size_t) ++data[1];
+    sp_playlist* pl = data[2];
+    sp_link* lnk = data[3];
+
+    /* If not loaded, wait a little more */
+    if (!sp_playlist_is_loaded(pl)) {
+        if (count < CMD_CALLBACK_MAX_CALLS)
+            return TRUE;
+        else {
+            jb_add_string(ctx->jb, "error", "playlist not loaded");
+            goto _uipc_clean;
+        }
+    }
+
+    /* Make sure all tracks are loaded */
+    GArray* tracks = tracks_get_playlist(pl);
+    int i;
+    for (i=0; i < tracks->len; i++) {
+        sp_track* track = g_array_index(tracks, sp_track*, i);
+        if (!sp_track_is_loaded(track)) {
+            g_array_free(tracks, TRUE);
+            return TRUE;
+        }
+    }
+
+    jb_add_string(ctx->jb, "name", sp_playlist_name(pl));
+    const gchar* desc = sp_playlist_get_description(pl);
+    if (desc) {
+        jb_add_string(ctx->jb, "description", desc);
+    }
+
+    json_builder_set_member_name(ctx->jb, "tracks");
+    json_builder_begin_array(ctx->jb);
+    json_tracks_array(tracks, ctx->jb);
+    json_builder_end_array(ctx->jb);
+
+    g_array_free(tracks, TRUE);
+
+ _uipc_clean:
+    sp_link_release(lnk);
+    g_free(data);
+    command_end(ctx);
+    return FALSE;
+}
+
+/* Callback (from uri_info or timeout) to get track data */
+static gboolean _uri_info_track_cb(gpointer* data) {
+    command_context* ctx = data[0];
+    size_t count = (size_t) ++data[1];
+    sp_track* track = data[2];
+    int offset = *(int*) data[3];
+    sp_link* lnk = data[4];
+
+    /* If not loaded, wait a little more */
+    if (!sp_track_is_loaded(track)) {
+        if (count < CMD_CALLBACK_MAX_CALLS)
+            return TRUE;
+        else {
+            jb_add_string(ctx->jb, "error", "track not loaded");
+            goto _uitcb_clean;
+        }
+    }
+
+    gchar* name;
+    gchar* artist;
+    gchar* album;
+    int duration;
+    track_get_data(track, &name, &artist, &album, NULL, &duration);
+    gboolean available = track_available(track);
+
+    jb_add_string(ctx->jb, "artist", artist);
+    jb_add_string(ctx->jb, "title", name);
+    jb_add_string(ctx->jb, "album", album);
+    jb_add_int(ctx->jb, "duration", duration);
+    jb_add_int(ctx->jb, "offset", offset);
+    jb_add_bool(ctx->jb, "available", available);
+
+    g_free(name);
+    g_free(artist);
+    g_free(album);
+
+ _uitcb_clean:
+    sp_link_release(lnk);
+    g_free(data[3]);
+    g_free(data);
+
+    command_end(ctx);
+    return FALSE;
+}
+
+gboolean uri_info(command_context* ctx, sp_link* lnk) {
+    sp_linktype type = sp_link_type(lnk);
+    gboolean done = TRUE;
+
+    switch(type) {
+    case SP_LINKTYPE_INVALID:
+        jb_add_string(ctx->jb, "type", "invalid");
+        sp_link_release(lnk);
+        break;
+
+    case SP_LINKTYPE_TRACK: {
+        jb_add_string(ctx->jb, "type", "track");
+
+        int offset;
+        sp_track* track = sp_link_as_track_and_offset(lnk, &offset);
+        if (!track) {
+            jb_add_string(ctx->jb, "error", "can't retrieve track");
+            sp_link_release(lnk);
+            break;
+        }
+        gpointer* data = g_new(gpointer, 5);
+        data[0] = ctx;
+        data[1] = 0;
+        data[2] = track;
+        data[3] = g_new(int, 1);
+        *(int*) data[3] = offset;
+        data[4] = lnk;
+        if (!sp_track_is_loaded(track))
+            g_timeout_add(CMD_CALLBACK_WAIT_TIME, (GSourceFunc) _uri_info_track_cb, data);
+        else
+            _uri_info_track_cb(data);
+        done = FALSE;
+
+        break;
+    }
+    case SP_LINKTYPE_ALBUM: {
+        jb_add_string(ctx->jb, "type", "album");
+
+        sp_album* album = sp_link_as_album(lnk);
+        if (!album) {
+            jb_add_string(ctx->jb, "error", "can't retrieve album");
+            sp_link_release(lnk);
+            break;
+        }
+        done = FALSE;
+        albumbrowse_create(album, _uri_info_album_cb, ctx);
+        sp_link_release(lnk);
+        break;
+    }
+    case SP_LINKTYPE_ARTIST: {
+        jb_add_string(ctx->jb, "type", "artist");
+
+        sp_artist* artist = sp_link_as_artist(lnk);
+        if (!artist) {
+            jb_add_string(ctx->jb, "error", "can't retrieve artist");
+            sp_link_release(lnk);
+            break;
+        }
+        gpointer* data = g_new(gpointer, 4);
+        data[0] = ctx;
+        data[1] = 0;
+        data[2] = artist;
+        data[3] = lnk;
+        if (!sp_artist_is_loaded(artist))
+            g_timeout_add(CMD_CALLBACK_WAIT_TIME, (GSourceFunc) _uri_info_artist_cb, data);
+        else
+            _uri_info_artist_cb(data);
+        done = FALSE;
+
+        break;
+    }
+    case SP_LINKTYPE_PLAYLIST: {
+        jb_add_string(ctx->jb, "type", "playlist");
+
+        sp_playlist* pl = playlist_get_from_link(lnk);
+        if (!pl) {
+            jb_add_string(ctx->jb, "error", "can't retrieve playlist");
+            sp_link_release(lnk);
+            break;
+        }
+        gpointer* data = g_new(gpointer, 4);
+        data[0] = ctx;
+        data[1] = 0;
+        data[2] = pl;
+        data[3] = lnk;
+        if (!sp_playlist_is_loaded(pl))
+            g_timeout_add(CMD_CALLBACK_WAIT_TIME, (GSourceFunc) _uri_info_playlist_cb, data);
+        else
+            _uri_info_playlist_cb(data);
+        done = FALSE;
+
+        break;
+    }
+    default:
+        jb_add_string(ctx->jb, "type", "unimplemented");
+        sp_link_release(lnk);
+        break;
+    }
+
+    return done;
 }

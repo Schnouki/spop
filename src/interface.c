@@ -87,6 +87,8 @@ static command_full_descriptor g_commands[] = {
 
     { "image",   CT_FUNC, { image, {CA_NONE}}},
 
+    { "uinfo",   CT_FUNC, { uri_info, {CA_URI, CA_NONE}}},
+
     { "bye",     CT_BYE,  {}},
     { "quit",    CT_QUIT, {}},
     { "idle",    CT_IDLE, {}},
