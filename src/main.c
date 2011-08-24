@@ -25,6 +25,7 @@
 
 #include <errno.h>
 #include <glib.h>
+#include <glib-object.h>
 #include <signal.h>
 #include <stdio.h>
 #include <string.h>
@@ -131,6 +132,7 @@ int real_main() {
     GMainLoop* main_loop;
 
     /* Init essential stuff */
+    g_type_init();
     main_loop = g_main_loop_new(NULL, FALSE);
     exit_handler_init();
 
