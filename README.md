@@ -95,6 +95,7 @@ official Spotify client. Then, you will be able to use the following commands:
 - `status`: display informations about the queue, the current track, etc.
 - `idle`: wait for something to change (pause, switch to other track, new track
   in queue...), then display `status`. Mostly useful in notification scripts.
+- `image`: get the cover image for the current track (base64-encoded JPEG image).
 ---
 - `bye`: close the connection to the spop daemon
 - `quit`: exit spop
