@@ -31,7 +31,7 @@
 
 /* Commands */
 void list_playlists(JsonBuilder* jb);
-void list_tracks(JsonBuilder* jb, int idx);
+void list_tracks(JsonBuilder* jb, const gchar* idx);
 
 void status(JsonBuilder* jb);
 void repeat(JsonBuilder* jb);
@@ -39,23 +39,23 @@ void shuffle(JsonBuilder* jb);
 
 void list_queue(JsonBuilder* jb);
 void clear_queue(JsonBuilder* jb);
-void remove_queue_item(JsonBuilder* jb, int idx);
-void remove_queue_items(JsonBuilder* jb, int first, int last);
+void remove_queue_items(JsonBuilder* jb, const gchar* first, const gchar* last);
+void remove_queue_item(JsonBuilder* jb, const gchar* idx);
 
-void play_playlist(JsonBuilder* jb, int idx);
-void play_track(JsonBuilder* jb, int pl_idx, int tr_idx);
+void play_playlist(JsonBuilder* jb, const gchar* idx);
+void play_track(JsonBuilder* jb, const gchar* pl_idx, const gchar* tr_idx);
 
-void add_playlist(JsonBuilder* jb, int idx);
-void add_track(JsonBuilder* jb, int pl_idx, int tr_idx);
+void add_playlist(JsonBuilder* jb, const gchar* idx);
+void add_track(JsonBuilder* jb, const gchar* pl_idx, const gchar* tr_idx);
 
 void play(JsonBuilder* jb);
 void toggle(JsonBuilder* jb);
 void stop(JsonBuilder* jb);
-void seek(JsonBuilder* jb, int pos);
+void seek(JsonBuilder* jb, const gchar* pos);
 
 void goto_next(JsonBuilder* jb);
 void goto_prev(JsonBuilder* jb);
-void goto_nb(JsonBuilder* jb, int nb);
+void goto_nb(JsonBuilder* jb, const gchar* nb);
 
 void image(JsonBuilder* jb);
 

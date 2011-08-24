@@ -85,10 +85,50 @@ static void json_tracks_array(GArray* tracks, JsonBuilder* jb) {
     }
 }
 
+/*******************************
+ *** Arguments types helpers ***
+ *******************************/
+#define spop_command(cmd_name) \
+    void cmd_name(JsonBuilder* jb)
+
+#define spop_command__int(cmd_name, arg1)               \
+    static void _##cmd_name(JsonBuilder* jb, int arg1); \
+    void cmd_name(JsonBuilder* jb, const gchar* sarg1) {                \
+        gchar* endptr;                                                  \
+        int arg1 = strtol(sarg1, &endptr, 0);                           \
+        if ((endptr == sarg1) || (arg1 < 0)) {                          \
+            g_debug("Invalid argument: %s", sarg1);                     \
+            jb_add_string(jb, "error", "invalid argument 1 (should be an integer)"); \
+            return;                                                     \
+        }                                                               \
+        _##cmd_name(jb, arg1);                                          \
+    }                                                                   \
+    static void _##cmd_name(JsonBuilder* jb, int arg1)
+
+#define spop_command__int_int(cmd_name, arg1, arg2)     \
+    static void _##cmd_name(JsonBuilder* jb, int arg1, int arg2);       \
+    void cmd_name(JsonBuilder* jb, const gchar* sarg1, const gchar* sarg2) { \
+        gchar* endptr;                                                  \
+        int arg1 = strtol(sarg1, &endptr, 0);                           \
+        if ((endptr == sarg1) || (arg1 < 0)) {                          \
+            g_debug("Invalid argument: %s", sarg1);                     \
+            jb_add_string(jb, "error", "invalid argument 1 (should be an integer)"); \
+            return;                                                     \
+        }                                                               \
+        int arg2 = strtol(sarg2, &endptr, 0);                           \
+        if ((endptr == sarg2) || (arg2 < 0)) {                          \
+            g_debug("Invalid argument: %s", sarg2);                     \
+            jb_add_string(jb, "error", "invalid argument 2 (should be an integer)"); \
+            return;                                                     \
+        }                                                               \
+        _##cmd_name(jb, arg1, arg2);                                    \
+    }                                                                   \
+    static void _##cmd_name(JsonBuilder* jb, int arg1, int arg2)
+
 /****************
  *** Commands ***
  ****************/
-void list_playlists(JsonBuilder* jb) {
+spop_command(list_playlists) {
     int i, n, t;
     sp_playlist* pl;
     sp_playlist_type pt;
@@ -166,7 +206,7 @@ void list_playlists(JsonBuilder* jb) {
     json_builder_end_array(jb);
 }
 
-void list_tracks(JsonBuilder* jb, int idx) {
+spop_command__int(list_tracks, idx) {
     sp_playlist* pl;
     GArray* tracks;
 
@@ -193,7 +233,7 @@ void list_tracks(JsonBuilder* jb, int idx) {
 }
 
 
-void status(JsonBuilder* jb) {
+spop_command(status) {
     sp_track* track;
     int track_nb, total_tracks, track_duration, track_position;
     queue_status qs;
@@ -231,20 +271,20 @@ void status(JsonBuilder* jb) {
     }
 }
 
-void repeat(JsonBuilder* jb) {
+spop_command(repeat) {
     gboolean r = queue_get_repeat();
     queue_set_repeat(TRUE, !r);
     status(jb);
 }
 
-void shuffle(JsonBuilder* jb) {
+spop_command(shuffle) {
     gboolean s = queue_get_shuffle();
     queue_set_shuffle(TRUE, !s);
     status(jb);
 }
 
 
-void list_queue(JsonBuilder* jb) {
+spop_command(list_queue) {
     GArray* tracks;
 
     tracks = queue_tracks();
@@ -258,22 +298,21 @@ void list_queue(JsonBuilder* jb) {
     g_array_free(tracks, TRUE);
 }
 
-void clear_queue(JsonBuilder* jb) {
+spop_command(clear_queue) {
     queue_clear(TRUE);
     status(jb);
 }
 
-void remove_queue_item(JsonBuilder* jb, int idx) {
-    remove_queue_items(jb, idx, idx);
-}
-
-void remove_queue_items(JsonBuilder* jb, int first, int last) {
+spop_command__int_int(remove_queue_items, first, last) {
     queue_remove_tracks(TRUE, first, last-first+1);
     status(jb);
 }
 
+spop_command__int(remove_queue_item, idx) {
+    _remove_queue_items(jb, idx, idx);
+}
 
-void play_playlist(JsonBuilder* jb, int idx) {
+spop_command__int(play_playlist, idx) {
     sp_playlist* pl;
 
     /* First check the playlist type */
@@ -297,7 +336,7 @@ void play_playlist(JsonBuilder* jb, int idx) {
     status(jb);
 }
 
-void play_track(JsonBuilder* jb, int pl_idx, int tr_idx) {
+spop_command__int_int(play_track, pl_idx, tr_idx) {
     sp_playlist* pl;
     sp_track* tr;
     GArray* tracks;
@@ -337,7 +376,7 @@ void play_track(JsonBuilder* jb, int pl_idx, int tr_idx) {
     status(jb);
 }
 
-void add_playlist(JsonBuilder* jb, int idx) {
+spop_command__int(add_playlist, idx) {
     sp_playlist* pl;
     int tot;
 
@@ -362,7 +401,7 @@ void add_playlist(JsonBuilder* jb, int idx) {
     jb_add_int(jb, "total_tracks", tot);
 }
 
-void add_track(JsonBuilder* jb, int pl_idx, int tr_idx) {
+spop_command__int_int(add_track, pl_idx, tr_idx) {
     sp_playlist* pl;
     sp_track* tr;
     GArray* tracks;
@@ -402,37 +441,37 @@ void add_track(JsonBuilder* jb, int pl_idx, int tr_idx) {
     jb_add_int(jb, "total_tracks", tot);
 }
 
-void play(JsonBuilder* jb) {
+spop_command(play) {
     queue_play(TRUE);
     status(jb);
 }
-void stop(JsonBuilder* jb) {
+spop_command(stop) {
     queue_stop(TRUE);
     status(jb);
 }
-void toggle(JsonBuilder* jb) {
+spop_command(toggle) {
     queue_toggle(TRUE);
     status(jb);
 }
-void seek(JsonBuilder* jb, int pos) {
+spop_command__int(seek, pos) {
     queue_seek(pos);
     status(jb);
 }
 
-void goto_next(JsonBuilder* jb) {
+spop_command(goto_next) {
     queue_next(TRUE);
     status(jb);
 }
-void goto_prev(JsonBuilder* jb) {
+spop_command(goto_prev) {
     queue_prev(TRUE);
     status(jb);
 }
-void goto_nb(JsonBuilder* jb, int nb) {
+spop_command__int(goto_nb, nb) {
     queue_goto(TRUE, nb-1, TRUE);
     status(jb);
 }
 
-void image(JsonBuilder* jb) {
+spop_command(image) {
     sp_track* track = NULL;
     guchar* img_data;
     gsize len;

@@ -259,50 +259,35 @@ gboolean interface_client_event(GIOChannel* source, GIOCondition condition, gpoi
 gboolean interface_handle_command(gchar* command, GString* result, gboolean* must_idle) {
     GError* err = NULL;
     gint argc;
+    gchar** argv_;
     gchar** argv;
-    gchar *endptr;
-    gchar* cmd;
+    size_t i;
 
     /* Parse the command in a shell-like fashion */
-    if (!g_shell_parse_argv(g_strstrip(command), &argc, &argv, &err)) {
+    if (!g_shell_parse_argv(g_strstrip(command), &argc, &argv_, &err)) {
         g_debug("Command parser error: %s", err->message);
         g_string_assign(result, "{ \"error\": \"invalid command\" }\n");
         return TRUE;
     }
-    cmd = g_strdup(argv[0]);
-    g_debug("Command: [%s] with %d parameter(s)", cmd, argc-1);
 
-    /* Parse arguments as needed */
-    int arg1=-1, arg2=-1;
-    if (argc >= 2) {
-        arg1 = strtol(argv[1], &endptr, 0);
-        if ((endptr == argv[1]) || (arg1 < 0)) {
-            g_debug("Invalid argument: %s", argv[1]);
-            g_string_assign(result, "{ \"error\": \"invalid argument 1\" }\n");
-            g_strfreev(argv);
-            return TRUE;
-        }
+    /* Copy argv_ to the stack so it's easier to use... */
+    argv = g_newa(gchar*, argc);
+    for(i=0; i < argc; i++) {
+        argv[i] = g_newa(gchar, strlen(argv_[i]+1));
+        strcpy(argv[i], argv_[i]);
     }
-    if (argc >= 3) {
-        arg2 = strtol(argv[2], &endptr, 0);
-        if ((endptr == argv[2]) || (arg2 < 0)) {
-            g_debug("Invalid argument: %s", argv[2]);
-            g_string_assign(result, "{ \"error\": \"invalid argument 2\" }\n");
-            g_strfreev(argv);
-            return TRUE;
-        }
-    }
-    g_strfreev(argv);
+    g_strfreev(argv_);
+
+    g_debug("Command: [%s] with %d parameter(s)", argv[0], argc-1);
 
     /* Now execute the command */
-    size_t i;
     command_descriptor* cmd_desc = NULL;
     void (*cmd0)(JsonBuilder*);
-    void (*cmd1)(JsonBuilder*, int);
-    void (*cmd2)(JsonBuilder*, int, int);
+    void (*cmd1)(JsonBuilder*, const gchar*);
+    void (*cmd2)(JsonBuilder*, const gchar*, const gchar*);
 
     for (i=0; g_commands[i].name != NULL; i++) {
-        if ((strcmp(g_commands[i].name, cmd) == 0) && (g_commands[i].nb_args == argc-1)) {
+        if ((strcmp(g_commands[i].name, argv[0]) == 0) && (g_commands[i].nb_args == argc-1)) {
             cmd_desc = &(g_commands[i]);
             break;
         }
@@ -325,11 +310,11 @@ gboolean interface_handle_command(gchar* command, GString* result, gboolean* mus
             break;
         case 1:
             cmd1 = cmd_desc->func;
-            cmd1(jb, arg1);
+            cmd1(jb, argv[1]);
             break;
         case 2:
             cmd2 = cmd_desc->func;
-            cmd2(jb, arg1, arg2);
+            cmd2(jb, argv[1], argv[2]);
             break;
         default:
             g_object_unref(jb);
