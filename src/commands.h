@@ -28,35 +28,51 @@
 
 #include <glib.h>
 #include <json-glib/json-glib.h>
+#include <libspotify/api.h>
 
-/* Commands */
-void list_playlists(JsonBuilder* jb);
-void list_tracks(JsonBuilder* jb, const gchar* idx);
+/* Commands management */
+#define MAX_CMD_ARGS 2
+typedef enum { CA_NONE=0, CA_INT, CA_STR, CA_URI } command_arg;
+typedef struct {
+    void*       func;
+    command_arg args[MAX_CMD_ARGS];
+} command_descriptor;
+typedef struct {
+    GIOChannel* chan;
+    JsonBuilder* jb;
+} command_context;
 
-void status(JsonBuilder* jb);
-void repeat(JsonBuilder* jb);
-void shuffle(JsonBuilder* jb);
+gboolean command_run(GIOChannel* chan, command_descriptor* desc, int argc, char** argv);
+void command_end(command_context* ctx);
 
-void list_queue(JsonBuilder* jb);
-void clear_queue(JsonBuilder* jb);
-void remove_queue_items(JsonBuilder* jb, const gchar* first, const gchar* last);
-void remove_queue_item(JsonBuilder* jb, const gchar* idx);
+/* Actual commands */
+gboolean list_playlists(command_context* ctx);
+gboolean list_tracks(command_context* ctx, guint idx);
 
-void play_playlist(JsonBuilder* jb, const gchar* idx);
-void play_track(JsonBuilder* jb, const gchar* pl_idx, const gchar* tr_idx);
+gboolean status(command_context* ctx);
+gboolean repeat(command_context* ctx);
+gboolean shuffle(command_context* ctx);
 
-void add_playlist(JsonBuilder* jb, const gchar* idx);
-void add_track(JsonBuilder* jb, const gchar* pl_idx, const gchar* tr_idx);
+gboolean list_queue(command_context* ctx);
+gboolean clear_queue(command_context* ctx);
+gboolean remove_queue_items(command_context* ctx, guint first, guint last);
+gboolean remove_queue_item(command_context* ctx, guint idx);
 
-void play(JsonBuilder* jb);
-void toggle(JsonBuilder* jb);
-void stop(JsonBuilder* jb);
-void seek(JsonBuilder* jb, const gchar* pos);
+gboolean play_playlist(command_context* ctx, guint idx);
+gboolean play_track(command_context* ctx, guint pl_idx, guint tr_idx);
 
-void goto_next(JsonBuilder* jb);
-void goto_prev(JsonBuilder* jb);
-void goto_nb(JsonBuilder* jb, const gchar* nb);
+gboolean add_playlist(command_context* ctx, guint idx);
+gboolean add_track(command_context* ctx, guint pl_idx, guint tr_idx);
 
-void image(JsonBuilder* jb);
+gboolean play(command_context* ctx);
+gboolean toggle(command_context* ctx);
+gboolean stop(command_context* ctx);
+gboolean seek(command_context* ctx, guint pos);
+
+gboolean goto_next(command_context* ctx);
+gboolean goto_prev(command_context* ctx);
+gboolean goto_nb(command_context* ctx, guint nb);
+
+gboolean image(command_context* ctx);
 
 #endif

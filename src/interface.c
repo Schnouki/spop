@@ -51,48 +51,47 @@ typedef struct {
     gpointer data;
 } notification_callback;
 
-typedef enum { FUNC=0, BYE, QUIT, IDLE } command_type;
+typedef enum { CT_FUNC=0, CT_BYE, CT_QUIT, CT_IDLE } command_type;
 typedef struct {
-    gchar*       name;
-    int          nb_args;
-    command_type type;
-    void*        func;
-} command_descriptor;
-static command_descriptor g_commands[] = {
-    { "ls",      0, FUNC, list_playlists },
-    { "ls",      1, FUNC, list_tracks },
+    gchar*             name;
+    command_type       type;
+    command_descriptor desc;
+} command_full_descriptor;
+static command_full_descriptor g_commands[] = {
+    { "ls",      CT_FUNC, { list_playlists, {CA_NONE}}},
+    { "ls",      CT_FUNC, { list_tracks,    {CA_INT, CA_NONE}}},
 
-    { "status",  0, FUNC, status },
-    { "repeat",  0, FUNC, repeat },
-    { "shuffle", 0, FUNC, shuffle },
+    { "status",  CT_FUNC, { status,  {CA_NONE}}},
+    { "repeat",  CT_FUNC, { repeat,  {CA_NONE}}},
+    { "shuffle", CT_FUNC, { shuffle, {CA_NONE}}},
 
-    { "qls",     0, FUNC, list_queue },
-    { "qclear",  0, FUNC, clear_queue },
-    { "qrm",     1, FUNC, remove_queue_item },
-    { "qrm",     2, FUNC, remove_queue_items },
+    { "qls",     CT_FUNC, { list_queue,         {CA_NONE}}},
+    { "qclear",  CT_FUNC, { clear_queue,        {CA_NONE}}},
+    { "qrm",     CT_FUNC, { remove_queue_item,  {CA_INT, CA_NONE}}},
+    { "qrm",     CT_FUNC, { remove_queue_items, {CA_INT, CA_INT}}},
 
-    { "play",    1, FUNC, play_playlist },
-    { "play",    2, FUNC, play_track },
+    { "play",    CT_FUNC, { play_playlist, {CA_INT, CA_NONE}}},
+    { "play",    CT_FUNC, { play_track,    {CA_INT, CA_INT}} },
 
-    { "add",     1, FUNC, add_playlist },
-    { "add",     2, FUNC, add_track },
+    { "add",     CT_FUNC, { add_playlist, {CA_INT, CA_NONE}}},
+    { "add",     CT_FUNC, { add_track,    {CA_INT, CA_INT}} },
 
-    { "play",    0, FUNC, play },
-    { "toggle",  0, FUNC, toggle },
-    { "stop",    0, FUNC, stop },
-    { "seek",    1, FUNC, seek },
+    { "play",    CT_FUNC, { play,   {CA_NONE}}},
+    { "toggle",  CT_FUNC, { toggle, {CA_NONE}}},
+    { "stop",    CT_FUNC, { stop,   {CA_NONE}}},
+    { "seek",    CT_FUNC, { seek,   {CA_INT, CA_NONE}}},
 
-    { "next",    0, FUNC, goto_next },
-    { "prev",    0, FUNC, goto_prev },
-    { "goto",    1, FUNC, goto_nb },
+    { "next",    CT_FUNC, { goto_next, {CA_NONE}}},
+    { "prev",    CT_FUNC, { goto_prev, {CA_NONE}}},
+    { "goto",    CT_FUNC, { goto_nb,   {CA_INT, CA_NONE}}},
 
-    { "image",   0, FUNC, image },
+    { "image",   CT_FUNC, { image, {CA_NONE}}},
 
-    { "bye",     0, BYE,  NULL },
-    { "quit",    0, QUIT, NULL },
-    { "idle",    0, IDLE, NULL },
+    { "bye",     CT_BYE,  {}},
+    { "quit",    CT_QUIT, {}},
+    { "idle",    CT_IDLE, {}},
 
-    {  NULL, 0, 0, NULL }
+    {  NULL, 0, {}}
 };
 
 /* Functions called directly from spop */
@@ -186,10 +185,8 @@ gboolean interface_client_event(GIOChannel* source, GIOCondition condition, gpoi
     GString* buffer = NULL;
     GError* err = NULL;
     GIOStatus status;
-    GString* result;
     int client;
-    gboolean keep_alive = TRUE;
-    gboolean must_idle = FALSE;
+    command_result cr;
 
     client = g_io_channel_unix_get_fd(source);
 
@@ -214,33 +211,17 @@ gboolean interface_client_event(GIOChannel* source, GIOCondition condition, gpoi
     g_debug("[%d] Received command: %s", client, buffer->str);
     buffer->str[buffer->len-1] = '\n';
     
-    /* Parse and run the command, send its result to the IO channel */
-    result = g_string_sized_new(1024);
-    g_string_assign(result, "");
-    keep_alive = interface_handle_command(buffer->str, result, &must_idle);
+    /* Parse and run the command */
+    cr = interface_handle_command(source, buffer->str);
+    g_string_free(buffer, TRUE);
 
     /* "idle" command? */
-    if (must_idle) {
+    if (cr == CR_IDLE) {
         /* Add to list of idle channels */
         g_idle_channels = g_list_prepend(g_idle_channels, source);
-        g_string_free(result, TRUE);
-    }
-    else {
-        /* Write the command result to the channel */
-        status = g_io_channel_write_chars(source, result->str, -1, NULL, &err);
-        g_string_free(result, TRUE);
-        if (status != G_IO_STATUS_NORMAL) {
-            g_debug("[%d] Can't write to IO channel: %s", client, err->message);
-            goto ice_client_clean;
-        }
     }
 
-    if (g_io_channel_flush(source, &err) != G_IO_STATUS_NORMAL) {
-        g_debug("[%d] Can't flush IO channel: %s", client, err->message);
-        goto ice_client_clean;
-    }
-
-    if (keep_alive)
+    if (cr != CR_CLOSE)
         return TRUE;
 
  ice_client_clean:
@@ -256,7 +237,7 @@ gboolean interface_client_event(GIOChannel* source, GIOCondition condition, gpoi
 }
 
 /* Parse the command and execute it */
-gboolean interface_handle_command(gchar* command, GString* result, gboolean* must_idle) {
+command_result interface_handle_command(GIOChannel* chan, gchar* command){
     GError* err = NULL;
     gint argc;
     gchar** argv_;
@@ -266,8 +247,8 @@ gboolean interface_handle_command(gchar* command, GString* result, gboolean* mus
     /* Parse the command in a shell-like fashion */
     if (!g_shell_parse_argv(g_strstrip(command), &argc, &argv_, &err)) {
         g_debug("Command parser error: %s", err->message);
-        g_string_assign(result, "{ \"error\": \"invalid command\" }\n");
-        return TRUE;
+        interface_finalize(chan, "{ \"error\": \"invalid command\" }\n", FALSE);
+        return CR_OK;
     }
 
     /* Copy argv_ to the stack so it's easier to use... */
@@ -281,25 +262,36 @@ gboolean interface_handle_command(gchar* command, GString* result, gboolean* mus
     g_debug("Command: [%s] with %d parameter(s)", argv[0], argc-1);
 
     /* Now execute the command */
-    command_descriptor* cmd_desc = NULL;
+    command_full_descriptor* cmd_desc = NULL;
+#if 0
     void (*cmd0)(JsonBuilder*);
     void (*cmd1)(JsonBuilder*, const gchar*);
     void (*cmd2)(JsonBuilder*, const gchar*, const gchar*);
+#endif
 
     for (i=0; g_commands[i].name != NULL; i++) {
-        if ((strcmp(g_commands[i].name, argv[0]) == 0) && (g_commands[i].nb_args == argc-1)) {
+        int nb_args = 0;
+        while ((nb_args < MAX_CMD_ARGS) && (g_commands[i].desc.args[nb_args] != CA_NONE))
+            nb_args += 1;
+        if ((strcmp(g_commands[i].name, argv[0]) == 0) && (nb_args == argc-1)) {
             cmd_desc = &(g_commands[i]);
             break;
         }
     }
     if (!cmd_desc) {
-        g_string_assign(result, "{ \"error\": \"unknown command\" }\n");
-        return TRUE;
+        interface_finalize(chan, "{ \"error\": \"unknown command\" }\n", FALSE);
+        return CR_OK;
     }
 
     /* Handle "normal" and "special" commands separately. */
     switch (cmd_desc->type) {
-    case FUNC: {
+    case CT_FUNC: {
+        gboolean ret;
+
+        ret = command_run(chan, &(cmd_desc->desc), argc, argv);
+        return (ret ? CR_OK : CR_DEFERED);
+
+#if 0        
         JsonBuilder* jb = json_builder_new();
         json_builder_begin_object(jb);
 
@@ -319,7 +311,7 @@ gboolean interface_handle_command(gchar* command, GString* result, gboolean* mus
         default:
             g_object_unref(jb);
             g_string_assign(result, "{ \"error\": \"invalid number of arguments\" }");
-            return TRUE;
+            return CR_OK;
         }
 
         json_builder_end_object(jb);
@@ -336,33 +328,62 @@ gboolean interface_handle_command(gchar* command, GString* result, gboolean* mus
         g_object_unref(gen);
         g_object_unref(jb);
         g_free(str);
-
+#endif
         break;
     }
 
-    case BYE:
-        g_string_assign(result, "Bye bye!\n");
-        return FALSE;
+    case CT_BYE:
+        interface_finalize(chan, "Bye bye!\n", FALSE);
+        return CR_CLOSE;
 
-    case QUIT:
+    case CT_QUIT:
         g_message("Got a quit command, exiting...");
         exit(0);
 
-    case IDLE:
-        *must_idle = TRUE;
-        return TRUE;
+    case CT_IDLE:
+        return CR_IDLE;
     }
 
-    return TRUE;
+    return CR_OK;
 }
+
+void interface_finalize(GIOChannel* chan, const gchar* str, gboolean close_chan) {
+    GIOStatus status;
+    GError* err = NULL;
+
+    int client = g_io_channel_unix_get_fd(chan);
+    if (str) {
+        status = g_io_channel_write_chars(chan, str, -1, NULL, &err);
+        if (status != G_IO_STATUS_NORMAL) {
+            g_debug("[%d] Can't write to IO channel: %s", client, err->message);
+            goto if_clean;
+        }
+    }
+    if (g_io_channel_flush(chan, &err) != G_IO_STATUS_NORMAL) {
+        g_debug("[%d] Can't flush IO channel: %s", client, err->message);
+        goto if_clean;
+    }
+
+    if (!close_chan)
+        return;
+
+ if_clean:
+    g_idle_channels = g_list_remove(g_idle_channels, chan);
+    g_io_channel_shutdown(chan, TRUE, NULL);
+    g_io_channel_unref(chan);
+    close(client);
+    g_info("[%d] Connection closed.", client);
+}
+
 
 /* Notify clients (channels or plugins) that are waiting for an update */
 void interface_notify() {
     GString* str = g_string_sized_new(1024);
     JsonBuilder* jb = json_builder_new();
+    command_context ctx = { NULL, jb };
 
     json_builder_begin_object(jb);
-    status(jb);
+    status(&ctx);
     json_builder_end_object(jb);
 
     JsonGenerator *gen = json_generator_new();
@@ -391,26 +412,8 @@ void interface_notify() {
 void interface_notify_chan(gpointer data, gpointer user_data) {
     GIOChannel* chan = data;
     GString* str = user_data;
-    GIOStatus status;
-    GError* err = NULL;
-    int client = g_io_channel_unix_get_fd(chan);
 
-    status = g_io_channel_write_chars(chan, str->str, -1, NULL, &err);
-    if (status != G_IO_STATUS_NORMAL) {
-        g_debug("[%d] Can't write to IO channel: %s", client, err->message);
-        goto inic_client_clean;
-    }
-    if (g_io_channel_flush(chan, &err) != G_IO_STATUS_NORMAL) {
-        g_debug("[%d] Can't flush IO channel: %s", client, err->message);
-        goto inic_client_clean;
-    }
-    return;
-
- inic_client_clean:
-    g_io_channel_shutdown(chan, TRUE, NULL);
-    g_io_channel_unref(chan);
-    close(client);
-    g_debug("[%d] Connection closed.", client);
+    interface_finalize(chan, str->str, FALSE);
 }
 
 void interface_notify_callback(gpointer data, gpointer user_data) {

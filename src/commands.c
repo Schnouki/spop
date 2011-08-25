@@ -32,6 +32,8 @@
 
 #include "spop.h"
 #include "commands.h"
+#include "config.h"
+#include "interface.h"
 #include "queue.h"
 #include "spotify.h"
 #include "utils.h"
@@ -85,50 +87,92 @@ static void json_tracks_array(GArray* tracks, JsonBuilder* jb) {
     }
 }
 
-/*******************************
- *** Arguments types helpers ***
- *******************************/
-#define spop_command(cmd_name) \
-    void cmd_name(JsonBuilder* jb)
+/***************************
+ *** Commands management ***
+ ***************************/
+/* Run the given command with the given arguments */
+gboolean command_run(GIOChannel* chan, command_descriptor* desc, int argc, char** argv) {
+    gboolean ret = TRUE;
+    command_context* ctx = g_new(command_context, 1);
+    ctx->chan = chan;
+    ctx->jb = json_builder_new();
+    json_builder_begin_object(ctx->jb);
 
-#define spop_command__int(cmd_name, arg1)               \
-    static void _##cmd_name(JsonBuilder* jb, int arg1); \
-    void cmd_name(JsonBuilder* jb, const gchar* sarg1) {                \
-        gchar* endptr;                                                  \
-        int arg1 = strtol(sarg1, &endptr, 0);                           \
-        if ((endptr == sarg1) || (arg1 < 0)) {                          \
-            g_debug("Invalid argument: %s", sarg1);                     \
-            jb_add_string(jb, "error", "invalid argument 1 (should be an integer)"); \
-            return;                                                     \
-        }                                                               \
-        _##cmd_name(jb, arg1);                                          \
-    }                                                                   \
-    static void _##cmd_name(JsonBuilder* jb, int arg1)
+#define _str_to_uint(dst, src)                  \
+    guint dst; {                                \
+    gchar* endptr;                              \
+    dst = strtoul(src, &endptr, 0);             \
+    if (endptr == src) {                        \
+        g_debug("Invalid argument: %s", src);   \
+        jb_add_string(ctx->jb, "error", "invalid argument (should be an unsigned integer)"); \
+        goto cr_end;                            \
+    }}
+#define _str_to_link(dst, src)                  \
+    sp_link* dst; {                             \
+    dst = sp_link_create_from_string(src);      \
+    if (!dst) {                                 \
+        g_debug("Invalid argument: %s", src);   \
+        jb_add_string(ctx->jb, "error", "invalid argument (should be a Spotify URI)"); \
+        goto cr_end;                                                    \
+    }}
 
-#define spop_command__int_int(cmd_name, arg1, arg2)     \
-    static void _##cmd_name(JsonBuilder* jb, int arg1, int arg2);       \
-    void cmd_name(JsonBuilder* jb, const gchar* sarg1, const gchar* sarg2) { \
-        gchar* endptr;                                                  \
-        int arg1 = strtol(sarg1, &endptr, 0);                           \
-        if ((endptr == sarg1) || (arg1 < 0)) {                          \
-            g_debug("Invalid argument: %s", sarg1);                     \
-            jb_add_string(jb, "error", "invalid argument 1 (should be an integer)"); \
-            return;                                                     \
-        }                                                               \
-        int arg2 = strtol(sarg2, &endptr, 0);                           \
-        if ((endptr == sarg2) || (arg2 < 0)) {                          \
-            g_debug("Invalid argument: %s", sarg2);                     \
-            jb_add_string(jb, "error", "invalid argument 2 (should be an integer)"); \
-            return;                                                     \
-        }                                                               \
-        _##cmd_name(jb, arg1, arg2);                                    \
-    }                                                                   \
-    static void _##cmd_name(JsonBuilder* jb, int arg1, int arg2)
+    if (desc->args[0] == CA_NONE) {
+        gboolean (*cmd)(command_context*) = desc->func;
+        ret = cmd(ctx);
+    }
+    else if (desc->args[0] == CA_INT) {
+        _str_to_uint(arg1, argv[1]);
+        if (desc->args[1] == CA_NONE) {
+            gboolean (*cmd)(command_context*, guint) = desc->func;
+            ret = cmd(ctx, arg1);
+        }
+        else if (desc->args[1] == CA_INT) {
+            _str_to_uint(arg2, argv[2]);
+            gboolean (*cmd)(command_context*, guint, guint) = desc->func;
+            ret = cmd(ctx, arg1, arg2);
+        }
+        else
+            g_error("Unknown argument type");
+    }
+    else if (desc->args[0] == CA_URI) {
+        _str_to_link(arg1, argv[1]);
+        if (desc->args[1] == CA_NONE) {
+            gboolean (*cmd)(command_context*, sp_link*) = desc->func;
+            ret = cmd(ctx, arg1);
+        }
+        else
+            g_error("Unknown argument type");
+    }
+    else
+        g_error("Unknown argument type");
+
+ cr_end:
+    if (ret)
+        command_end(ctx);
+    return ret;
+}
+
+/* End the command: prepare JSON output, send it to the channel, free the context */
+void command_end(command_context* ctx) {
+    json_builder_end_object(ctx->jb);
+    JsonGenerator *gen = json_generator_new();
+    g_object_set(gen, "pretty", config_get_bool_opt("pretty_json", FALSE), NULL);
+    json_generator_set_root(gen, json_builder_get_root(ctx->jb));
+
+    gchar *str = json_generator_to_data(gen, NULL);
+    g_object_unref(gen);
+    g_object_unref(ctx->jb);
+
+    interface_finalize(ctx->chan, str, FALSE);
+    interface_finalize(ctx->chan, "\n", FALSE);
+    g_free(str);
+    g_free(ctx);    
+}
 
 /****************
  *** Commands ***
  ****************/
-spop_command(list_playlists) {
+gboolean list_playlists(command_context* ctx) {
     int i, n, t;
     sp_playlist* pl;
     sp_playlist_type pt;
@@ -136,13 +180,13 @@ spop_command(list_playlists) {
     gchar* pfn;
 
     if (!container_loaded()) {
-        jb_add_string(jb, "error", "playlists container not loaded yet");
-        return;
+        jb_add_string(ctx->jb, "error", "playlists container not loaded yet");
+        return TRUE;
     }
 
     n = playlists_len();
-    json_builder_set_member_name(jb, "playlists");
-    json_builder_begin_array(jb);
+    json_builder_set_member_name(ctx->jb, "playlists");
+    json_builder_begin_array(ctx->jb);
 
     for (i=0; i<n; i++) {
         pt = playlist_type(i);
@@ -150,34 +194,34 @@ spop_command(list_playlists) {
         case SP_PLAYLIST_TYPE_START_FOLDER:
             g_debug("Playlist %d is a folder start", i);
 
-            json_builder_begin_object(jb);
+            json_builder_begin_object(ctx->jb);
             pfn = playlist_folder_name(i);
-            jb_add_string(jb, "name", pfn);
+            jb_add_string(ctx->jb, "name", pfn);
             g_free(pfn);
 
-            jb_add_string(jb, "type", "folder");
+            jb_add_string(ctx->jb, "type", "folder");
 
-            json_builder_set_member_name(jb, "playlists");
-            json_builder_begin_array(jb);
+            json_builder_set_member_name(ctx->jb, "playlists");
+            json_builder_begin_array(ctx->jb);
             break;
 
         case SP_PLAYLIST_TYPE_END_FOLDER:
             g_debug("Playlist %d is a folder end", i);
-            json_builder_end_array(jb);
-            json_builder_end_object(jb);
+            json_builder_end_array(ctx->jb);
+            json_builder_end_object(ctx->jb);
             break;
 
         case SP_PLAYLIST_TYPE_PLAYLIST:
             pl = playlist_get(i);
-            json_builder_begin_object(jb);
+            json_builder_begin_object(ctx->jb);
             if (!pl) {
                 g_debug("Got NULL pointer when loading playlist %d.", i);
-                json_builder_end_object(jb);
+                json_builder_end_object(ctx->jb);
                 break;
             }
             if (!sp_playlist_is_loaded(pl)) {
                 g_debug("Playlist %d is not loaded.", i);
-                json_builder_end_object(jb);
+                json_builder_end_object(ctx->jb);
                 break;
             }
             pn = sp_playlist_name(pl);
@@ -186,16 +230,16 @@ spop_command(list_playlists) {
                 /* Regular playlist */
                 t = sp_playlist_num_tracks(pl);
 
-                jb_add_string(jb, "type", "playlist");
-                jb_add_string(jb, "name", pn);
-                jb_add_int(jb, "tracks", t);
-                jb_add_int(jb, "index", i);
+                jb_add_string(ctx->jb, "type", "playlist");
+                jb_add_string(ctx->jb, "name", pn);
+                jb_add_int(ctx->jb, "tracks", t);
+                jb_add_int(ctx->jb, "index", i);
             }
             else {
                 /* Playlist separator */
-                jb_add_string(jb, "type", "separator");
+                jb_add_string(ctx->jb, "type", "separator");
             }
-            json_builder_end_object(jb);
+            json_builder_end_object(ctx->jb);
             break;
 
         default:
@@ -203,37 +247,40 @@ spop_command(list_playlists) {
         }
     }
 
-    json_builder_end_array(jb);
+    json_builder_end_array(ctx->jb);
+    return TRUE;
 }
 
-spop_command__int(list_tracks, idx) {
+gboolean list_tracks(command_context* ctx, guint idx) {
     sp_playlist* pl;
     GArray* tracks;
 
     /* Get the playlist */
     pl = playlist_get(idx);
     if (!pl) {
-        jb_add_string(jb, "error", "invalid playlist");
-        return;
+        jb_add_string(ctx->jb, "error", "invalid playlist");
+        return TRUE;
     }
     
     /* Get the tracks array */
+    // FIXME
     tracks = tracks_get_playlist(pl);
     if (!tracks) {
-        jb_add_string(jb, "error", "playlist not loaded yet");
-        return;
+        jb_add_string(ctx->jb, "error", "playlist not loaded yet");
+        return TRUE;
     }
 
-    json_builder_set_member_name(jb, "tracks");
-    json_builder_begin_array(jb);
-    json_tracks_array(tracks, jb);
-    json_builder_end_array(jb);
+    json_builder_set_member_name(ctx->jb, "tracks");
+    json_builder_begin_array(ctx->jb);
+    json_tracks_array(tracks, ctx->jb);
+    json_builder_end_array(ctx->jb);
 
     g_array_free(tracks, TRUE);
+    return TRUE;
 }
 
 
-spop_command(status) {
+gboolean status(command_context* ctx) {
     sp_track* track;
     int track_nb, total_tracks, track_duration, track_position;
     queue_status qs;
@@ -244,126 +291,129 @@ spop_command(status) {
     
     qs = queue_get_status(&track, &track_nb, &total_tracks);
 
-    jb_add_string(jb, "status",
+    jb_add_string(ctx->jb, "status",
                   (qs == PLAYING) ? "playing"
                   : ((qs == PAUSED) ? "paused" : "stopped"));
 
-    jb_add_bool(jb, "repeat", queue_get_repeat());
-    jb_add_bool(jb, "shuffle", queue_get_shuffle());
-    jb_add_int(jb, "total_tracks", total_tracks);
+    jb_add_bool(ctx->jb, "repeat", queue_get_repeat());
+    jb_add_bool(ctx->jb, "shuffle", queue_get_shuffle());
+    jb_add_int(ctx->jb, "total_tracks", total_tracks);
 
     if (qs != STOPPED) {
-        jb_add_int(jb, "current_track", track_nb+1);
+        jb_add_int(ctx->jb, "current_track", track_nb+1);
 
         track_get_data(track, &track_name, &track_artist, &track_album, &track_link, &track_duration);
         track_position = session_play_time();
 
-        jb_add_string(jb, "artist", track_artist);
-        jb_add_string(jb, "title", track_name);
-        jb_add_string(jb, "album", track_album);
-        jb_add_int(jb, "duration", track_duration);
-        jb_add_int(jb, "position", track_position);
-        jb_add_string(jb, "uri", track_link);
+        jb_add_string(ctx->jb, "artist", track_artist);
+        jb_add_string(ctx->jb, "title", track_name);
+        jb_add_string(ctx->jb, "album", track_album);
+        jb_add_int(ctx->jb, "duration", track_duration);
+        jb_add_int(ctx->jb, "position", track_position);
+        jb_add_string(ctx->jb, "uri", track_link);
         g_free(track_name);
         g_free(track_artist);
         g_free(track_album);
         g_free(track_link);
     }
+    return TRUE;
 }
 
-spop_command(repeat) {
+gboolean repeat(command_context* ctx) {
     gboolean r = queue_get_repeat();
     queue_set_repeat(TRUE, !r);
-    status(jb);
+    return status(ctx);
 }
 
-spop_command(shuffle) {
+gboolean shuffle(command_context* ctx) {
     gboolean s = queue_get_shuffle();
     queue_set_shuffle(TRUE, !s);
-    status(jb);
+    return status(ctx);
 }
 
 
-spop_command(list_queue) {
+gboolean list_queue(command_context* ctx) {
     GArray* tracks;
 
     tracks = queue_tracks();
     if (!tracks)
         g_error("Couldn't read queue.");
 
-    json_builder_set_member_name(jb, "tracks");
-    json_builder_begin_array(jb);
-    json_tracks_array(tracks, jb);
-    json_builder_end_array(jb);
+    json_builder_set_member_name(ctx->jb, "tracks");
+    json_builder_begin_array(ctx->jb);
+    json_tracks_array(tracks, ctx->jb);
+    json_builder_end_array(ctx->jb);
     g_array_free(tracks, TRUE);
+    return TRUE;
 }
 
-spop_command(clear_queue) {
+gboolean clear_queue(command_context* ctx) {
     queue_clear(TRUE);
-    status(jb);
+    return status(ctx);
 }
 
-spop_command__int_int(remove_queue_items, first, last) {
+gboolean remove_queue_items(command_context* ctx, guint first, guint last) {
     queue_remove_tracks(TRUE, first, last-first+1);
-    status(jb);
+    return status(ctx);
 }
 
-spop_command__int(remove_queue_item, idx) {
-    _remove_queue_items(jb, idx, idx);
+gboolean remove_queue_item(command_context* ctx, guint idx) {
+    return remove_queue_items(ctx, idx, idx);
 }
 
-spop_command__int(play_playlist, idx) {
+gboolean play_playlist(command_context* ctx, guint idx) {
     sp_playlist* pl;
 
     /* First check the playlist type */
     if (playlist_type(idx) != SP_PLAYLIST_TYPE_PLAYLIST) {
-        jb_add_string(jb, "error", "not a playlist");
-        return;
+        jb_add_string(ctx->jb, "error", "not a playlist");
+        return TRUE;
     }
 
     /* Then get the playlist */
     pl = playlist_get(idx);
 
     if (!pl) {
-        jb_add_string(jb, "error", "invalid playlist");
-        return;
+        jb_add_string(ctx->jb, "error", "invalid playlist");
+        return TRUE;
     }
 
     /* Load it and play it */
     queue_set_playlist(FALSE, pl);
     queue_play(TRUE);
 
-    status(jb);
+    return status(ctx);
 }
 
-spop_command__int_int(play_track, pl_idx, tr_idx) {
+gboolean play_track(command_context* ctx, guint pl_idx, guint tr_idx) {
     sp_playlist* pl;
     sp_track* tr;
     GArray* tracks;
 
     /* First check the playlist type */
     if (playlist_type(pl_idx) != SP_PLAYLIST_TYPE_PLAYLIST) {
-        jb_add_string(jb, "error", "not a playlist");
-        return;
+        jb_add_string(ctx->jb, "error", "not a playlist");
+        return TRUE;
     }
 
     /* Then get the playlist */
     pl = playlist_get(pl_idx);
     if (!pl) {
-        jb_add_string(jb, "error", "invalid playlist");
-        return;
+        jb_add_string(ctx->jb, "error", "invalid playlist");
+        return TRUE;
     }
 
     /* Then get the track itself */
+    // FIXME
     tracks = tracks_get_playlist(pl);
     if (!tracks) {
-        jb_add_string(jb, "error", "playlist not loaded yet");
-        return;
+        jb_add_string(ctx->jb, "error", "playlist not loaded yet");
+        return TRUE;
     }
     if ((tr_idx <= 0) || (tr_idx > tracks->len)) {
-        jb_add_string(jb, "error", "invalid track number");
+        jb_add_string(ctx->jb, "error", "invalid track number");
         g_array_free(tracks, TRUE);
-        return;
+        return TRUE;
     }
 
     tr = g_array_index(tracks, sp_track*, tr_idx-1);
@@ -373,35 +423,36 @@ spop_command__int_int(play_track, pl_idx, tr_idx) {
     queue_set_track(FALSE, tr);
     queue_play(TRUE);
 
-    status(jb);
+    return status(ctx);
 }
 
-spop_command__int(add_playlist, idx) {
+gboolean add_playlist(command_context* ctx, guint idx) {
     sp_playlist* pl;
     int tot;
 
     /* First check the playlist type */
     if (playlist_type(idx) != SP_PLAYLIST_TYPE_PLAYLIST) {
-        jb_add_string(jb, "error", "not a playlist");
-        return;
+        jb_add_string(ctx->jb, "error", "not a playlist");
+        return TRUE;
     }
 
     /* Then get the playlist */
     pl = playlist_get(idx);
 
     if (!pl) {
-        jb_add_string(jb, "error", "invalid playlist");
-        return;
+        jb_add_string(ctx->jb, "error", "invalid playlist");
+        return TRUE;
     }
 
     /* Load it */
     queue_add_playlist(TRUE, pl);
 
     queue_get_status(NULL, NULL, &tot);
-    jb_add_int(jb, "total_tracks", tot);
+    jb_add_int(ctx->jb, "total_tracks", tot);
+    return TRUE;
 }
 
-spop_command__int_int(add_track, pl_idx, tr_idx) {
+gboolean add_track(command_context* ctx, guint pl_idx, guint tr_idx) {
     sp_playlist* pl;
     sp_track* tr;
     GArray* tracks;
@@ -409,27 +460,28 @@ spop_command__int_int(add_track, pl_idx, tr_idx) {
 
     /* First check the playlist type */
     if (playlist_type(pl_idx) != SP_PLAYLIST_TYPE_PLAYLIST) {
-        jb_add_string(jb, "error", "not a playlist");
-        return;
+        jb_add_string(ctx->jb, "error", "not a playlist");
+        return TRUE;
     }
 
     /* Then get the playlist */
     pl = playlist_get(pl_idx);
     if (!pl) {
-        jb_add_string(jb, "error", "invalid playlist");
-        return;
+        jb_add_string(ctx->jb, "error", "invalid playlist");
+        return TRUE;
     }
 
     /* Then get the track itself */
+    // FIXME
     tracks = tracks_get_playlist(pl);
     if (!tracks) {
-        jb_add_string(jb, "error", "playlist not loaded yet");
-        return;
+        jb_add_string(ctx->jb, "error", "playlist not loaded yet");
+        return TRUE;
     }
     if ((tr_idx <= 0) || (tr_idx > tracks->len)) {
-        jb_add_string(jb, "error", "invalid track number");
+        jb_add_string(ctx->jb, "error", "invalid track number");
         g_array_free(tracks, TRUE);
-        return;
+        return TRUE;
     }
 
     tr = g_array_index(tracks, sp_track*, tr_idx-1);
@@ -438,40 +490,41 @@ spop_command__int_int(add_track, pl_idx, tr_idx) {
     queue_add_track(TRUE, tr);
 
     queue_get_status(NULL, NULL, &tot);
-    jb_add_int(jb, "total_tracks", tot);
+    jb_add_int(ctx->jb, "total_tracks", tot);
+    return TRUE;
 }
 
-spop_command(play) {
+gboolean play(command_context* ctx) {
     queue_play(TRUE);
-    status(jb);
+    return status(ctx);
 }
-spop_command(stop) {
+gboolean stop(command_context* ctx) {
     queue_stop(TRUE);
-    status(jb);
+    return status(ctx);
 }
-spop_command(toggle) {
+gboolean toggle(command_context* ctx) {
     queue_toggle(TRUE);
-    status(jb);
+    return status(ctx);
 }
-spop_command__int(seek, pos) {
+gboolean seek(command_context* ctx, guint pos) {
     queue_seek(pos);
-    status(jb);
+    return status(ctx);
 }
 
-spop_command(goto_next) {
+gboolean goto_next(command_context* ctx) {
     queue_next(TRUE);
-    status(jb);
+    return status(ctx);
 }
-spop_command(goto_prev) {
+gboolean goto_prev(command_context* ctx) {
     queue_prev(TRUE);
-    status(jb);
+    return status(ctx);
 }
-spop_command__int(goto_nb, nb) {
+gboolean goto_nb(command_context* ctx, guint nb) {
     queue_goto(TRUE, nb-1, TRUE);
-    status(jb);
+    return status(ctx);
 }
 
-spop_command(image) {
+gboolean image(command_context* ctx) {
     sp_track* track = NULL;
     guchar* img_data;
     gsize len;
@@ -480,17 +533,19 @@ spop_command(image) {
     queue_get_status(&track, NULL, NULL);
     res = track_get_image_data(track, (gpointer*) &img_data, &len);
     if (!res) {
-        jb_add_string(jb, "status", "not-loaded");
+        // FIXME
+        jb_add_string(ctx->jb, "status", "not-loaded");
     }
     else if (!img_data) {
-        jb_add_string(jb, "status", "absent");
+        jb_add_string(ctx->jb, "status", "absent");
     }
     else {
         gchar* b64data = g_base64_encode(img_data, len);
-        jb_add_string(jb, "status", "ok");
-        jb_add_string(jb, "data", b64data);
+        jb_add_string(ctx->jb, "status", "ok");
+        jb_add_string(ctx->jb, "data", b64data);
         
         g_free(b64data);
         g_free(img_data);
     }
+    return TRUE;
 }
