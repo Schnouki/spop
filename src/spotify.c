@@ -143,7 +143,7 @@ void session_login(const char* username, const char* password) {
     if (!g_session)
         g_error("Session is not ready.");
 
-    sp_session_login(g_session, username, password);
+    sp_session_login(g_session, username, password, TRUE);
 }
 void session_logout() {
     g_debug("Logging out...");
