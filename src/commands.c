@@ -274,6 +274,12 @@ gboolean list_tracks(command_context* ctx, guint idx) {
         return TRUE;
     }
 
+    jb_add_string(ctx->jb, "name", sp_playlist_name(pl));
+    const gchar* desc = sp_playlist_get_description(pl);
+    if (desc) {
+        jb_add_string(ctx->jb, "description", desc);
+    }
+
     json_builder_set_member_name(ctx->jb, "tracks");
     json_builder_begin_array(ctx->jb);
     json_tracks_array(tracks, ctx->jb);
