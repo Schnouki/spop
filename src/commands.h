@@ -37,12 +37,14 @@ typedef struct {
     void*       func;
     command_arg args[MAX_CMD_ARGS];
 } command_descriptor;
+typedef void (*command_finalize_func)(gchar* json_result, gpointer data);
 typedef struct {
-    GIOChannel* chan;
     JsonBuilder* jb;
+    command_finalize_func finalize;
+    gpointer finalize_data;
 } command_context;
 
-gboolean command_run(GIOChannel* chan, command_descriptor* desc, int argc, char** argv);
+gboolean command_run(command_finalize_func finalize, gpointer finalize_data, command_descriptor* desc, int argc, char** argv);
 void command_end(command_context* ctx);
 
 /* Actual commands */

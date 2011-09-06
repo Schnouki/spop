@@ -33,7 +33,6 @@
 #include "spop.h"
 #include "commands.h"
 #include "config.h"
-#include "interface.h"
 #include "queue.h"
 #include "spotify.h"
 #include "utils.h"
@@ -90,11 +89,12 @@ static void json_tracks_array(GArray* tracks, JsonBuilder* jb) {
 #define CMD_CALLBACK_MAX_CALLS  30
 
 /* Run the given command with the given arguments */
-gboolean command_run(GIOChannel* chan, command_descriptor* desc, int argc, char** argv) {
+gboolean command_run(command_finalize_func finalize, gpointer finalize_data, command_descriptor* desc, int argc, char** argv) {
     gboolean ret = TRUE;
     command_context* ctx = g_new(command_context, 1);
-    ctx->chan = chan;
     ctx->jb = json_builder_new();
+    ctx->finalize = finalize;
+    ctx->finalize_data = finalize_data;
     json_builder_begin_object(ctx->jb);
 
 #define _str_to_uint(dst, src)                  \
@@ -160,7 +160,7 @@ gboolean command_run(GIOChannel* chan, command_descriptor* desc, int argc, char*
     return ret;
 }
 
-/* End the command: prepare JSON output, send it to the channel, free the context */
+/* End the command: prepare JSON output, finalize it (most of the time send it to an IO channel), free the context */
 void command_end(command_context* ctx) {
     json_builder_end_object(ctx->jb);
     JsonGenerator* gen = json_generator_new();
@@ -174,9 +174,9 @@ void command_end(command_context* ctx) {
     gchar* strn = g_strconcat(str, "\n", NULL);
     g_free(str);
 
-    interface_write(ctx->chan, strn);
+    ctx->finalize(strn, ctx->finalize_data);
     g_free(strn);
-    g_free(ctx);    
+    g_free(ctx);
 }
 /* }}} */
 

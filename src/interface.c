@@ -292,7 +292,7 @@ command_result interface_handle_command(GIOChannel* chan, gchar* command){
     case CT_FUNC: {
         gboolean ret;
 
-        ret = command_run(chan, &(cmd_desc->desc), argc, argv);
+        ret = command_run((command_finalize_func) interface_finalize, chan, &(cmd_desc->desc), argc, argv);
         return (ret ? CR_OK : CR_DEFERED);
     }
 
@@ -339,12 +339,17 @@ gboolean interface_write(GIOChannel* chan, const gchar* str) {
     return TRUE;
 }
 
+void interface_finalize(const gchar* str, GIOChannel* chan) {
+    interface_write(chan, str);
+}
+
 
 /* Notify clients (channels or plugins) that are waiting for an update */
+/* TODO: use a command_finalize_func for that too */
 void interface_notify() {
     GString* str = g_string_sized_new(1024);
     JsonBuilder* jb = json_builder_new();
-    command_context ctx = { NULL, jb };
+    command_context ctx = { jb, NULL, NULL };
 
     json_builder_begin_object(jb);
     status(&ctx);

@@ -36,8 +36,8 @@ typedef enum { CR_OK=0, CR_CLOSE, CR_DEFERED, CR_IDLE } command_result;
 gboolean interface_event(GIOChannel* source, GIOCondition condition, gpointer data);
 gboolean interface_client_event(GIOChannel* source, GIOCondition condition, gpointer data);
 command_result interface_handle_command(GIOChannel* chan, gchar* command);
-void interface_finalize(GIOChannel* chan, const gchar* str, gboolean close_chan);
 gboolean interface_write(GIOChannel* source, const gchar* str);
+void interface_finalize(const gchar* str, GIOChannel* chan);
 
 /* Notify clients (channels or plugins) that are waiting for an update */
 void interface_notify();
