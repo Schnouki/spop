@@ -38,9 +38,7 @@
 #include "spotify.h"
 #include "utils.h"
 
-/********************
- *** JSON helpers ***
- ********************/
+/* {{{ JSON helpers */
 #define jb_add_bool(jb, name, val) {\
     json_builder_set_member_name(jb, name); \
     json_builder_add_boolean_value(jb, val); }
@@ -86,11 +84,8 @@ static void json_tracks_array(GArray* tracks, JsonBuilder* jb) {
         g_free(track_link);
     }
 }
-
-/***************************
- *** Commands management ***
- ***************************/
-
+/* }}} */
+/* {{{ Commands management */
 #define CMD_CALLBACK_WAIT_TIME 100
 #define CMD_CALLBACK_MAX_CALLS  30
 
@@ -174,10 +169,12 @@ void command_end(command_context* ctx) {
     g_free(strn);
     g_free(ctx);    
 }
+/* }}} */
 
 /****************
  *** Commands ***
  ****************/
+/* {{{ Lists */
 gboolean list_playlists(command_context* ctx) {
     int i, n, t;
     sp_playlist* pl;
@@ -290,8 +287,8 @@ gboolean list_tracks(command_context* ctx, guint idx) {
     g_array_free(tracks, TRUE);
     return TRUE;
 }
-
-
+/* }}} */
+/* {{{ Status and play mode */
 gboolean status(command_context* ctx) {
     sp_track* track;
     int track_nb, total_tracks, track_duration, track_position;
@@ -342,8 +339,8 @@ gboolean shuffle(command_context* ctx) {
     queue_set_shuffle(TRUE, !s);
     return status(ctx);
 }
-
-
+/* }}} */
+/* {{{ Queue */
 gboolean list_queue(command_context* ctx) {
     GArray* tracks;
 
@@ -505,7 +502,8 @@ gboolean add_track(command_context* ctx, guint pl_idx, guint tr_idx) {
     jb_add_int(ctx->jb, "total_tracks", tot);
     return TRUE;
 }
-
+/* }}} */
+/* {{{ Playback and navigation */
 gboolean play(command_context* ctx) {
     queue_play(TRUE);
     return status(ctx);
@@ -535,7 +533,8 @@ gboolean goto_nb(command_context* ctx, guint nb) {
     queue_goto(TRUE, nb-1, TRUE);
     return status(ctx);
 }
-
+/* }}} */
+/* {{{ Image */
 gboolean image(command_context* ctx) {
     sp_track* track = NULL;
     guchar* img_data;
@@ -561,7 +560,9 @@ gboolean image(command_context* ctx) {
     }
     return TRUE;
 }
-
+/* }}} */
+/* {{{ URIs */
+  /* {{{ uri_info callbacks */
 /* Callback (from uri_info) to get album data */
 static void _uri_info_album_cb(sp_albumbrowse* ab, gpointer userdata) {
     command_context* ctx = (command_context*) userdata;
@@ -725,6 +726,7 @@ static gboolean _uri_info_track_cb(gpointer* data) {
     command_end(ctx);
     return FALSE;
 }
+  /* }}} */
 
 gboolean uri_info(command_context* ctx, sp_link* lnk) {
     sp_linktype type = sp_link_type(lnk);
@@ -827,3 +829,4 @@ gboolean uri_info(command_context* ctx, sp_link* lnk) {
 
     return done;
 }
+/* }}} */
