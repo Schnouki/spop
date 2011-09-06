@@ -159,17 +159,19 @@ gboolean command_run(GIOChannel* chan, command_descriptor* desc, int argc, char*
 /* End the command: prepare JSON output, send it to the channel, free the context */
 void command_end(command_context* ctx) {
     json_builder_end_object(ctx->jb);
-    JsonGenerator *gen = json_generator_new();
+    JsonGenerator* gen = json_generator_new();
     g_object_set(gen, "pretty", config_get_bool_opt("pretty_json", FALSE), NULL);
     json_generator_set_root(gen, json_builder_get_root(ctx->jb));
 
-    gchar *str = json_generator_to_data(gen, NULL);
+    gchar* str = json_generator_to_data(gen, NULL);
     g_object_unref(gen);
     g_object_unref(ctx->jb);
 
-    interface_finalize(ctx->chan, str, FALSE);
-    interface_finalize(ctx->chan, "\n", FALSE);
+    gchar* strn = g_strconcat(str, "\n", NULL);
     g_free(str);
+
+    interface_finalize(ctx->chan, strn, FALSE);
+    g_free(strn);
     g_free(ctx);    
 }
 

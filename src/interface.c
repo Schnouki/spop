@@ -153,19 +153,19 @@ gboolean interface_event(GIOChannel* source, GIOCondition condition, gpointer da
     if (client == -1)
         g_error("Can't accept connection");
 
-    g_info("[%d] Connection from (%s, %d)", client, inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+    g_info("[ie:%d] Connection from (%s, %d)", client, inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 
     /* Create IO channel for the client, send greetings, and add it to the main loop */
     client_chan = g_io_channel_unix_new(client);
     if (!client_chan)
-        g_error("[%d] Can't create IO channel for the client socket.", client);
+        g_error("[ie:%d] Can't create IO channel for the client socket.", client);
 
     if (g_io_channel_write_chars(client_chan, proto_greetings, -1, NULL, &err) != G_IO_STATUS_NORMAL) {
-        g_debug("[%d] Can't write to IO channel: %s", client, err->message);
+        g_debug("[ie:%d] Can't write to IO channel: %s", client, err->message);
         goto ie_client_clean;
     }
     if (g_io_channel_flush(client_chan, &err) != G_IO_STATUS_NORMAL) {
-        g_debug("[%d] Can't flush IO channel: %s", client, err->message);
+        g_debug("[ie:%d] Can't flush IO channel: %s", client, err->message);
         goto ie_client_clean;
     }
 
@@ -177,7 +177,7 @@ gboolean interface_event(GIOChannel* source, GIOCondition condition, gpointer da
     g_io_channel_shutdown(client_chan, TRUE, NULL);
     g_io_channel_unref(client_chan);
     close(client);
-    g_debug("[%d] Connection closed.", client);
+    g_debug("[ie:%d] Connection closed.", client);
 
     return TRUE;
 }
@@ -189,28 +189,35 @@ gboolean interface_client_event(GIOChannel* source, GIOCondition condition, gpoi
     GIOStatus status;
     int client;
     command_result cr;
+    gboolean fd_closed = FALSE;
 
     client = g_io_channel_unix_get_fd(source);
 
+    /* Is this channel still open? */
+    if (condition & G_IO_NVAL) {
+        fd_closed = TRUE;
+        goto ice_client_clean;
+    }
+
     buffer = g_string_sized_new(1024);
     if (!buffer) {
-        g_warning("[%d] Can't allocate buffer.", client);
+        g_warning("[ice:%d] Can't allocate buffer.", client);
         goto ice_client_clean;
     }
 
     /* Read exactly one command  */
     status = g_io_channel_read_line_string(source, buffer, NULL, &err);
     if (status == G_IO_STATUS_EOF) {
-        g_debug("[%d] Connection reset by peer.", client);
+        g_debug("[ice:%d] Connection reset by peer.", client);
         goto ice_client_clean;
     }
     else if (status != G_IO_STATUS_NORMAL) {
-        g_debug("[%d] Can't read from IO channel: %s", client, err->message);
+        g_debug("[ice:%d] Can't read from IO channel: %s", client, err->message);
         goto ice_client_clean;
     }
 
     buffer->str[buffer->len-1] = '\0';
-    g_debug("[%d] Received command: %s", client, buffer->str);
+    g_debug("[ice:%d] Received command: %s", client, buffer->str);
     buffer->str[buffer->len-1] = '\n';
     
     /* Parse and run the command */
@@ -230,10 +237,12 @@ gboolean interface_client_event(GIOChannel* source, GIOCondition condition, gpoi
     if (buffer)
         g_string_free(buffer, TRUE);
     g_idle_channels = g_list_remove(g_idle_channels, source);
-    g_io_channel_shutdown(source, TRUE, NULL);
-    g_io_channel_unref(source);
-    close(client);
-    g_info("[%d] Connection closed.", client);
+    if (!fd_closed) {
+        g_io_channel_shutdown(source, TRUE, NULL);
+        g_io_channel_unref(source);
+        close(client);
+        g_info("[ice:%d] Connection closed.", client);
+    }
 
     return FALSE;
 }
@@ -357,12 +366,12 @@ void interface_finalize(GIOChannel* chan, const gchar* str, gboolean close_chan)
     if (str) {
         status = g_io_channel_write_chars(chan, str, -1, NULL, &err);
         if (status != G_IO_STATUS_NORMAL) {
-            g_debug("[%d] Can't write to IO channel: %s", client, err->message);
+            g_debug("[if:%d] Can't write to IO channel: %s", client, err->message);
             goto if_clean;
         }
     }
     if (g_io_channel_flush(chan, &err) != G_IO_STATUS_NORMAL) {
-        g_debug("[%d] Can't flush IO channel: %s", client, err->message);
+        g_debug("[if:%d] Can't flush IO channel: %s", client, err->message);
         goto if_clean;
     }
 
@@ -374,7 +383,7 @@ void interface_finalize(GIOChannel* chan, const gchar* str, gboolean close_chan)
     g_io_channel_shutdown(chan, TRUE, NULL);
     g_io_channel_unref(chan);
     close(client);
-    g_info("[%d] Connection closed.", client);
+    g_info("[if:%d] Connection closed.", client);
 }
 
 
