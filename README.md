@@ -69,18 +69,31 @@ official Spotify client. Then, you will be able to use the following commands:
 
 - `ls`: list all your playlists
 - `ls pl`: list the contents of playlist number `pl`
+
 ---
+
 - `qls`: list the contents of the queue
 - `qclear`: clear the contents of the queue
 - `qrm tr`: remove track number `tr` from the queue
 - `qrm tr1 tr2`: remove tracks `tr1` to `tr2` from the queue
+
 ---
+
 - `add pl`: add playlist number `pl` to the queue
 - `add pl tr`: add track number `tr` from playlist number `pl` to the queue
 - `play pl`: replace the contents of the queue with playlist `pl` and start
   playing
 - `play pl tr`: replace the contents of the queue with track `tr` from playlist
   `pl` and start playing
+
+---
+
+- `uinfo uri`: display information about the given Spotify URI
+- `uadd uri`: add the given Spotify URI to the queue (playlist, track or album
+  only)
+- `uplay uri`: replace the contents of the queue with the given Spotify URI
+  (playlist, track or album only) and start playing
+
 ---
 - `play`: start playing from the queue
 - `toggle` or `pause`: toggle pause mode
@@ -91,12 +104,16 @@ official Spotify client. Then, you will be able to use the following commands:
 - `goto tr`: switch to track number `tr` in the queue
 - `repeat`: toggle repeat mode
 - `shuffle`: toggle shuffle mode
+
 ---
+
 - `status`: display informations about the queue, the current track, etc.
 - `idle`: wait for something to change (pause, switch to other track, new track
   in queue...), then display `status`. Mostly useful in notification scripts.
 - `image`: get the cover image for the current track (base64-encoded JPEG image).
+
 ---
+
 - `bye`: close the connection to the spop daemon
 - `quit`: exit spop
 
@@ -106,7 +123,7 @@ This doc is probably lacking a gazillion useful informations, so feel free to
 ask me if you have any question regarding spop!
 
 - On GitHub: <https://github.com/inbox/new/Schnouki>
-- By e-mail: <my_nickname@my_nickname.net> (by the way, my nickname
+- By e-mail: <`my_nickname@my_nickname.net`> (by the way, my nickname
   is "Schnouki")
 - On identi.ca: <http://identi.ca/schnouki>
 - On Twitter: <http://www.twitter.com/Schnouki>

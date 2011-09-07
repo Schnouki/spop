@@ -727,6 +727,134 @@ static gboolean _uri_info_track_cb(gpointer* data) {
     return FALSE;
 }
   /* }}} */
+  /* {{{ uri_add/uri_play callbacks */
+static void _uri_add_album_cb(sp_albumbrowse* ab, gpointer userdata) {
+    gpointer* data = (gpointer*) userdata;
+    command_context* ctx = data[0];
+    gboolean play = *(gboolean*) data[1];
+    g_free(data);
+
+    int n = sp_albumbrowse_num_tracks(ab);
+
+    if (play)
+        queue_clear(FALSE);
+
+    size_t i;
+    for (i=0; i < n; i++) {
+        sp_track* tr = sp_albumbrowse_track(ab, i);
+        queue_add_track(FALSE, tr);
+    }
+    
+    if (play) {
+        queue_play(TRUE);
+        status(ctx);
+    }
+    else {
+        int tot;
+        queue_notify();
+        queue_get_status(NULL, NULL, &tot);
+        jb_add_int(ctx->jb, "total_tracks", tot);
+    }
+
+    sp_albumbrowse_release(ab);
+    command_end(ctx);
+}
+
+static gboolean _uri_add_playlist_cb(gpointer* data) {
+    command_context* ctx = data[0];
+    size_t count = (size_t) ++data[1];
+    sp_playlist* pl = data[2];
+    sp_link* lnk = data[3];
+    gboolean play = *(gboolean*) data[4];
+
+    /* If not loaded, wait a little more */
+    if (!sp_playlist_is_loaded(pl)) {
+        if (count < CMD_CALLBACK_MAX_CALLS)
+            return TRUE;
+        else {
+            jb_add_string(ctx->jb, "error", "playlist not loaded");
+            goto _uapcb_clean;
+        }
+    }
+
+    /* Make sure all tracks are loaded */
+    GArray* tracks = tracks_get_playlist(pl);
+    int i;
+    for (i=0; i < tracks->len; i++) {
+        sp_track* track = g_array_index(tracks, sp_track*, i);
+        if (!sp_track_is_loaded(track)) {
+            g_array_free(tracks, TRUE);
+            return TRUE;
+        }
+    }
+
+    if (play) {
+        queue_set_playlist(FALSE, pl);
+        queue_play(TRUE);
+        status(ctx);
+    }
+    else {
+        queue_add_playlist(TRUE, pl);
+
+        int tot;
+        queue_get_status(NULL, NULL, &tot);
+        jb_add_int(ctx->jb, "total_tracks", tot);
+    }
+
+    g_array_free(tracks, TRUE);
+
+ _uapcb_clean:
+    sp_link_release(lnk);
+    g_free(data[4]);
+    g_free(data);
+
+    command_end(ctx);
+    return FALSE;
+}
+
+static gboolean _uri_add_track_cb(gpointer* data) {
+    command_context* ctx = data[0];
+    size_t count = (size_t) ++data[1];
+    sp_track* track = data[2];
+    int offset = *(int*) data[3];
+    sp_link* lnk = data[4];
+    gboolean play = *(gboolean*) data[5];
+
+    /* If not loaded, wait a little more */
+    if (!sp_track_is_loaded(track)) {
+        if (count < CMD_CALLBACK_MAX_CALLS)
+            return TRUE;
+        else {
+            jb_add_string(ctx->jb, "error", "track not loaded");
+            goto _uatcb_clean;
+        }
+    }
+
+    if (play) {
+        queue_set_track(FALSE, track);
+        queue_play(TRUE);
+        if (offset > 0)
+            queue_seek(offset);
+        status(ctx);
+    }
+    else {
+        queue_add_track(TRUE, track);
+
+        int tot;
+        queue_get_status(NULL, NULL, &tot);
+        jb_add_int(ctx->jb, "total_tracks", tot);
+    }
+
+ _uatcb_clean:
+    sp_link_release(lnk);
+    g_free(data[3]);
+    g_free(data[5]);
+    g_free(data);
+
+    command_end(ctx);
+    return FALSE;
+}
+  /* }}} */
 
 gboolean uri_info(command_context* ctx, sp_link* lnk) {
     sp_linktype type = sp_link_type(lnk);
@@ -822,11 +950,95 @@ gboolean uri_info(command_context* ctx, sp_link* lnk) {
         break;
     }
     default:
-        jb_add_string(ctx->jb, "type", "unimplemented");
+        jb_add_string(ctx->jb, "type", "not implemented");
         sp_link_release(lnk);
         break;
     }
 
     return done;
+}
+
+static gboolean _uri_add_play(command_context* ctx, sp_link* lnk, gboolean play) {
+    sp_linktype type = sp_link_type(lnk);
+    gboolean done = TRUE;
+
+    switch(type) {
+    case SP_LINKTYPE_INVALID:
+        jb_add_string(ctx->jb, "error", "invalid URI");
+        sp_link_release(lnk);
+        break;
+    case SP_LINKTYPE_TRACK: {
+        int offset;
+        sp_track* track = sp_link_as_track_and_offset(lnk, &offset);
+        if (!track) {
+            jb_add_string(ctx->jb, "error", "can't retrieve track");
+            sp_link_release(lnk);
+            break;
+        }
+        gpointer* data = g_new(gpointer, 6);
+        data[0] = ctx;
+        data[1] = 0;
+        data[2] = track;
+        data[3] = g_memdup(&offset, sizeof(int));
+        data[4] = lnk;
+        data[5] = g_memdup(&play, sizeof(gboolean));
+        if (!sp_track_is_loaded(track))
+            g_timeout_add(CMD_CALLBACK_WAIT_TIME, (GSourceFunc) _uri_add_track_cb, data);
+        else
+            _uri_add_track_cb(data);
+        done = FALSE;
+
+        break;
+    }
+    case SP_LINKTYPE_ALBUM: {
+        sp_album* album = sp_link_as_album(lnk);
+        if (!album) {
+            jb_add_string(ctx->jb, "error", "can't retrieve album");
+            sp_link_release(lnk);
+            break;
+        }
+        done = FALSE;
+        gpointer* data = g_new(gpointer, 2);
+        data[0] = ctx;
+        data[1] = g_memdup(&play, sizeof(gboolean));
+        albumbrowse_create(album, _uri_add_album_cb, data);
+        break;
+    }
+    case SP_LINKTYPE_PLAYLIST: {
+        sp_playlist* pl = playlist_get_from_link(lnk);
+        if (!pl) {
+            jb_add_string(ctx->jb, "error", "can't retrieve playlist");
+            sp_link_release(lnk);
+            break;
+        }
+        gpointer* data = g_new(gpointer, 5);
+        data[0] = ctx;
+        data[1] = 0;
+        data[2] = pl;
+        data[3] = lnk;
+        data[4] = g_memdup(&play, sizeof(gboolean));
+        if (!sp_playlist_is_loaded(pl))
+            g_timeout_add(CMD_CALLBACK_WAIT_TIME, (GSourceFunc) _uri_add_playlist_cb, data);
+        else
+            _uri_add_playlist_cb(data);
+        done = FALSE;
+
+        break;
+    }
+    default:
+        jb_add_string(ctx->jb, "error", "not implemented");
+        sp_link_release(lnk);
+        break;
+    }
+
+    return done;
+}
+
+gboolean uri_add(command_context* ctx, sp_link* lnk) {
+    return _uri_add_play(ctx, lnk, FALSE);
+}
+
+gboolean uri_play(command_context* ctx, sp_link* lnk) {
+    return _uri_add_play(ctx, lnk, TRUE);
 }
 /* }}} */

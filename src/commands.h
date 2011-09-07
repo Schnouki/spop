@@ -76,5 +76,7 @@ gboolean goto_nb(command_context* ctx, guint nb);
 gboolean image(command_context* ctx);
 
 gboolean uri_info(command_context* ctx, sp_link* lnk);
+gboolean uri_add(command_context* ctx, sp_link* lnk);
+gboolean uri_play(command_context* ctx, sp_link* lnk);
 
 #endif
