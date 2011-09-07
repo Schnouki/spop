@@ -464,6 +464,10 @@ sp_albumbrowse* albumbrowse_create(sp_album* album, albumbrowse_complete_cb* cal
     return sp_albumbrowse_create(g_session, album, callback, userdata);
 }
 
+sp_artistbrowse* artistbrowse_create(sp_artist* artist, artistbrowse_complete_cb* callback, gpointer userdata) {
+    return sp_artistbrowse_create(g_session, artist, callback, userdata);
+}
+
 sp_search* search_create(const gchar* query, search_complete_cb* callback, gpointer userdata) {
     int nb_results = config_get_int_opt("search_results", 100);
     return sp_search_create(g_session, query,

@@ -625,30 +625,87 @@ static void _uri_info_album_cb(sp_albumbrowse* ab, gpointer userdata) {
     command_end(ctx);
 }
 
-/* Callback (from uri_info or timeout) to get artist data */
-static gboolean _uri_info_artist_cb(gpointer* data) {
-    command_context* ctx = data[0];
-    size_t count = (size_t) ++data[1];
-    sp_artist* artist = data[2];
-    sp_link* lnk = data[3];
+/* Callback (from uri_info) to get artist data */
+static void _uri_info_artist_cb(sp_artistbrowse* arb, gpointer userdata) {
+    command_context* ctx = (command_context*) userdata;
+    gchar uri[1024];
+    int i, n;
 
-    /* If not loaded, wait a little more */
-    if (!sp_artist_is_loaded(artist)) {
-        if (count < CMD_CALLBACK_MAX_CALLS)
-            return TRUE;
-        else {
-            jb_add_string(ctx->jb, "error", "artist not loaded");
-            goto _uiacb_clean;
-        }
+    /* Check for error */
+    sp_error err = sp_artistbrowse_error(arb);
+    if (err != SP_ERROR_OK) {
+        jb_add_string(ctx->jb, "error", sp_error_message(err));
+        goto _uiarc_clean;
     }
-    
+
+    sp_artist* artist = sp_artistbrowse_artist(arb);
     jb_add_string(ctx->jb, "artist", sp_artist_name(artist));
 
- _uiacb_clean:
-    sp_link_release(lnk);
-    g_free(data);
+    /* Tracks... */
+    n = sp_artistbrowse_num_tracks(arb);
+    GArray* tracks = g_array_sized_new(FALSE, FALSE, sizeof(sp_track*), n);
+    if (!tracks)
+        g_error("Can't allocate array of %d tracks.", n);
+    for (i=0; i < n; i++) {
+        sp_track* tr = sp_artistbrowse_track(arb, i);
+        g_array_append_val(tracks, tr);
+    }
+
+    json_builder_set_member_name(ctx->jb, "tracks");
+    json_builder_begin_array(ctx->jb);
+    json_tracks_array(tracks, ctx->jb);
+    json_builder_end_array(ctx->jb);
+    g_array_free(tracks, TRUE);
+
+    /* Albums... */
+    n = sp_artistbrowse_num_albums(arb);
+    json_builder_set_member_name(ctx->jb, "albums");
+    json_builder_begin_array(ctx->jb);
+    for (i=0; i < n; i++) {
+        sp_album* alb = sp_artistbrowse_album(arb, i);
+        json_builder_begin_object(ctx->jb);
+
+        sp_artist* albart = sp_album_artist(alb);
+        jb_add_string(ctx->jb, "artist", sp_artist_name(albart));
+
+        jb_add_string(ctx->jb, "title", sp_album_name(alb));
+        jb_add_bool(ctx->jb, "available", sp_album_is_available(alb));
+
+        sp_link* lnk = sp_link_create_from_album(alb);
+        if (sp_link_as_string(lnk, uri, 1024) < 1024) {
+            jb_add_string(ctx->jb, "uri", uri);
+        }
+        sp_link_release(lnk);
+
+        json_builder_end_object(ctx->jb);
+    }
+    json_builder_end_array(ctx->jb);
+
+    /* Similar artists... */
+    n = sp_artistbrowse_num_similar_artists(arb);
+    json_builder_set_member_name(ctx->jb, "similar_artists");
+    json_builder_begin_array(ctx->jb);
+    for (i=0; i < n; i++) {
+        sp_artist* simart = sp_artistbrowse_similar_artist(arb, i);
+        json_builder_begin_object(ctx->jb);
+
+        jb_add_string(ctx->jb, "artist", sp_artist_name(simart));
+
+        sp_link* lnk = sp_link_create_from_artist(simart);
+        if (sp_link_as_string(lnk, uri, 1024) < 1024) {
+            jb_add_string(ctx->jb, "uri", uri);
+        }
+        sp_link_release(lnk);
+
+        json_builder_end_object(ctx->jb);
+    }
+    json_builder_end_array(ctx->jb);
+
+    jb_add_string(ctx->jb, "biography", sp_artistbrowse_biography(arb));
+
+ _uiarc_clean:
+    sp_artistbrowse_release(arb);
     command_end(ctx);
-    return FALSE;
 }
 
 /* Callback (from uri_info or timeout) to get playlist data */
@@ -931,17 +988,9 @@ gboolean uri_info(command_context* ctx, sp_link* lnk) {
             sp_link_release(lnk);
             break;
         }
-        gpointer* data = g_new(gpointer, 4);
-        data[0] = ctx;
-        data[1] = 0;
-        data[2] = artist;
-        data[3] = lnk;
-        if (!sp_artist_is_loaded(artist))
-            g_timeout_add(CMD_CALLBACK_WAIT_TIME, (GSourceFunc) _uri_info_artist_cb, data);
-        else
-            _uri_info_artist_cb(data);
         done = FALSE;
-
+        artistbrowse_create(artist, _uri_info_artist_cb, ctx);
+        sp_link_release(lnk);
         break;
     }
     case SP_LINKTYPE_PLAYLIST: {

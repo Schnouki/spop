@@ -68,6 +68,7 @@ gboolean track_get_image_data(sp_track* track, gpointer* data, gsize* len);
 
 /* Browsing */
 sp_albumbrowse* albumbrowse_create(sp_album* album, albumbrowse_complete_cb* callback, gpointer userdata);
+sp_artistbrowse* artistbrowse_create(sp_artist* artist, artistbrowse_complete_cb* callback, gpointer userdata);
 sp_search* search_create(const gchar* query, search_complete_cb* callback, gpointer userdata);
 
 /* Utility functions */
