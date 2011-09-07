@@ -576,6 +576,13 @@ gboolean image(command_context* ctx) {
 static void _uri_info_album_cb(sp_albumbrowse* ab, gpointer userdata) {
     command_context* ctx = (command_context*) userdata;
 
+    /* Check for error */
+    sp_error err = sp_albumbrowse_error(ab);
+    if (err != SP_ERROR_OK) {
+        jb_add_string(ctx->jb, "error", sp_error_message(err));
+        goto _uiac_clean;
+    }
+
     sp_album* album = sp_albumbrowse_album(ab);
     sp_artist* artist = sp_albumbrowse_artist(ab);
 
@@ -613,6 +620,7 @@ static void _uri_info_album_cb(sp_albumbrowse* ab, gpointer userdata) {
 
     jb_add_string(ctx->jb, "review", sp_albumbrowse_review(ab));
 
+ _uiac_clean:
     sp_albumbrowse_release(ab);
     command_end(ctx);
 }
