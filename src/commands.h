@@ -75,6 +75,9 @@ gboolean goto_next(command_context* ctx);
 gboolean goto_prev(command_context* ctx);
 gboolean goto_nb(command_context* ctx, guint nb);
 
+gboolean offline_status(command_context* ctx);
+gboolean offline_toggle(command_context* ctx, guint idx);
+
 gboolean image(command_context* ctx);
 
 gboolean uri_info(command_context* ctx, sp_link* lnk);

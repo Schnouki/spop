@@ -210,6 +210,10 @@ sp_playlist_offline_status playlist_get_offline_status(sp_playlist* pl) {
     return sp_playlist_get_offline_status(g_session, pl);
 }
 
+void playlist_set_offline_mode(sp_playlist* pl, gboolean mode) {
+    sp_playlist_set_offline_mode(g_session, pl, mode);
+}
+
 int playlist_get_offline_download_completed(sp_playlist* pl) {
     return sp_playlist_get_offline_download_completed(g_session, pl);
 }
@@ -275,6 +279,24 @@ void session_seek(int pos) {
 
 int session_play_time() {
     return g_audio_time + (g_audio_samples / g_audio_rate);
+}
+
+void session_get_offline_sync_status(sp_offline_sync_status* status, gboolean* sync_in_progress,
+                                     int* tracks_to_sync, int* num_playlists, int* time_left) {
+    if (status || sync_in_progress) {
+        sp_offline_sync_status oss;
+        gboolean sip = sp_offline_sync_get_status(g_session, &oss);
+        if (status)
+            *status = oss;
+        if (sync_in_progress)
+            *sync_in_progress = sip;
+    }
+    if (tracks_to_sync)
+        *tracks_to_sync = sp_offline_tracks_to_sync(g_session);
+    if (num_playlists)
+        *num_playlists = sp_offline_num_playlists(g_session);
+    if (time_left)
+        *time_left = sp_offline_time_left(g_session);
 }
 
 /********************************

@@ -85,6 +85,9 @@ static command_full_descriptor g_commands[] = {
     { "prev",    CT_FUNC, { goto_prev, {CA_NONE}}},
     { "goto",    CT_FUNC, { goto_nb,   {CA_INT, CA_NONE}}},
 
+    { "offline-status", CT_FUNC, { offline_status, {CA_NONE}}},
+    { "offline-toggle", CT_FUNC, { offline_toggle, {CA_INT, CA_NONE}}},
+
     { "image",   CT_FUNC, { image, {CA_NONE}}},
 
     { "uinfo",   CT_FUNC, { uri_info, {CA_URI, CA_NONE}}},

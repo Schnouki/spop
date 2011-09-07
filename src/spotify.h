@@ -41,6 +41,7 @@ sp_playlist* playlist_get_from_link(sp_link* lnk);
 sp_playlist_type playlist_type(int nb);
 gchar* playlist_folder_name(int nb);
 sp_playlist_offline_status playlist_get_offline_status(sp_playlist* pl);
+void playlist_set_offline_mode(sp_playlist* pl, gboolean mode);
 int playlist_get_offline_download_completed(sp_playlist* pl);
 
 /* Session management */
@@ -49,6 +50,8 @@ void session_unload();
 void session_play(gboolean play);
 void session_seek(int pos);
 int session_play_time();
+void session_get_offline_sync_status(sp_offline_sync_status* status, gboolean* sync_in_progress,
+                                     int* tracks_to_sync, int* num_playlists, int* time_left);
 
 /* Session callbacks management */
 typedef enum {

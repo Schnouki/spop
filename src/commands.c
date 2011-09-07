@@ -564,6 +564,45 @@ gboolean goto_nb(command_context* ctx, guint nb) {
     return status(ctx);
 }
 /* }}} */
+/* {{{ Offline sync */
+gboolean offline_status(command_context* ctx) {
+    sp_offline_sync_status status;
+    gboolean sync_in_progress;
+    int tracks_to_sync, num_playlists, time_left;
+
+    session_get_offline_sync_status(&status, &sync_in_progress, &tracks_to_sync,
+                                    &num_playlists, &time_left);
+
+    jb_add_int(ctx->jb, "offline_playlists", num_playlists);
+    jb_add_int(ctx->jb, "tracks_to_sync", tracks_to_sync);
+    jb_add_bool(ctx->jb, "sync_in_progress", sync_in_progress);
+    if (sync_in_progress) {
+        jb_add_int(ctx->jb, "tracks_done", status.done_tracks);
+        jb_add_int(ctx->jb, "tracks_copied", status.copied_tracks);
+        jb_add_int(ctx->jb, "tracks_queued", status.queued_tracks);
+        jb_add_int(ctx->jb, "tracks_error", status.error_tracks);
+        jb_add_int(ctx->jb, "tracks_willnotcopy", status.willnotcopy_tracks);
+    }
+    jb_add_int(ctx->jb, "time_before_relogin", time_left);
+
+    return TRUE;    
+}
+
+gboolean offline_toggle(command_context* ctx, guint idx) {
+    sp_playlist* pl = playlist_get(idx);
+    if (!pl) {
+        jb_add_string(ctx->jb, "error", "invalid playlist");
+        return TRUE;
+    }
+
+    sp_playlist_offline_status pos = playlist_get_offline_status(pl);
+    gboolean mode = (pos != SP_PLAYLIST_OFFLINE_STATUS_NO);
+    playlist_set_offline_mode(pl, !mode);
+
+    jb_add_bool(ctx->jb, "offline", !mode);
+    return TRUE;
+}
+/* }}} */
 /* {{{ Image */
 gboolean image(command_context* ctx) {
     sp_track* track = NULL;
