@@ -83,6 +83,24 @@ static void json_tracks_array(GArray* tracks, JsonBuilder* jb) {
         g_free(track_link);
     }
 }
+static void json_playlist_offline_status(sp_playlist* pl, JsonBuilder* jb) {
+    sp_playlist_offline_status pos = playlist_get_offline_status(pl);
+    json_builder_set_member_name(jb, "offline");
+    switch(pos) {
+    case SP_PLAYLIST_OFFLINE_STATUS_NO:
+        json_builder_add_boolean_value(jb, FALSE); break;
+    case SP_PLAYLIST_OFFLINE_STATUS_YES:
+        json_builder_add_boolean_value(jb, TRUE); break;
+    case SP_PLAYLIST_OFFLINE_STATUS_DOWNLOADING:
+        json_builder_add_string_value(jb, "downloading");
+        jb_add_int(jb, "offline_progress", playlist_get_offline_download_completed(pl));
+        break;
+    case SP_PLAYLIST_OFFLINE_STATUS_WAITING:
+        json_builder_add_string_value(jb, "waiting"); break;
+    default:
+        json_builder_add_string_value(jb, "unknown");
+    }
+}
 /* }}} */
 /* {{{ Commands management */
 #define CMD_CALLBACK_WAIT_TIME 100
@@ -245,6 +263,7 @@ gboolean list_playlists(command_context* ctx) {
                 jb_add_string(ctx->jb, "type", "playlist");
                 jb_add_string(ctx->jb, "name", pn);
                 jb_add_int(ctx->jb, "tracks", t);
+                json_playlist_offline_status(pl, ctx->jb);
                 jb_add_int(ctx->jb, "index", i);
             }
             else {
@@ -292,8 +311,10 @@ gboolean list_tracks(command_context* ctx, guint idx) {
     json_builder_begin_array(ctx->jb);
     json_tracks_array(tracks, ctx->jb);
     json_builder_end_array(ctx->jb);
-
     g_array_free(tracks, TRUE);
+
+    json_playlist_offline_status(pl, ctx->jb);
+
     return TRUE;
 }
 /* }}} */

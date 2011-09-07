@@ -40,6 +40,8 @@ sp_playlist* playlist_get(int nb);
 sp_playlist* playlist_get_from_link(sp_link* lnk);
 sp_playlist_type playlist_type(int nb);
 gchar* playlist_folder_name(int nb);
+sp_playlist_offline_status playlist_get_offline_status(sp_playlist* pl);
+int playlist_get_offline_download_completed(sp_playlist* pl);
 
 /* Session management */
 void session_load(sp_track* track);

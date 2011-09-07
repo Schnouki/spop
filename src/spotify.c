@@ -206,6 +206,14 @@ gchar* playlist_folder_name(int nb) {
     return name;
 }
 
+sp_playlist_offline_status playlist_get_offline_status(sp_playlist* pl) {
+    return sp_playlist_get_offline_status(g_session, pl);
+}
+
+int playlist_get_offline_download_completed(sp_playlist* pl) {
+    return sp_playlist_get_offline_download_completed(g_session, pl);
+}
+
 /**********************
  * Session management *
  **********************/
