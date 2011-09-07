@@ -12,6 +12,9 @@ spotify_password = PASSWORD
 # Prefer high bitrate (320k instead of 160k). This is the default.
 #high_bitrate = true
 
+# Prefer high bitrate for offlinesync. This is the default.
+#offline_high_bitrate = true
+
 # Number of results returned by the search command.
 #search_results = 100
 

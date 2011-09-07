@@ -98,7 +98,7 @@ static sp_session_callbacks g_sp_session_callbacks = {
 /**********************
  *** Init functions ***
  **********************/
-void session_init(gboolean high_bitrate) {
+void session_init() {
     sp_error error;
     sp_session_config config;
     gchar* cache_path;
@@ -126,13 +126,21 @@ void session_init(gboolean high_bitrate) {
         g_error("Failed to create session: %s", sp_error_message(error));
 
     /* Set bitrate */
-    if (high_bitrate) {
+    if (config_get_bool_opt("high_bitrate", TRUE)) {
         g_debug("Setting preferred bitrate to high.");
         sp_session_preferred_bitrate(g_session, SP_BITRATE_320k);
     }
     else {
         g_debug("Setting preferred bitrate to low.");
         sp_session_preferred_bitrate(g_session, SP_BITRATE_160k);
+    }
+    if (config_get_bool_opt("offline_high_bitrate", TRUE)) {
+        g_debug("Setting preferred offline bitrate to high.");
+        sp_session_preferred_offline_bitrate(g_session, SP_BITRATE_320k, FALSE);
+    }
+    else {
+        g_debug("Setting preferred offline bitrate to low.");
+        sp_session_preferred_offline_bitrate(g_session, SP_BITRATE_160k, FALSE);
     }
 
     g_debug("Session created.");

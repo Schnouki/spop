@@ -128,7 +128,6 @@ int main(int argc, char** argv) {
 int real_main() {
     const char* username;
     const char* password;
-    gboolean high_bitrate;
     GMainLoop* main_loop;
 
     /* Init essential stuff */
@@ -140,13 +139,11 @@ int real_main() {
     username = config_get_string("spotify_username");
     password = config_get_string("spotify_password");
 
-    high_bitrate = config_get_bool_opt("high_bitrate", TRUE);
-
     /* Init plugins */
     plugins_init();
 
     /* Init login */
-    session_init(high_bitrate);
+    session_init();
     session_login(username, password);
 
     /* Init various subsystems */

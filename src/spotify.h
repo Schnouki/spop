@@ -30,7 +30,7 @@
 #include <libspotify/api.h>
 
 /* Init functions */
-void session_init(gboolean high_bitrate);
+void session_init();
 void session_login(const char* username, const char* password);
 void session_logout();
 
