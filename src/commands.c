@@ -133,6 +133,15 @@ gboolean command_run(GIOChannel* chan, command_descriptor* desc, int argc, char*
         else
             g_error("Unknown argument type");
     }
+    else if (desc->args[0] == CA_STR) {
+        const gchar* arg1 = argv[1];
+        if (desc->args[1] == CA_NONE) {
+            gboolean (*cmd)(command_context*, const gchar*) = desc->func;
+            ret = cmd(ctx, arg1);
+        }
+        else
+            g_error("Unknown argument type");
+    }
     else if (desc->args[0] == CA_URI) {
         _str_to_link(arg1, argv[1]);
         if (desc->args[1] == CA_NONE) {
@@ -1040,5 +1049,114 @@ gboolean uri_add(command_context* ctx, sp_link* lnk) {
 
 gboolean uri_play(command_context* ctx, sp_link* lnk) {
     return _uri_add_play(ctx, lnk, TRUE);
+}
+/* }}} */
+/* {{{ Search */
+static void _search_cb(sp_search* srch, gpointer userdata) {
+    command_context* ctx = (command_context*) userdata;
+    int i, n;
+
+    /* Check for error */
+    sp_error err = sp_search_error(srch);
+    if (err != SP_ERROR_OK) {
+        jb_add_string(ctx->jb, "error", sp_error_message(err));
+        goto _s_cb_clean;
+    }
+
+    /* Basic things first */
+    jb_add_string(ctx->jb, "query", sp_search_query(srch));
+    const gchar* dym = sp_search_did_you_mean(srch);
+    if (dym[0] != '\0') {
+        jb_add_string(ctx->jb, "did_you_mean", dym);
+    }
+
+    sp_link* lnk = sp_link_create_from_search(srch);
+    gchar uri[1024];
+    if (sp_link_as_string(lnk, uri, 1024) < 1024) {
+        /* FIXME: what to do if >= 1024? */
+        jb_add_string(ctx->jb, "uri", uri);
+    }
+    sp_link_release(lnk);
+
+    /* Now tracks... */
+    jb_add_int(ctx->jb, "total_tracks", sp_search_total_tracks(srch));
+
+    n = sp_search_num_tracks(srch);
+    GArray* tracks = g_array_sized_new(FALSE, FALSE, sizeof(sp_track*), n);
+    if (!tracks)
+        g_error("Can't allocate array of %d tracks.", n);
+    for (i=0; i < n; i++) {
+        sp_track* tr = sp_search_track(srch, i);
+        g_array_append_val(tracks, tr);
+    }
+
+    json_builder_set_member_name(ctx->jb, "tracks");
+    json_builder_begin_array(ctx->jb);
+    json_tracks_array(tracks, ctx->jb);
+    json_builder_end_array(ctx->jb);
+    g_array_free(tracks, TRUE);
+
+    /* Albums... */
+    jb_add_int(ctx->jb, "total_albums", sp_search_total_albums(srch));
+
+    n = sp_search_num_albums(srch);
+    json_builder_set_member_name(ctx->jb, "albums");
+    json_builder_begin_array(ctx->jb);
+    for (i=0; i < n; i++) {
+        sp_album* alb = sp_search_album(srch, i);
+        json_builder_begin_object(ctx->jb);
+
+        sp_artist* artist = sp_album_artist(alb);
+        jb_add_string(ctx->jb, "artist", sp_artist_name(artist));
+
+        jb_add_string(ctx->jb, "title", sp_album_name(alb));
+        jb_add_bool(ctx->jb, "available", sp_album_is_available(alb));
+
+        lnk = sp_link_create_from_album(alb);
+        if (sp_link_as_string(lnk, uri, 1024) < 1024) {
+            jb_add_string(ctx->jb, "uri", uri);
+        }
+        sp_link_release(lnk);
+
+        json_builder_end_object(ctx->jb);
+    }
+    json_builder_end_array(ctx->jb);
+
+    /* Artists... */
+    jb_add_int(ctx->jb, "total_artists", sp_search_total_artists(srch));
+
+    n = sp_search_num_artists(srch);
+    json_builder_set_member_name(ctx->jb, "artists");
+    json_builder_begin_array(ctx->jb);
+    for (i=0; i < n; i++) {
+        sp_artist* artist = sp_search_artist(srch, i);
+        json_builder_begin_object(ctx->jb);
+
+        jb_add_string(ctx->jb, "artist", sp_artist_name(artist));
+
+        lnk = sp_link_create_from_artist(artist);
+        if (sp_link_as_string(lnk, uri, 1024) < 1024) {
+            jb_add_string(ctx->jb, "uri", uri);
+        }
+        sp_link_release(lnk);
+
+        json_builder_end_object(ctx->jb);
+    }
+    json_builder_end_array(ctx->jb);
+
+    /* And we're done! */
+ _s_cb_clean:
+    sp_search_release(srch);
+    command_end(ctx);
+}
+
+gboolean search(command_context* ctx, const gchar* query) {
+    sp_search* srch = search_create(query, _search_cb, ctx);
+    if (srch)
+        return FALSE;
+    else {
+        jb_add_string(ctx->jb, "error", "can't create search");
+        return TRUE;
+    }
 }
 /* }}} */

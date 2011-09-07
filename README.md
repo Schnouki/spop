@@ -95,6 +95,11 @@ official Spotify client. Then, you will be able to use the following commands:
   (playlist, track or album only) and start playing
 
 ---
+
+- `search query`: perform a search with the given query
+
+---
+
 - `play`: start playing from the queue
 - `toggle` or `pause`: toggle pause mode
 - `stop`: stop playback

@@ -79,4 +79,6 @@ gboolean uri_info(command_context* ctx, sp_link* lnk);
 gboolean uri_add(command_context* ctx, sp_link* lnk);
 gboolean uri_play(command_context* ctx, sp_link* lnk);
 
+gboolean search(command_context* ctx, const gchar* query);
+
 #endif

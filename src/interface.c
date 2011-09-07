@@ -91,6 +91,8 @@ static command_full_descriptor g_commands[] = {
     { "uadd",    CT_FUNC, { uri_add,  {CA_URI, CA_NONE}}},
     { "uplay",   CT_FUNC, { uri_play, {CA_URI, CA_NONE}}},
 
+    { "search",  CT_FUNC, { search, {CA_STR, CA_NONE}}},
+
     { "bye",     CT_BYE,  {}},
     { "quit",    CT_QUIT, {}},
     { "idle",    CT_IDLE, {}},

@@ -12,6 +12,9 @@ spotify_password = PASSWORD
 # Prefer high bitrate (320k instead of 160k). This is the default.
 #high_bitrate = true
 
+# Number of results returned by the search command.
+#search_results = 100
+
 # Audio plugin -- right now, only two plugins are available:
 # - ao: uses libao, a simple and very portable library. Recommended for people
 #   who use ALSA, a sound server (Pulse Audio, aRts, etc.), or a platform that

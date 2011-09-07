@@ -33,6 +33,7 @@
 #include <sys/stat.h>
 
 #include "spop.h"
+#include "config.h"
 #include "plugin.h"
 #include "queue.h"
 #include "spotify.h"
@@ -456,13 +457,19 @@ gboolean track_get_image_data(sp_track* track, gpointer* data, gsize* len) {
 }
 
 
-/**********************
- *** Album browsing ***
- **********************/
+/****************
+ *** Browsing ***
+ ****************/
 sp_albumbrowse* albumbrowse_create(sp_album* album, albumbrowse_complete_cb* callback, gpointer userdata) {
     return sp_albumbrowse_create(g_session, album, callback, userdata);
 }
 
+sp_search* search_create(const gchar* query, search_complete_cb* callback, gpointer userdata) {
+    int nb_results = config_get_int_opt("search_results", 100);
+    return sp_search_create(g_session, query,
+                            0, nb_results, 0, nb_results, 0, nb_results,
+                            callback, userdata);
+}
 
 /*************************
  *** Utility functions ***
