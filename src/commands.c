@@ -165,7 +165,7 @@ void command_end(command_context* ctx) {
     gchar* strn = g_strconcat(str, "\n", NULL);
     g_free(str);
 
-    interface_finalize(ctx->chan, strn, FALSE);
+    interface_write(ctx->chan, strn);
     g_free(strn);
     g_free(ctx);    
 }

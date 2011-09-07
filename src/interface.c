@@ -131,7 +131,8 @@ void interface_init() {
     chan = g_io_channel_unix_new(sock);
     if (!chan)
         g_error("Can't create IO channel for the main socket.");
-    g_io_add_watch(chan, G_IO_IN|G_IO_PRI|G_IO_ERR|G_IO_HUP|G_IO_NVAL, interface_event, NULL);
+    g_io_channel_set_close_on_unref(chan, TRUE);
+    g_io_add_watch(chan, G_IO_IN|G_IO_HUP, interface_event, NULL);
 
     g_info("Listening on %s:%d", ip_addr, port);
 }
@@ -143,7 +144,6 @@ gboolean interface_event(GIOChannel* source, GIOCondition condition, gpointer da
     socklen_t sin_size;
     int client;
     GIOChannel* client_chan;
-    GError* err = NULL;
 
     sock = g_io_channel_unix_get_fd(source);
 
@@ -159,24 +159,18 @@ gboolean interface_event(GIOChannel* source, GIOCondition condition, gpointer da
     client_chan = g_io_channel_unix_new(client);
     if (!client_chan)
         g_error("[ie:%d] Can't create IO channel for the client socket.", client);
+    g_io_channel_set_close_on_unref(client_chan, TRUE);
 
-    if (g_io_channel_write_chars(client_chan, proto_greetings, -1, NULL, &err) != G_IO_STATUS_NORMAL) {
-        g_debug("[ie:%d] Can't write to IO channel: %s", client, err->message);
+    if (!interface_write(client_chan, proto_greetings))
         goto ie_client_clean;
-    }
-    if (g_io_channel_flush(client_chan, &err) != G_IO_STATUS_NORMAL) {
-        g_debug("[ie:%d] Can't flush IO channel: %s", client, err->message);
-        goto ie_client_clean;
-    }
 
-    g_io_add_watch(client_chan, G_IO_IN|G_IO_PRI|G_IO_ERR|G_IO_HUP|G_IO_NVAL, interface_client_event, NULL);
+    g_io_add_watch(client_chan, G_IO_IN|G_IO_HUP, interface_client_event, NULL);
 
     return TRUE;
 
  ie_client_clean:
     g_io_channel_shutdown(client_chan, TRUE, NULL);
     g_io_channel_unref(client_chan);
-    close(client);
     g_debug("[ie:%d] Connection closed.", client);
 
     return TRUE;
@@ -188,47 +182,49 @@ gboolean interface_client_event(GIOChannel* source, GIOCondition condition, gpoi
     GError* err = NULL;
     GIOStatus status;
     int client;
-    command_result cr;
-    gboolean fd_closed = FALSE;
+    command_result cr = CR_OK;
 
     client = g_io_channel_unix_get_fd(source);
 
-    /* Is this channel still open? */
-    if (condition & G_IO_NVAL) {
-        fd_closed = TRUE;
-        goto ice_client_clean;
-    }
+    /* Ready for reading? */
+    if (condition & G_IO_IN) {
+        buffer = g_string_sized_new(1024);
+        if (!buffer) {
+            g_warning("[ice:%d] Can't allocate buffer.", client);
+            goto ice_client_clean;
+        }
 
-    buffer = g_string_sized_new(1024);
-    if (!buffer) {
-        g_warning("[ice:%d] Can't allocate buffer.", client);
-        goto ice_client_clean;
-    }
+        /* Read exactly one command  */
+        status = g_io_channel_read_line_string(source, buffer, NULL, &err);
+        if (status == G_IO_STATUS_EOF) {
+            g_debug("[ice:%d] Connection reset by peer.", client);
+            goto ice_client_clean;
+        }
+        else if (status != G_IO_STATUS_NORMAL) {
+            g_debug("[ice:%d] Can't read from IO channel: %s", client, err->message);
+            goto ice_client_clean;
+        }
 
-    /* Read exactly one command  */
-    status = g_io_channel_read_line_string(source, buffer, NULL, &err);
-    if (status == G_IO_STATUS_EOF) {
-        g_debug("[ice:%d] Connection reset by peer.", client);
-        goto ice_client_clean;
-    }
-    else if (status != G_IO_STATUS_NORMAL) {
-        g_debug("[ice:%d] Can't read from IO channel: %s", client, err->message);
-        goto ice_client_clean;
-    }
-
-    buffer->str[buffer->len-1] = '\0';
-    g_debug("[ice:%d] Received command: %s", client, buffer->str);
-    buffer->str[buffer->len-1] = '\n';
+        buffer->str[buffer->len-1] = '\0';
+        g_debug("[ice:%d] Received command: %s", client, buffer->str);
+        buffer->str[buffer->len-1] = '\n';
     
-    /* Parse and run the command */
-    cr = interface_handle_command(source, buffer->str);
-    g_string_free(buffer, TRUE);
-    buffer = NULL;
+        /* Parse and run the command */
+        cr = interface_handle_command(source, buffer->str);
+        g_string_free(buffer, TRUE);
+        buffer = NULL;
 
-    /* "idle" command? */
-    if (cr == CR_IDLE) {
-        /* Add to list of idle channels */
-        g_idle_channels = g_list_prepend(g_idle_channels, source);
+        /* "idle" command? */
+        if (cr == CR_IDLE) {
+            /* Add to list of idle channels */
+            g_idle_channels = g_list_prepend(g_idle_channels, source);
+        }
+    }
+
+    /* Received hangup? */
+    if (condition & G_IO_HUP) {
+        g_debug("[ice:%d] Connection hung up", client);
+        goto ice_client_clean;
     }
 
     if (cr != CR_CLOSE)
@@ -238,12 +234,9 @@ gboolean interface_client_event(GIOChannel* source, GIOCondition condition, gpoi
     if (buffer)
         g_string_free(buffer, TRUE);
     g_idle_channels = g_list_remove(g_idle_channels, source);
-    if (!fd_closed) {
-        g_io_channel_shutdown(source, TRUE, NULL);
-        g_io_channel_unref(source);
-        close(client);
-        g_info("[ice:%d] Connection closed.", client);
-    }
+    g_io_channel_shutdown(source, TRUE, NULL);
+    g_io_channel_unref(source);
+    g_info("[ice:%d] Connection closed.", client);
 
     return FALSE;
 }
@@ -259,7 +252,7 @@ command_result interface_handle_command(GIOChannel* chan, gchar* command){
     /* Parse the command in a shell-like fashion */
     if (!g_shell_parse_argv(g_strstrip(command), &argc, &argv_, &err)) {
         g_debug("Command parser error: %s", err->message);
-        interface_finalize(chan, "{ \"error\": \"invalid command\" }\n", FALSE);
+        interface_write(chan, "{ \"error\": \"invalid command\" }\n");
         return CR_OK;
     }
 
@@ -286,7 +279,7 @@ command_result interface_handle_command(GIOChannel* chan, gchar* command){
         }
     }
     if (!cmd_desc) {
-        interface_finalize(chan, "{ \"error\": \"unknown command\" }\n", FALSE);
+        interface_write(chan, "{ \"error\": \"unknown command\" }\n");
         return CR_OK;
     }
 
@@ -300,7 +293,7 @@ command_result interface_handle_command(GIOChannel* chan, gchar* command){
     }
 
     case CT_BYE:
-        interface_finalize(chan, "Bye bye!\n", FALSE);
+        interface_write(chan, "Bye bye!\n");
         return CR_CLOSE;
 
     case CT_QUIT:
@@ -314,32 +307,32 @@ command_result interface_handle_command(GIOChannel* chan, gchar* command){
     return CR_OK;
 }
 
-void interface_finalize(GIOChannel* chan, const gchar* str, gboolean close_chan) {
+gboolean interface_write(GIOChannel* chan, const gchar* str) {
     GIOStatus status;
     GError* err = NULL;
-
     int client = g_io_channel_unix_get_fd(chan);
+
     if (str) {
         status = g_io_channel_write_chars(chan, str, -1, NULL, &err);
         if (status != G_IO_STATUS_NORMAL) {
-            g_debug("[if:%d] Can't write to IO channel: %s", client, err->message);
-            goto if_clean;
+            if (err)
+                g_debug("[iw:%d] Can't write to IO channel (%d)", client, status);
+            else
+                g_debug("[iw:%d] Can't write to IO channel (%d): %s", client, status, err->message);
+            return FALSE;
         }
     }
-    if (g_io_channel_flush(chan, &err) != G_IO_STATUS_NORMAL) {
-        g_debug("[if:%d] Can't flush IO channel: %s", client, err->message);
-        goto if_clean;
+
+    status = g_io_channel_flush(chan, &err);
+    if (status != G_IO_STATUS_NORMAL) {
+        if (err)
+            g_debug("[iw:%d] Can't flush IO channel (%d)", client, status);
+        else
+            g_debug("[iw:%d] Can't flush IO channel (%d): %s", client, status, err->message);
+        return FALSE;
     }
 
-    if (!close_chan)
-        return;
-
- if_clean:
-    g_idle_channels = g_list_remove(g_idle_channels, chan);
-    g_io_channel_shutdown(chan, TRUE, NULL);
-    g_io_channel_unref(chan);
-    close(client);
-    g_info("[if:%d] Connection closed.", client);
+    return TRUE;
 }
 
 
@@ -380,7 +373,7 @@ void interface_notify_chan(gpointer data, gpointer user_data) {
     GIOChannel* chan = data;
     GString* str = user_data;
 
-    interface_finalize(chan, str->str, FALSE);
+    interface_write(chan, str->str);
 }
 
 void interface_notify_callback(gpointer data, gpointer user_data) {

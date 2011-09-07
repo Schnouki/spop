@@ -37,6 +37,7 @@ gboolean interface_event(GIOChannel* source, GIOCondition condition, gpointer da
 gboolean interface_client_event(GIOChannel* source, GIOCondition condition, gpointer data);
 command_result interface_handle_command(GIOChannel* chan, gchar* command);
 void interface_finalize(GIOChannel* chan, const gchar* str, gboolean close_chan);
+gboolean interface_write(GIOChannel* source, const gchar* str);
 
 /* Notify clients (channels or plugins) that are waiting for an update */
 void interface_notify();
