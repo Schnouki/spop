@@ -223,6 +223,7 @@ gboolean interface_client_event(GIOChannel* source, GIOCondition condition, gpoi
     /* Parse and run the command */
     cr = interface_handle_command(source, buffer->str);
     g_string_free(buffer, TRUE);
+    buffer = NULL;
 
     /* "idle" command? */
     if (cr == CR_IDLE) {
@@ -274,11 +275,6 @@ command_result interface_handle_command(GIOChannel* chan, gchar* command){
 
     /* Now execute the command */
     command_full_descriptor* cmd_desc = NULL;
-#if 0
-    void (*cmd0)(JsonBuilder*);
-    void (*cmd1)(JsonBuilder*, const gchar*);
-    void (*cmd2)(JsonBuilder*, const gchar*, const gchar*);
-#endif
 
     for (i=0; g_commands[i].name != NULL; i++) {
         int nb_args = 0;
@@ -301,46 +297,6 @@ command_result interface_handle_command(GIOChannel* chan, gchar* command){
 
         ret = command_run(chan, &(cmd_desc->desc), argc, argv);
         return (ret ? CR_OK : CR_DEFERED);
-
-#if 0        
-        JsonBuilder* jb = json_builder_new();
-        json_builder_begin_object(jb);
-
-        switch (cmd_desc->nb_args) {
-        case 0:
-            cmd0 = cmd_desc->func;
-            cmd0(jb);
-            break;
-        case 1:
-            cmd1 = cmd_desc->func;
-            cmd1(jb, argv[1]);
-            break;
-        case 2:
-            cmd2 = cmd_desc->func;
-            cmd2(jb, argv[1], argv[2]);
-            break;
-        default:
-            g_object_unref(jb);
-            g_string_assign(result, "{ \"error\": \"invalid number of arguments\" }");
-            return CR_OK;
-        }
-
-        json_builder_end_object(jb);
-
-        /* Set result using the JSON object */
-        JsonGenerator *gen = json_generator_new();
-        g_object_set(gen, "pretty", config_get_bool_opt("pretty_json", FALSE), NULL);
-        json_generator_set_root(gen, json_builder_get_root(jb));
-
-        gchar *str = json_generator_to_data(gen, NULL);
-        g_string_assign(result, str);
-        g_string_append(result, "\n");
-
-        g_object_unref(gen);
-        g_object_unref(jb);
-        g_free(str);
-#endif
-        break;
     }
 
     case CT_BYE:
