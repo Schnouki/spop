@@ -55,6 +55,7 @@ void session_get_offline_sync_status(sp_offline_sync_status* status, gboolean* s
 
 /* Session callbacks management */
 typedef enum {
+    SPOP_SESSION_LOGGED_IN,
     SPOP_SESSION_LOAD,
     SPOP_SESSION_UNLOAD,
 } session_callback_type;

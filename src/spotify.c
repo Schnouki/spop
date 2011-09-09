@@ -330,6 +330,26 @@ gboolean session_add_callback(spop_session_callback_ptr func, gpointer user_data
     return TRUE;
 }
 
+gboolean session_remove_callback(spop_session_callback_ptr func, gpointer user_data) {
+    session_callback* scb;
+    GList* cur;
+
+    /* Try to find the callback/data couple in the list */
+    cur = g_session_callbacks;
+    while (cur != NULL) {
+        scb = cur->data;
+        if ((scb->func == func) && (scb->user_data == user_data)) {
+            g_free(scb);
+            g_session_callbacks = g_list_delete_link(g_session_callbacks, cur);
+            return TRUE;
+        }
+        cur = cur->next;
+    }
+
+    /* Not found */
+    return FALSE;
+}
+
 
 /*********************
  * Tracks management *
@@ -571,6 +591,12 @@ void cb_logged_in(sp_session* session, sp_error error) {
     sp_playlistcontainer_add_callbacks(g_container, &g_sp_container_callbacks, NULL);
 
     g_debug("Playlist container ready.");
+
+    /* Then call callbacks */
+    session_callback_data scbd;
+    scbd.type = SPOP_SESSION_LOGGED_IN;
+    scbd.data = NULL;
+    g_list_foreach(g_session_callbacks, session_call_callback, &scbd);
 }
 
 void cb_logged_out(sp_session* session) {
@@ -580,7 +606,7 @@ void cb_metadata_updated(sp_session* session) {
 }
 
 void cb_connection_error(sp_session* session, sp_error error) {
-    g_warning("Connection error: %s\n", sp_error_message(error));
+    g_warning("Connection error: %s", sp_error_message(error));
 }
 void cb_message_to_user(sp_session* session, const char* message) {
     g_message("%s", message);
