@@ -199,7 +199,7 @@ static gboolean really_restore_state(gpointer data) {
     return FALSE;
 }
 
-static gboolean restore_state(gpointer data) {
+static void restore_state(session_callback_type type, gpointer data, gpointer user_data) {
     JsonParser* jp = NULL;
     JsonReader* jr = NULL;
 
@@ -208,10 +208,12 @@ static gboolean restore_state(gpointer data) {
 
     GError* err = NULL;
 
-    /* Can we safely start? */
-    /* FIXME: "logged in" is probably enough... */
-    if (!container_loaded())
-        return TRUE;
+    /* Is it the callback we're interested in? */
+    if (type != SPOP_SESSION_LOGGED_IN)
+        return;
+
+    /* First disable the callback so it's not called again */
+    session_remove_callback(restore_state, NULL);
 
     g_debug("savestate: reading saved state...");
     s = g_new0(saved_state, 1);
@@ -316,16 +318,14 @@ static gboolean restore_state(gpointer data) {
         g_object_unref(jp);
     if (jr)
         g_object_unref(jr);
-
-    return FALSE;
 }
 
 /* Plugin management */
 G_MODULE_EXPORT void spop_savestate_init() {
     g_state_file_path = g_build_filename(g_get_user_cache_dir(), g_get_prgname(), "state.json", NULL);
 
-    /* Startup time: restore the previous state as soon as we can */
-    g_timeout_add(100, restore_state, NULL);
+    /* Startup time: restore the previous state once we're logged in */
+    session_add_callback(restore_state, NULL);
 }
 
 G_MODULE_EXPORT void spop_savestate_close() {
