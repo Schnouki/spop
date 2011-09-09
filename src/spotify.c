@@ -42,7 +42,6 @@
  *** Global variables ***
  ************************/
 static sp_playlistcontainer* g_container;
-static gboolean g_container_loaded = FALSE;
 static sp_playlist* g_starred_playlist = NULL;
 
 static sp_session* g_session = NULL;
@@ -70,12 +69,6 @@ extern const size_t g_appkey_size;
 /****************************
  *** Callbacks structures ***
  ****************************/
-static sp_playlistcontainer_callbacks g_sp_container_callbacks = {
-    NULL,
-    NULL,
-    NULL,
-    &cb_container_loaded
-};
 static sp_session_callbacks g_sp_session_callbacks = {
     &cb_logged_in,
     &cb_logged_out,
@@ -533,13 +526,6 @@ sp_search* search_create(const gchar* query, search_complete_cb* callback, gpoin
                             callback, userdata);
 }
 
-/*************************
- *** Utility functions ***
- *************************/
-gboolean container_loaded() {
-    return g_container_loaded;
-}
-
 
 /*************************
  *** Events management ***
@@ -571,26 +557,15 @@ gboolean session_next_track_event(gpointer data) {
 /******************************************
  *** Callbacks, not to be used directly ***
  ******************************************/
-void cb_container_loaded(sp_playlistcontainer* pc, void* data) {
-    g_debug("Container loaded.");
-    g_container_loaded = TRUE;
-}
-
 void cb_logged_in(sp_session* session, sp_error error) {
     if (error != SP_ERROR_OK)
         g_warning("Login failed: %s", sp_error_message(error));
     else g_info("Logged in.");
 
     /* Get the playlists container */
-    g_debug("Getting playlist container...");
     g_container = sp_session_playlistcontainer(g_session);
     if (!g_container)
         g_error("Could not get the playlist container.");
-
-    /* Callback to be able to wait until it is loaded */
-    sp_playlistcontainer_add_callbacks(g_container, &g_sp_container_callbacks, NULL);
-
-    g_debug("Playlist container ready.");
 
     /* Then call callbacks */
     session_callback_data scbd;

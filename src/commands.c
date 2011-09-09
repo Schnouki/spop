@@ -209,11 +209,6 @@ gboolean list_playlists(command_context* ctx) {
     const char* pn;
     gchar* pfn;
 
-    if (!container_loaded()) {
-        jb_add_string(ctx->jb, "error", "playlists container not loaded yet");
-        return TRUE;
-    }
-
     n = playlists_len();
     json_builder_set_member_name(ctx->jb, "playlists");
     json_builder_begin_array(ctx->jb);

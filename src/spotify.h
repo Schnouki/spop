@@ -77,16 +77,11 @@ sp_albumbrowse* albumbrowse_create(sp_album* album, albumbrowse_complete_cb* cal
 sp_artistbrowse* artistbrowse_create(sp_artist* artist, artistbrowse_complete_cb* callback, gpointer userdata);
 sp_search* search_create(const gchar* query, search_complete_cb* callback, gpointer userdata);
 
-/* Utility functions */
-gboolean container_loaded();
-
 /* Events management */
 gboolean session_libspotify_event(gpointer data);
 gboolean session_next_track_event(gpointer data);
 
 /* Callbacks */
-void cb_container_loaded(sp_playlistcontainer* pc, void* data);
-
 void cb_logged_in(sp_session* session, sp_error error);
 void cb_logged_out(sp_session* session);
 void cb_metadata_updated(sp_session* session);
