@@ -136,8 +136,11 @@ void session_init() {
         sp_session_preferred_offline_bitrate(g_session, SP_BITRATE_160k, FALSE);
     }
 
-    g_debug("Session created.");
+    size_t cache_size = config_get_int_opt("cache_size", 0);
+    g_debug("Setting cache size to %lu.", cache_size);
+    sp_session_set_cache_size(g_session, cache_size);
 
+    g_debug("Session created.");
 }
 
 void session_login(const char* username, const char* password) {

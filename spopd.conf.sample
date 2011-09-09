@@ -15,6 +15,10 @@ spotify_password = PASSWORD
 # Prefer high bitrate for offlinesync. This is the default.
 #offline_high_bitrate = true
 
+# Cache size, in megabytes. The default value is 0, which means 10% of disk free
+# space.
+#cache_size = 0
+
 # Number of results returned by the search command.
 #search_results = 100
 
