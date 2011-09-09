@@ -124,6 +124,17 @@ if(NOTIFY_FOUND)
   set(targets ${targets} spop_plugin_notify)
 endif(NOTIFY_FOUND)
 
+# Generic plugin: savestate
+set(PLUGIN_SAVESTATE
+  plugins/savestate.c
+)
+add_library(spop_plugin_savestate MODULE ${PLUGIN_SAVESTATE})
+set_target_properties(spop_plugin_savestate PROPERTIES
+  COMPILE_FLAGS "${GLIB2_CFLAGS} ${JSON_GLIB_CFLAGS}"
+)
+target_link_libraries(spop_plugin_savestate ${GLIB2_LIBRARIES} ${JSON_GLIB_LIBRARIES})
+set(targets ${targets} spop_plugin_savestate)
+
 # Generic plugin: scrobble
 if(SOUP_FOUND)
   set(PLUGIN_SCROBBLE
@@ -147,6 +158,7 @@ set(SRC
   ${AUDIO_AO}
   ${PLUGIN_AWESOME}
   ${PLUGIN_NOTIFY}
+  ${PLUGIN_SAVESTATE}
   ${PLUGIN_SCROBBLE}
 )
 set_source_files_properties(${SRC}
