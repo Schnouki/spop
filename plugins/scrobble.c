@@ -125,7 +125,7 @@ static void now_playing_request(sp_track* track) {
 
     /* Get some informations about the current track */
     td = g_malloc(sizeof(track_data));
-    track_get_data(track, &td->track, &td->artist, &td->album, NULL, &td->length);
+    track_get_data(track, &td->track, &td->artist, &td->album, NULL, &td->length, NULL);
 
     if (!td->artist) td->artist = g_strdup("");
     if (!td->track)  td->track  = g_strdup("");

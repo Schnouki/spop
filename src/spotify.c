@@ -372,7 +372,8 @@ GArray* tracks_get_playlist(sp_playlist* pl) {
     return tracks;
 }
 
-void track_get_data(sp_track* track, gchar** name, gchar** artist, gchar** album, gchar** link, int* duration) {
+void track_get_data(sp_track* track, gchar** name, gchar** artist, gchar** album, gchar** link,
+                    int* duration, int* popularity) {
     sp_artist** art = NULL;
     sp_album* alb = NULL;
     sp_link* lnk;
@@ -421,6 +422,9 @@ void track_get_data(sp_track* track, gchar** name, gchar** artist, gchar** album
     }
     if (duration) {
         *duration = sp_track_duration(track) / 1000;
+    }
+    if (popularity) {
+        *popularity = sp_track_popularity(track);
     }
 
     /* Now create destination strings */
