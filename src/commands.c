@@ -391,7 +391,7 @@ gboolean clear_queue(command_context* ctx) {
 }
 
 gboolean remove_queue_items(command_context* ctx, guint first, guint last) {
-    queue_remove_tracks(TRUE, first, last-first+1);
+    queue_remove_tracks(TRUE, first-1, last-first+1);
     return status(ctx);
 }
 
