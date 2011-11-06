@@ -29,7 +29,7 @@ find_package(PkgConfig)
 set(targets)
 
 # Check for libspotify
-pkg_check_modules(SPOTIFY REQUIRED libspotify>=9.1.32)
+pkg_check_modules(SPOTIFY REQUIRED libspotify>=10.1.16)
 string(REPLACE ";" " " SPOTIFY_CFLAGS "${SPOTIFY_CFLAGS}")
 
 # Check for required libraries

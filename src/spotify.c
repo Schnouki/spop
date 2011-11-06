@@ -456,7 +456,7 @@ void track_get_data(sp_track* track, gchar** name, gchar** artist, gchar** album
 }
 
 gboolean track_available(sp_track* track) {
-    return sp_track_is_available(g_session, track);
+    return (sp_track_get_availability(g_session, track) == SP_TRACK_AVAILABILITY_AVAILABLE);
 }
 
 sp_image* track_get_image(sp_track* track) {
@@ -523,7 +523,7 @@ sp_albumbrowse* albumbrowse_create(sp_album* album, albumbrowse_complete_cb* cal
 }
 
 sp_artistbrowse* artistbrowse_create(sp_artist* artist, artistbrowse_complete_cb* callback, gpointer userdata) {
-    return sp_artistbrowse_create(g_session, artist, callback, userdata);
+    return sp_artistbrowse_create(g_session, artist, SP_ARTISTBROWSE_FULL, callback, userdata);
 }
 
 sp_search* search_create(const gchar* query, search_complete_cb* callback, gpointer userdata) {
