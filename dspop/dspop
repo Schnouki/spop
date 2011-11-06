@@ -121,7 +121,7 @@ def main_menu(sc):
             done = menu_queue(sc)
         elif choice == 1:
             done = menu_playlists(sc)
-        elif choice == 3:
+        elif choice == 2:
             sc.repeat()
         else:
             sc.shuffle()
