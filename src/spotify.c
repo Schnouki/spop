@@ -93,7 +93,6 @@ static sp_session_callbacks g_sp_session_callbacks = {
  **********************/
 void session_init() {
     sp_error error;
-    sp_session_config config;
     gchar* cache_path;
 
     g_debug("Creating session...");
@@ -102,17 +101,20 @@ void session_init() {
     cache_path = g_build_filename(g_get_user_cache_dir(), g_get_prgname(), NULL);
 
     /* libspotify session config */
-    config.api_version = SPOTIFY_API_VERSION;
-    config.cache_location = cache_path;
-    config.settings_location = cache_path;
-    config.application_key = g_appkey;
-    config.application_key_size = g_appkey_size;
-    config.user_agent = "spop " SPOP_VERSION;
-    config.callbacks = &g_sp_session_callbacks;
-    config.userdata = NULL;
-    config.compress_playlists = FALSE;
-    config.dont_save_metadata_for_playlists = FALSE;
-    config.initially_unload_playlists = FALSE;
+    sp_session_config config = {
+        .api_version = SPOTIFY_API_VERSION,
+        .cache_location = cache_path,
+        .settings_location = cache_path,
+        .application_key = g_appkey,
+        .application_key_size = g_appkey_size,
+        .user_agent = "spop " SPOP_VERSION,
+        .callbacks = &g_sp_session_callbacks,
+        .userdata = NULL,
+        .compress_playlists = FALSE,
+        .dont_save_metadata_for_playlists = FALSE,
+        .initially_unload_playlists = FALSE,
+        NULL,
+    };
 
     error = sp_session_create(&config, &g_session);
     if (error != SP_ERROR_OK)
