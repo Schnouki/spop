@@ -170,7 +170,6 @@ static gboolean really_restore_state(gpointer data) {
             queue_add_track(FALSE, tr);
         else {
             g_info("savestate: track %lu is no longer available", i);
-            sp_track_release(tr);
             if (s->cur_track == i) {
                 s->cur_track = -1;
                 s->qs = STOPPED;
@@ -178,6 +177,7 @@ static gboolean really_restore_state(gpointer data) {
             else if (s->cur_track > i)
                 s->cur_track -= 1;
         }
+        sp_track_release(tr);
     }
 
     queue_set_repeat(FALSE, s->repeat);
@@ -282,6 +282,7 @@ static void restore_state(session_callback_type type, gpointer data, gpointer us
             goto restorestate_error;
         }
         sp_track* tr = sp_link_as_track(lnk);
+        sp_track_add_ref(tr);
         sp_link_release(lnk);
         g_array_append_val(s->tracks, tr);
         if (!sp_track_is_loaded(tr))
