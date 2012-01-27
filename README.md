@@ -30,7 +30,7 @@ Right now, several plugins are available:
 
 - *notify:* use [libnotify][] for desktop notifications
 - *savestate:* keep the current state (queue, current track, etc.) when stopping
-  and restarting stop
+  and restarting spop
 - *scrobble:* scrobble your music to [LastFM][] or [LibreFM][] (requires [libsoup][])
 - *awesome:* keep an eye on your player in [Awesome][], an extremely powerful
   window manager
