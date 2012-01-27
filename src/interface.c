@@ -27,11 +27,12 @@
 #include <errno.h>
 #include <glib.h>
 #include <json-glib/json-glib.h>
-#include <netinet/in.h>
+#include <netdb.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include "spop.h"
@@ -106,61 +107,88 @@ static command_full_descriptor g_commands[] = {
 /* Functions called directly from spop */
 void interface_init() {
     const char* ip_addr;
-    int port;
+    const char* port;
+    struct addrinfo hints;
+    struct addrinfo* res;
+    struct addrinfo* rp;
     int _true = 1;
-    struct sockaddr_in addr;
-    int sock;
-    GIOChannel* chan;
+    int ret;
 
-    ip_addr = config_get_string_opt("listen_address", "127.0.0.1");
-    port = config_get_int_opt("listen_port", 6602);
+    /* Get what we need from the config */
+    ip_addr = config_get_string_opt("listen_address", NULL);
+    port = config_get_string_opt("listen_port", "6602");
 
-    /* Create the socket */
-    sock = socket(AF_INET, SOCK_STREAM, 0);
-    if (sock < 0)
-        g_error("Can't create socket: %s", g_strerror(errno));
-    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &_true, sizeof(int)) == -1)
-        g_error("Can't set socket options: %s", g_strerror(errno));
+    /* Get corresponding addrinfo's */
+    bzero(&hints, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_V4MAPPED | AI_ADDRCONFIG | AI_NUMERICHOST | AI_NUMERICSERV;
+    ret = getaddrinfo(ip_addr, port, &hints, &res);
+    if (ret != 0)
+        g_error("Can't get address info: %s", gai_strerror(ret));
 
-    /* Bind the socket */
-    bzero(&addr, sizeof(addr));
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);
-    addr.sin_addr.s_addr = inet_addr(ip_addr);
-    if (bind(sock, (struct sockaddr*) &addr, sizeof(struct sockaddr)) == -1)
-        g_error("Can't bind socket: %s", g_strerror(errno));
+    /* Handle each address */
+    for (rp = res; rp != NULL; rp = rp->ai_next) {
+        char hostname[NI_MAXHOST];
 
-    /* Start listening */
-    if (listen(sock, 5) == -1)
-        g_error("Can't listen on socket: %s", g_strerror(errno));
+        ret = getnameinfo(rp->ai_addr, rp->ai_addrlen, hostname, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
+        if (ret != 0)
+            g_error("Can't convert address to text: %s", gai_strerror(ret));
+        g_debug("Will listen on %s:%s...", hostname, port);
 
-    /* Create an IO channel and add it to the main loop */
-    chan = g_io_channel_unix_new(sock);
-    if (!chan)
-        g_error("Can't create IO channel for the main socket.");
-    g_io_channel_set_close_on_unref(chan, TRUE);
-    g_io_add_watch(chan, G_IO_IN|G_IO_HUP, interface_event, NULL);
+        /* Create the socket */
+        int sock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+        if (sock < 0)
+            g_error("Can't create socket: %s", g_strerror(errno));
+        if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &_true, sizeof(int)) == -1)
+            g_error("Can't set socket options: %s", g_strerror(errno));
 
-    g_info("Listening on %s:%d", ip_addr, port);
+        /* Bind the socket */
+        if (bind(sock, rp->ai_addr, rp->ai_addrlen) != 0)
+            g_error("Can't bind socket: %s", g_strerror(errno));
+
+        /* Start listening */
+        if (listen(sock, SOMAXCONN) != 0)
+            g_error("Can't listen on socket: %s", g_strerror(errno));
+
+        /* Create an IO channel and add it to the main loop */
+        GIOChannel* chan = g_io_channel_unix_new(sock);
+        if (!chan)
+            g_error("Can't create IO channel for the main socket.");
+        g_io_channel_set_close_on_unref(chan, TRUE);
+        g_io_add_watch(chan, G_IO_IN|G_IO_HUP, interface_event, NULL);
+
+        g_info("Listening on %s: %s", hostname, port);
+    }
+
+    freeaddrinfo(res);
 }
 
 /* Interface event -- accept connections, create IO channels for clients */
 gboolean interface_event(GIOChannel* source, GIOCondition condition, gpointer data) {
     int sock;
-    struct sockaddr_in client_addr;
-    socklen_t sin_size;
+    struct sockaddr client_addr;
+    socklen_t addrlen;
     int client;
     GIOChannel* client_chan;
+    char client_hostname[NI_MAXHOST];
+    char client_port[NI_MAXSERV];
 
     sock = g_io_channel_unix_get_fd(source);
 
     /* Accept the connection */
-    sin_size = sizeof(struct sockaddr_in);
-    client = accept(sock, (struct sockaddr*) &client_addr, &sin_size);
+    addrlen = sizeof(client_addr);
+    client = accept(sock, &client_addr, &addrlen);
     if (client == -1)
         g_error("Can't accept connection");
 
-    g_info("[ie:%d] Connection from (%s, %d)", client, inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+    /* Get client IP and port */
+    int ret = getnameinfo(&client_addr, addrlen, client_hostname, NI_MAXHOST, client_port, NI_MAXSERV,
+                          NI_NUMERICHOST | NI_NUMERICSERV);
+    if (ret != 0)
+        g_error("Can't convert address to text: %s", gai_strerror(ret));
+
+    g_info("[ie:%d] Connection from %s:%s", client, client_hostname, client_port);
 
     /* Create IO channel for the client, send greetings, and add it to the main loop */
     client_chan = g_io_channel_unix_new(client);

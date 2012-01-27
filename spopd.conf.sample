@@ -31,8 +31,10 @@ spotify_password = PASSWORD
 audio_output = oss
 
 # Address and port on which spopd should listen for commands.
-# Use 0.0.0.0 to listen on all the available interfaces.
-# Default is port 6602 on 127.0.0.1.
+# The address can be IPv4 (x.x.x.x) or IPv6 (a:b:c::d).
+# Use 0.0.0.0 or :: to listen on all the available interfaces.
+# Default is port 6602 on all the available loopback addresses (127.0.0.1 and
+# ::1).
 #listen_address = 127.0.0.1
 #listen_port = 6602
 
