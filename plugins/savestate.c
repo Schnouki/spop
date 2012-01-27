@@ -169,7 +169,7 @@ static gboolean really_restore_state(gpointer data) {
         if (track_available(tr))
             queue_add_track(FALSE, tr);
         else {
-            g_info("savestate: track %lu is no longer available", i);
+            g_info("savestate: track %zu is no longer available", i);
             if (s->cur_track == i) {
                 s->cur_track = -1;
                 s->qs = STOPPED;
@@ -277,7 +277,7 @@ static void restore_state(session_callback_type type, gpointer data, gpointer us
         sp_link* lnk = sp_link_create_from_string(uri);
         sp_linktype lt = sp_link_type(lnk);
         if (lt != SP_LINKTYPE_TRACK) {
-            g_warning("savestate: invalid link type for track %lu: %d", i, lt);
+            g_warning("savestate: invalid link type for track %zu: %d", i, lt);
             sp_link_release(lnk);
             goto restorestate_error;
         }
