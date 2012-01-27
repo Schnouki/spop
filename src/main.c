@@ -46,14 +46,11 @@ static const char* copyright_notice =
     "Powered by SPOTIFY(R) CORE\n";
 
 /***************************************
- *** Static variables and prototypes ***
+ *** Global variables and prototypes ***
  ***************************************/
-static gboolean daemon_mode  = TRUE;
-static gboolean i_am_daemon  = FALSE;
 gboolean debug_mode   = FALSE;
 gboolean verbose_mode = FALSE;
 
-static int real_main();
 static void exit_handler_init();
 static void exit_handler();
 static void sigint_handler(int signum);
@@ -70,6 +67,11 @@ static void spop_log_handler(const gchar *log_domain, GLogLevelFlags log_level, 
  *** Initialization ***
  **********************/
 int main(int argc, char** argv) {
+    gboolean daemon_mode = TRUE;
+    const char* username;
+    const char* password;
+    GMainLoop* main_loop;
+
     /* Parse command line options */
     int opt;
     while ((opt = getopt(argc, argv, "dfhv")) != -1) {
@@ -93,6 +95,7 @@ int main(int argc, char** argv) {
 
     g_set_application_name("spop " SPOP_VERSION);
     g_set_prgname("spop");
+    g_type_init();
     g_thread_init(NULL);
     
     printf("%s\n", copyright_notice);
@@ -107,31 +110,13 @@ int main(int argc, char** argv) {
     }
     else {
         /* Run in daemon mode: fork to background */
-        pid_t pid = fork();
-        if (pid < 0)
+        printf("Switching to daemon mode...\n");
+        if (daemon(0, 0) != 0)
             g_error("Error while forking process: %s", g_strerror(errno));
-        else if (pid > 0) {
-            /* Parent process */
-            g_message("Forked to background with pid %d", pid);
-            return 0;
-        }
-        else {
-            /* Child process */
-            i_am_daemon = TRUE;
-        }
-        /* The child process will continue and run the real_main() function */
+
     }
 
-    return real_main();    
-}
-
-int real_main() {
-    const char* username;
-    const char* password;
-    GMainLoop* main_loop;
-
     /* Init essential stuff */
-    g_type_init();
     main_loop = g_main_loop_new(NULL, FALSE);
     exit_handler_init();
 
@@ -273,8 +258,7 @@ void spop_log_handler(const gchar* log_domain, GLogLevelFlags log_level, const g
     g_free(timestr);
     
     /* First display to stderr... */
-    if (!i_am_daemon)
-        fprintf(stderr, "%s", log_line->str);
+    fprintf(stderr, "%s", log_line->str);
     /* ... then to the log file. */
     if (g_log_channel) {
         if (g_io_channel_write_chars(g_log_channel, log_line->str, log_line->len, NULL, &err) != G_IO_STATUS_NORMAL)
