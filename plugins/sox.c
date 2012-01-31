@@ -245,20 +245,22 @@ static void _sox_stop() {
     g_cond_signal(g_buf_cond);
     g_mutex_unlock(g_buf_mutex);
 
-    /* Do some cleanup before exiting... */
+    /* Cleanup effects so that audio stops as soon as possible */
     if (g_effects_chain) {
         sox_delete_effects_chain(g_effects_chain);
         g_effects_chain = NULL;
-    }
-    if (g_sox_out) {
-        sox_close(g_sox_out);
-        g_sox_out = NULL;
     }
 
     /* Wait until the thread has actually stopped */
     if (g_player_thread) {
         g_thread_join(g_player_thread);
         g_player_thread = NULL;
+    }
+
+    /* Now safely close the output device */
+    if (g_sox_out) {
+        sox_close(g_sox_out);
+        g_sox_out = NULL;
     }
 }
 
