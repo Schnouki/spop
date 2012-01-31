@@ -28,6 +28,7 @@
 #include <string.h>
 #include <sox.h>
 
+#include "spop.h"
 #include "audio.h"
 #include "config.h"
 
@@ -88,6 +89,7 @@ static sox_effects_chain_t* g_effects_chain = NULL;
 
 /* Prototypes */
 static void* _sox_player(gpointer data);
+static void _sox_log_handler(unsigned level, const char* filename, const char* fmt, va_list ap);
 static int _sox_input_drain(sox_effect_t*, sox_sample_t*, size_t*);
 static sox_effect_handler_t g_sox_input = { "spop_input", NULL, SOX_EFF_MCHAN, NULL, NULL, NULL,
                                             _sox_input_drain, NULL, NULL, 0 };
@@ -98,6 +100,8 @@ static void _sox_init() {
     if (!g_sox_init) {
         if (sox_init() != SOX_SUCCESS)
             g_error("Can't initialize SoX");
+
+        sox_globals.output_message_handler = _sox_log_handler;
 
         g_free_bufs = g_queue_new();
         g_full_bufs = g_queue_new();
@@ -117,6 +121,22 @@ static void _sox_init() {
         g_sox_init = TRUE;
     }
 }
+
+/* "Private" SoX log handler */
+static void _sox_log_handler(unsigned level, const char* filename, const char* fmt, va_list ap) {
+    /* SoX levels: 1 = FAIL, 2 = WARN, 3 = INFO, 4 = DEBUG, 5 = DEBUG_MORE, 6 = DEBUG_MOST. */
+    gchar* msg = g_strdup_vprintf(fmt, ap);
+    switch (level) {
+    case 1:
+        g_warning("libsox: %s: %s", filename, msg); break;
+    case 2:
+        g_info("libsox: %s: %s", filename, msg); break;
+    case 3:
+        g_debug("libsox: %s: %s", filename, msg); break;
+    }
+    g_free(msg);
+}
+
 
 /* "Private" heler function to add parse and add a SoX effect to the effects chain */
 static void _sox_parse_effect(gint argc, gchar** argv) {
