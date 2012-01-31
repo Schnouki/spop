@@ -175,7 +175,6 @@ static void _sox_start(const sp_audioformat* format) {
 
     /* Effects */
     if (g_effects_chain) {
-        sox_delete_effects(g_effects_chain);
         sox_delete_effects_chain(g_effects_chain);
         g_effects_chain = NULL;
     }
@@ -226,6 +225,16 @@ static void _sox_stop() {
     g_cond_signal(g_buf_cond);
     g_mutex_unlock(g_buf_mutex);
 
+    /* Do some cleanup before exiting... */
+    if (g_effects_chain) {
+        sox_delete_effects_chain(g_effects_chain);
+        g_effects_chain = NULL;
+    }
+    if (g_sox_out) {
+        sox_close(g_sox_out);
+        g_sox_out = NULL;
+    }
+
     /* Wait until the thread has actually stopped */
     if (g_player_thread) {
         g_thread_join(g_player_thread);
@@ -238,16 +247,6 @@ static void* _sox_player(gpointer data) {
     g_debug("SoX: player thread started.");
     sox_flow_effects(g_effects_chain, NULL, NULL);
 
-    /* Do some cleanup before exiting... */
-    if (g_effects_chain) {
-        sox_delete_effects(g_effects_chain);
-        sox_delete_effects_chain(g_effects_chain);
-        g_effects_chain = NULL;
-    }
-    if (g_sox_out) {
-        sox_close(g_sox_out);
-        g_sox_out = NULL;
-    }
     g_debug("SoX: player thread stopped.");
 
     return NULL;
