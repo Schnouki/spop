@@ -12,7 +12,10 @@ it with your keyboard and a few scripts, and just forget about it.
 - **Written in plain C:** as lightweight as possible, only 300 kB when compiled
   *with debugging symbols*...
 - **Few dependencies:** only requires [libspotify][], [Glib][], [JSON-GLib][]
-  and [libao][] (not required for OSS audio output).
+  and [libao][] (or [libsox][]; not required for OSS audio output).
+- **Powerful audio effects**: when using [libsox][], you can apply various
+  effects to the audio output: equalisation, normalisation, reverb, "karaoke",
+  etc. SoX is the [Swiss Army knife of sound processing][sak]!
 - **Powerful plugin system:** you can write your own plugin in a few dozens
   lines of code.
 - **Simple protocol:** open a TCP connection to the daemon, write a simple
@@ -143,6 +146,8 @@ ask me if you have any question regarding spop!
 [JSON-GLib]: http://live.gnome.org/JsonGlib
 [libspotify]: http://developer.spotify.com/en/libspotify/overview/
 [libao]: http://www.xiph.org/ao/
+[libsox]: http://sox.sourceforge.net/
+[sak]: http://sox.sourceforge.net/Docs/Features
 [libnotify]: http://library.gnome.org/devel/libnotify/
 [LastFM]: http://www.last.fm/
 [LibreFM]: http://libre.fm/
