@@ -52,6 +52,11 @@
  * frames provided by libspotify into SoX samples, and feeds the rest of libsox
  * with these samples so that other effects can be applied.
  *
+ * One problem remains: because of how SoX works, there can be audio output
+ * *after* playback is stopped (echo, reverb, etc.). So to be able to precisely
+ * control *when* the output end, we have to add another effect at the end of
+ * the effects chain: that's _sox_output_flow() (and it sucks).
+ *
  * Because of effects, stopping playback can take a little while. This is
  * probably not a desired behaviour.
  */
@@ -91,8 +96,11 @@ static sox_effects_chain_t* g_effects_chain = NULL;
 static void* _sox_player(gpointer data);
 static void _sox_log_handler(unsigned level, const char* filename, const char* fmt, va_list ap);
 static int _sox_input_drain(sox_effect_t*, sox_sample_t*, size_t*);
+static int _sox_output_flow(sox_effect_t*, const sox_sample_t*, sox_sample_t*, size_t*, size_t*);
 static sox_effect_handler_t g_sox_input = { "spop_input", NULL, SOX_EFF_MCHAN, NULL, NULL, NULL,
                                             _sox_input_drain, NULL, NULL, 0 };
+static sox_effect_handler_t g_sox_output = { "spop_output", NULL, SOX_EFF_MCHAN, NULL, NULL, _sox_output_flow,
+                                             NULL, NULL, NULL, 0 };
 
 /* "Private" function used to set up SoX */
 static void _sox_init() {
@@ -150,6 +158,8 @@ static void _sox_parse_effect(gint argc, gchar** argv) {
 
     if (strcmp(argv[0], "spop_input") == 0)
         effhp = &g_sox_input;
+    else if (strcmp(argv[0], "spop_output") == 0)
+        effhp = &g_sox_output;
     else
         effhp = sox_find_effect(argv[0]);
 
@@ -220,6 +230,10 @@ static void _sox_start(const sp_audioformat* format) {
         g_strfreev(argv);
     }
 
+    /* Add our output control effect */
+    args[0] = "spop_output";
+    _sox_parse_effect(1, args);
+
     /* Add output effect */
     args[0] = "output";
     args[1] = (gchar*) g_sox_out;
@@ -245,19 +259,17 @@ static void _sox_stop() {
     g_cond_signal(g_buf_cond);
     g_mutex_unlock(g_buf_mutex);
 
-    /* Cleanup effects so that audio stops as soon as possible */
-    if (g_effects_chain) {
-        sox_delete_effects_chain(g_effects_chain);
-        g_effects_chain = NULL;
-    }
-
     /* Wait until the thread has actually stopped */
     if (g_player_thread) {
         g_thread_join(g_player_thread);
         g_player_thread = NULL;
     }
 
-    /* Now safely close the output device */
+    /* It's now safe to do some cleanup */
+    if (g_effects_chain) {
+        sox_delete_effects_chain(g_effects_chain);
+        g_effects_chain = NULL;
+    }
     if (g_sox_out) {
         sox_close(g_sox_out);
         g_sox_out = NULL;
@@ -312,6 +324,28 @@ static int _sox_input_drain(sox_effect_t* effp, sox_sample_t* obuf, size_t* osam
     return SOX_SUCCESS;
 }
 
+/* Output callback */
+static int _sox_output_flow(sox_effect_t* effp, const sox_sample_t* ibuf, sox_sample_t* obuf,
+                            size_t* isamp, size_t* osamp) {
+    /* Should we stop now? */
+    /* TODO: is the mutex really needed? */
+    g_mutex_lock(g_buf_mutex);
+    gboolean stop = g_player_stop;
+    g_mutex_unlock(g_buf_mutex);
+    if (stop) {
+        *osamp = 0;
+        return SOX_EOF;
+    }
+
+    /* Minimal safety check... */
+    if (*osamp < *isamp)
+        g_error("SoX: osamp (%zu) < isamp (%zu)", *osamp, *isamp);
+
+    memcpy(obuf, ibuf, *isamp * sizeof(sox_sample_t));
+    *osamp = *isamp;
+
+    return SOX_SUCCESS;
+}
 
 /* "Public" function, called from a libspotify callback */
 G_MODULE_EXPORT int audio_delivery(const sp_audioformat* format, const void* frames, int num_frames) {
