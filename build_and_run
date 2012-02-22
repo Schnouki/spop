@@ -9,5 +9,5 @@ fi
 make all || exit 1
 cd ..
 
-#LD_LIBRARY_PATH=build gdb -ex "handle SIGPIPE nostop noprint pass" -ex "run" --args ./build/spopd $@
-LD_LIBRARY_PATH=build ./build/spopd $@
+#LD_LIBRARY_PATH=build exec gdb -ex "handle SIGPIPE nostop noprint pass" -ex "run" --args ./build/spopd $@
+LD_LIBRARY_PATH=build exec ./build/spopd $@
