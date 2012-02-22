@@ -100,9 +100,16 @@ static void notification_callback(const GString* status, gpointer data) {
         if (qs == PAUSED)
             g_string_append(text, "<b>[p]</b> ");
 
-        short_title = g_string_new(track_name);
-        if (short_title->len >= 30)
-            g_string_overwrite(short_title, 30, "…");
+        /* Assume the strings are valid UTF-8 */
+        if (g_utf8_strlen(track_name, -1) >= 30) {
+            gchar* tmp_string = g_utf8_substring(track_name, 0, 29);
+            short_title = g_string_new(tmp_string);
+            g_string_append(short_title, "…");
+            g_free(tmp_string);
+        }
+        else {
+            short_title = g_string_new(track_name);
+        }
 
         g_string_append_printf(text,
                                "[<b>" col("#afd", "%d") ":</b> " col("#adf", "%s") " / " col("#fad", "%s") "]"
