@@ -29,7 +29,7 @@ import subprocess
 
 # {{{ Parameters
 # %n%: number - %A%: artist - %T%: title - %a%: album - %d%: duration - %U%: URI
-TRACK_FMT="%n% - %A% - %T% (%d%)"
+TRACK_FMT="%n% - %a% - %A% - %T% (%d%)"
 
 DMENU_OPTS=["-i",  "-l", "40"]
 # }}}
