@@ -289,7 +289,7 @@ gboolean list_tracks(command_context* ctx, guint idx) {
         jb_add_string(ctx->jb, "error", "invalid playlist");
         return TRUE;
     }
-    
+
     /* Get the tracks array */
     // FIXME
     tracks = tracks_get_playlist(pl);
@@ -324,7 +324,7 @@ gboolean status(command_context* ctx) {
     gchar* track_artist;
     gchar* track_album;
     gchar* track_link;
-    
+
     qs = queue_get_status(&track, &track_nb, &total_tracks);
 
     jb_add_string(ctx->jb, "status",
@@ -584,7 +584,7 @@ gboolean offline_status(command_context* ctx) {
     }
     jb_add_int(ctx->jb, "time_before_relogin", time_left);
 
-    return TRUE;    
+    return TRUE;
 }
 
 gboolean offline_toggle(command_context* ctx, guint idx) {
@@ -622,7 +622,7 @@ gboolean image(command_context* ctx) {
         gchar* b64data = g_base64_encode(img_data, len);
         jb_add_string(ctx->jb, "status", "ok");
         jb_add_string(ctx->jb, "data", b64data);
-        
+
         g_free(b64data);
         g_free(img_data);
     }
@@ -648,7 +648,7 @@ static void _uri_info_album_cb(sp_albumbrowse* ab, gpointer userdata) {
     jb_add_string(ctx->jb, "title", sp_album_name(album));
     jb_add_string(ctx->jb, "artist", sp_artist_name(artist));
     jb_add_int(ctx->jb, "year", sp_album_year(album));
-        
+
     sp_albumtype type = sp_album_type(album);
     json_builder_set_member_name(ctx->jb, "album_type");
     if (type == SP_ALBUMTYPE_ALBUM)
@@ -878,7 +878,7 @@ static void _uri_add_album_cb(sp_albumbrowse* ab, gpointer userdata) {
         sp_track* tr = sp_albumbrowse_track(ab, i);
         queue_add_track(FALSE, tr);
     }
-    
+
     if (play) {
         queue_play(TRUE);
         status(ctx);

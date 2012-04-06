@@ -426,7 +426,7 @@ void queue_prev(gboolean notif) {
                 g_warning("g_shuffle_first == -1 in goto_prev()");
                 g_shuffle_first = g_current_track;
             }
-            
+
             /* Is this the first track in non-repeat mode? */
             if ((g_current_track == g_shuffle_first) && !g_repeat) {
                 n = -1;
@@ -436,7 +436,7 @@ void queue_prev(gboolean notif) {
                 p = g_queue_index(&g_shuffle_queue, GINT_TO_POINTER(g_current_track));
                 if (p == -1)
                     g_error("Can't find current track in shufflequeue");
-                
+
                 /* Find the previous track in the shuffle queue */
                 p = (p+len-1) % len;
                 n = GPOINTER_TO_INT(g_queue_peek_nth(&g_shuffle_queue, p));
@@ -523,7 +523,7 @@ void queue_setup_shuffle() {
         g_queue_push_tail(&g_shuffle_queue, GINT_TO_POINTER(i));
 
     /* Now randomize the order of its elements */
-    g_queue_sort(&g_shuffle_queue, queue_cmp_random, NULL);    
+    g_queue_sort(&g_shuffle_queue, queue_cmp_random, NULL);
 }
 
 gboolean queue_get_repeat() {

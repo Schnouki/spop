@@ -243,7 +243,7 @@ gboolean interface_client_event(GIOChannel* source, GIOCondition condition, gpoi
         buffer->str[buffer->len-1] = '\0';
         g_debug("[ice:%d] Received command: %s", client, buffer->str);
         buffer->str[buffer->len-1] = '\n';
-    
+
         /* Parse and run the command */
         cr = interface_handle_command(source, buffer->str);
         g_string_free(buffer, TRUE);
@@ -435,7 +435,7 @@ gboolean interface_notify_add_callback(spop_notify_callback_ptr func, gpointer d
             return FALSE;
         cur = cur->next;
     }
-    
+
     /* Callback/data not in the list: add them */
     ncb = g_malloc(sizeof(notification_callback));
     ncb->func = func;

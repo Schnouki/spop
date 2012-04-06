@@ -38,7 +38,7 @@
 #include "queue.h"
 #include "spotify.h"
 
-static const char* copyright_notice = 
+static const char* copyright_notice =
     "spop Copyright (C) " SPOP_YEAR " Thomas Jost\n"
     "This program comes with ABSOLUTELY NO WARRANTY.\n"
     "This is free software, and you are welcome to redistribute it under certain conditions.\n"
@@ -97,7 +97,7 @@ int main(int argc, char** argv) {
     g_set_prgname("spop");
     g_type_init();
     g_thread_init(NULL);
-    
+
     printf("%s\n", copyright_notice);
 
     /* Log handler */
@@ -190,7 +190,7 @@ void logging_init() {
 
         /* And open the file using this handler :) */
         sighup_handler(0);
-    }    
+    }
 }
 
 void sighup_handler(int signum) {
@@ -256,7 +256,7 @@ void spop_log_handler(const gchar* log_domain, GLogLevelFlags log_level, const g
     /* Free memory used by datetime and timestr */
     g_date_time_unref(datetime);
     g_free(timestr);
-    
+
     /* First display to stderr... */
     fprintf(stderr, "%s", log_line->str);
     /* ... then to the log file. */
@@ -265,5 +265,5 @@ void spop_log_handler(const gchar* log_domain, GLogLevelFlags log_level, const g
             g_error("Can't write to log file: %s", err->message);
         if (g_io_channel_flush(g_log_channel, &err) != G_IO_STATUS_NORMAL)
             g_error("Can't flush log file: %s", err->message);
-    }    
+    }
 }

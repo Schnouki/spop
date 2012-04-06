@@ -43,7 +43,7 @@ void g_string_replace(GString* str, const char* old, const gchar* new) {
                                    old)) != NULL) {
         gssize pos = pos_ptr - str->str;
         g_string_erase(str, pos, len_old);
-        g_string_insert_len(str, pos, new, len_new); 
+        g_string_insert_len(str, pos, new, len_new);
         pos_beg = pos_ptr + len_new;
     }
 }

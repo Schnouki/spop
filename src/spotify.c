@@ -224,7 +224,7 @@ void session_load(sp_track* track) {
     session_callback_data scbd;
 
     g_debug("Loading track.");
-    
+
     error = sp_session_player_load(g_session, track);
     if (error != SP_ERROR_OK)
         g_error("Failed to load track: %s", sp_error_message(error));
