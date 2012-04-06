@@ -28,6 +28,7 @@
 #include <glib-object.h>
 #include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -146,7 +147,7 @@ int main(int argc, char** argv) {
  ***************************************************/
 void exit_handler_init() {
     /* On normal exit, use exit_handler */
-    g_atexit(exit_handler);
+    atexit(exit_handler);
 
     /* Trap SIGINT (Ctrl+C) to also use exit_handler */
     if (signal(SIGINT, sigint_handler) == SIG_ERR)
