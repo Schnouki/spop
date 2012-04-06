@@ -150,7 +150,7 @@ void session_login(const char* username, const char* password) {
     if (!g_session)
         g_error("Session is not ready.");
 
-    sp_session_login(g_session, username, password, TRUE);
+    sp_session_login(g_session, username, password, TRUE, NULL);
 }
 void session_logout() {
     g_debug("Logging out...");
@@ -531,8 +531,8 @@ sp_artistbrowse* artistbrowse_create(sp_artist* artist, artistbrowse_complete_cb
 sp_search* search_create(const gchar* query, search_complete_cb* callback, gpointer userdata) {
     int nb_results = config_get_int_opt("search_results", 100);
     return sp_search_create(g_session, query,
-                            0, nb_results, 0, nb_results, 0, nb_results,
-                            callback, userdata);
+                            0, nb_results, 0, nb_results, 0, nb_results, 0, nb_results,
+                            SP_SEARCH_STANDARD, callback, userdata);
 }
 
 

@@ -1261,6 +1261,19 @@ static void _search_cb(sp_search* srch, gpointer userdata) {
     }
     json_builder_end_array(ctx->jb);
 
+    /* Playlists... */
+    jb_add_int(ctx->jb, "total_playlists", sp_search_total_playlists(srch));
+    n = sp_search_num_playlists(srch);
+    json_builder_set_member_name(ctx->jb, "playlists");
+    json_builder_begin_array(ctx->jb);
+    for (i=0; i < n; i++) {
+        json_builder_begin_object(ctx->jb);
+        jb_add_string(ctx->jb, "name", sp_search_playlist_name(srch, i));
+        jb_add_string(ctx->jb, "uri", sp_search_playlist_uri(srch, i));
+        json_builder_end_object(ctx->jb);
+    }
+    json_builder_end_array(ctx->jb);
+
     /* And we're done! */
  _s_cb_clean:
     sp_search_release(srch);
