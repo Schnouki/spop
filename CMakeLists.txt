@@ -33,7 +33,7 @@ pkg_check_modules(SPOTIFY REQUIRED libspotify>=12.1.45)
 string(REPLACE ";" " " SPOTIFY_CFLAGS "${SPOTIFY_CFLAGS}")
 
 # Check for required libraries
-pkg_check_modules(GLIB2 REQUIRED glib-2.0)
+pkg_check_modules(GLIB2 REQUIRED glib-2.0>=2.26)
 string(REPLACE ";" " " GLIB2_CFLAGS "${GLIB2_CFLAGS}")
 pkg_check_modules(GMODULE2 REQUIRED gmodule-2.0)
 string(REPLACE ";" " " GMODULE2_CFLAGS "${GMODULE2_CFLAGS}")
@@ -47,6 +47,8 @@ pkg_check_modules(AO ao)
 string(REPLACE ";" " " AO_CFLAGS "${AO_CFLAGS}")
 pkg_check_modules(DBUS dbus-glib-1)
 string(REPLACE ";" " " DBUS_CFLAGS "${DBUS_CFLAGS}")
+pkg_check_modules(GIO_UNIX gio-unix-2.0)
+string(REPLACE ";" " " GIO_UNIX_CFLAGS "${GIO_UNIX_CFLAGS}")
 pkg_check_modules(NOTIFY libnotify)
 string(REPLACE ";" " " NOTIFY_CFLAGS "${NOTIFY_CFLAGS}")
 pkg_check_modules(PULSE libpulse-mainloop-glib)
@@ -140,6 +142,36 @@ if(DBUS_FOUND)
   set(targets ${targets} spop_plugin_awesome)
   install(DIRECTORY awesome DESTINATION share/spop)
 endif(DBUS_FOUND)
+
+# Generic plugin: mpris2
+if(GIO_UNIX_FOUND)
+  macro(GDBUS_CODEGEN DIR XML IFACE_PREFIX CCODE NAMESPACE)
+    add_custom_command(
+      OUTPUT "${DIR}/${CCODE}.c"
+      OUTPUT "${DIR}/${CCODE}.h"
+      COMMAND gdbus-codegen --interface-prefix="${IFACE_PREFIX}" --generate-c-code="${CCODE}" --c-namespace="${NAMESPACE}" "${XML}"
+      WORKING_DIRECTORY "${DIR}"
+      MAIN_DEPENDENCY "${DIR}/${XML}"
+    )
+  endmacro(GDBUS_CODEGEN)
+  gdbus_codegen("${CMAKE_CURRENT_SOURCE_DIR}/plugins/mpris2" "mpris2.xml"
+                org.mpris.MediaPlayer2 mpris2-generated Mpris2)
+  gdbus_codegen("${CMAKE_CURRENT_SOURCE_DIR}/plugins/mpris2" "mpris2-player.xml"
+                org.mpris.MediaPlayer2 mpris2-player-generated Mpris2)
+
+  set(PLUGIN_MPRIS2
+    plugins/mpris2/mpris2-generated.c
+    plugins/mpris2/mpris2-player-generated.c
+    plugins/mpris2/plugin.c
+    plugins/mpris2/spop-mpris2.c
+  )
+  add_library(spop_plugin_mpris2 MODULE ${PLUGIN_MPRIS2})
+  set_target_properties(spop_plugin_mpris2 PROPERTIES
+    COMPILE_FLAGS "${GIO_UNIX_CFLAGS} ${GLIB2_CFLAGS}"
+  )
+  target_link_libraries(spop_plugin_mpris2 ${GIO_UNIX_LIBRARIES} ${GLIB2_LIBRARIES})
+  set(targets ${targets} spop_plugin_mpris2)
+endif(GIO_UNIX_FOUND)
 
 # Generic plugin: notify
 if(NOTIFY_FOUND)
