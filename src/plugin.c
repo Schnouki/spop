@@ -71,12 +71,16 @@ void plugins_init() {
         /* Load the module and the symbols (spop_<module>_init and spop_<module>_close) */
         g_string_printf(module_name, "libspop_plugin_%s", plugins[i]);
         module = g_module_open(module_name->str, G_MODULE_BIND_LAZY);
-        if (!module)
-            g_error("Can't load plugin \"%s\": %s", plugins[i], g_module_error());
+        if (!module) {
+            g_warning("Can't load plugin \"%s\": %s", plugins[i], g_module_error());
+            continue;
+        }
 
         g_string_printf(module_name, "spop_%s_init", plugins[i]);
-        if (!g_module_symbol(module, module_name->str, (void**) &plugin_init))
-            g_error("Can't find symbol \"%s\" in module \"%s\": %s", module_name->str, plugins[i], g_module_error());
+        if (!g_module_symbol(module, module_name->str, (void**) &plugin_init)) {
+            g_warning("Can't find symbol \"%s\" in module \"%s\": %s", module_name->str, plugins[i], g_module_error());
+            continue;
+        }
 
         g_string_printf(module_name, "spop_%s_close", plugins[i]);
         if (g_module_symbol(module, module_name->str, (void**) &plugin_close))
@@ -89,6 +93,7 @@ void plugins_init() {
 
         g_debug("Plugin %s loaded and initialized", plugins[i]);
     }
+    g_string_free(module_name, TRUE);
     g_strfreev(plugins);
 }
 
