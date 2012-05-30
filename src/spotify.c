@@ -84,7 +84,13 @@ static sp_session_callbacks g_sp_session_callbacks = {
     NULL, /* userinfo_updated */
     NULL, /* start_playback */
     NULL, /* stop_playback */
-    NULL  /* get_audio_buffer_stats */
+    NULL, /* get_audio_buffer_stats */
+    NULL, /* offline_status_updated */
+    NULL, /* offline_error */
+    NULL, /* credentials_blob_updated */
+    NULL, /* connectionstate_updated */
+    NULL, /* scrobble_error */
+    NULL  /* private_session_mode_changed */
 };
 
 
@@ -476,7 +482,7 @@ sp_image* track_get_image(sp_track* track) {
         g_error("Album not loaded.");
 
     /* Get image */
-    img_id = sp_album_cover(alb);
+    img_id = sp_album_cover(alb, SP_IMAGE_SIZE_NORMAL);
     if (!img_id) {
         /* Since the album is loaded, a NULL here indicates that there is no
            cover for this album. */
