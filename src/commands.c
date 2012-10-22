@@ -610,6 +610,11 @@ gboolean image(command_context* ctx) {
     gboolean res;
 
     queue_get_status(&track, NULL, NULL);
+    if (!track) {
+        jb_add_string(ctx->jb, "status", "empty-queue");
+        return TRUE;
+    }
+
     res = track_get_image_data(track, (gpointer*) &img_data, &len);
     if (!res) {
         // FIXME
