@@ -49,8 +49,12 @@ pkg_check_modules(DBUS dbus-glib-1)
 string(REPLACE ";" " " DBUS_CFLAGS "${DBUS_CFLAGS}")
 pkg_check_modules(NOTIFY libnotify)
 string(REPLACE ";" " " NOTIFY_CFLAGS "${NOTIFY_CFLAGS}")
+pkg_check_modules(PULSE libpulse-mainloop-glib)
+string(REPLACE ";" " " PULSE_CFLAGS "${PULSE_CFLAGS}")
 pkg_check_modules(SOUP libsoup-2.4)
 string(REPLACE ";" " " SOUP_CFLAGS "${SOUP_CFLAGS}")
+pkg_check_modules(SOX sox)
+string(REPLACE ";" " " SOX_CFLAGS "${SOX_CFLAGS}")
 
 # spop daemon
 set(SPOPD
@@ -96,6 +100,32 @@ if(AO_FOUND)
   target_link_libraries(spop_audio_ao ${AO_LIBRARIES} ${GTHREAD2_LIBRARIES})
   set(targets ${targets} spop_audio_ao)
 endif(AO_FOUND)
+
+# Audio plugin: pulse
+if(PULSE_FOUND)
+  set(AUDIO_PULSE
+    plugins/pulse.c
+  )
+  add_library(spop_audio_pulse MODULE ${AUDIO_PULSE})
+  set_target_properties(spop_audio_pulse PROPERTIES
+    COMPILE_FLAGS "${GLIB2_CFLAGS} ${PULSE_CFLAGS}"
+  )
+  target_link_libraries(spop_audio_pulse ${GLIB2_LIBRARIES} ${PULSE_LIBRARIES})
+  set(targets ${targets} spop_audio_pulse)
+endif(PULSE_FOUND)
+
+# Audio plugin: sox
+if(SOX_FOUND)
+  set(AUDIO_SOX
+    plugins/sox.c
+  )
+  add_library(spop_audio_sox MODULE ${AUDIO_SOX})
+  set_target_properties(spop_audio_sox PROPERTIES
+    COMPILE_FLAGS "${SOX_CFLAGS} ${GTHREAD2_CFLAGS}"
+  )
+  target_link_libraries(spop_audio_sox ${SOX_LIBRARIES} ${GTHREAD2_LIBRARIES})
+  set(targets ${targets} spop_audio_sox)
+endif(SOX_FOUND)
 
 # Generic plugin: awesome
 if(DBUS_FOUND)
@@ -156,6 +186,8 @@ set(SRC
   ${SPOPD}
   ${AUDIO_OSS}
   ${AUDIO_AO}
+  ${AUDIO_PULSE}
+  ${AUDIO_SOX}
   ${PLUGIN_AWESOME}
   ${PLUGIN_NOTIFY}
   ${PLUGIN_SAVESTATE}

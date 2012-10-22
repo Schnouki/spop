@@ -22,12 +22,16 @@ spotify_password = PASSWORD
 # Number of results returned by the search command.
 #search_results = 100
 
-# Audio plugin -- right now, only two plugins are available:
+# Audio plugin -- right now, three plugins are available:
 # - ao: uses libao, a simple and very portable library. Recommended for people
 #   who use ALSA, a sound server (Pulse Audio, aRts, etc.), or a platform that
 #   does not support OSS (Windows, MacOS X).
 # - oss: uses OSS, which is very simple and highly reliable. Recommended for
 #   people who use OSS as their main sound system (Linux with OSSv4, *BSD).
+# - sox: uses libsox, "the Swiss Army knife of sound processing" library.
+#   Probably not as lightweight as ao and oss, but supports more platform, and -
+#   adds the possibility to apply effects to the audio output. More details in -
+#   the [sox] section.
 audio_output = oss
 
 # Address and port on which spopd should listen for commands.
@@ -64,3 +68,19 @@ password = PASSWORD
 # Size of images in notifications. libspotify provides 300x300 images, which is
 # probably too much for most people, so the default value is 120x120.
 #image_size = 120
+
+[sox]
+# Output type for SoX output. Common values: alsa, oss, coreaudio (MacOS X),
+# pulseaudio, etc. Can be a file type: wav, mp3, ogg, etc. See `man soxformat'
+# for details.
+#output_type = alsa
+
+# Output name. Common values: default (for alsa, coreaudio, pulseaudio), hw:0
+# (alsa), /dev/dsp (oss), etc. This can also be left empty to use the default
+# value of the device driver. Can also be a file name: output.ogg, etc. See `man
+# soxformat' for details.
+#output_name = default
+
+# List of effets to apply to the audio output, with their parameters. See `man
+# soxeffects' for details.
+#effects = gain -3; pad 0 3; reverb
