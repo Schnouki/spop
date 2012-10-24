@@ -198,7 +198,7 @@ static gboolean now_playing_handler(gpointer data) {
 
 static void now_playing_callback(SoupSession* session, SoupMessage* msg, gpointer user_data) {
     track_data* td = user_data;
-    
+
     td->np_submitting = FALSE;
 
     /* Success? */
@@ -276,7 +276,7 @@ static gboolean scrobble_handler(gpointer data) {
         /* Should this track be scrobbled?
            - longer than 30 seconds
            - played for at least 240 seconds, or half of the track, whichever
-             comes first 
+             comes first
            - not scrobbled yet */
         if (td->scrobbled || td->scrobbling) {
             continue;
@@ -292,7 +292,7 @@ static gboolean scrobble_handler(gpointer data) {
                                 g_strdup(td->artist));
             g_hash_table_insert(h,
                                 g_strdup_printf("t[%d]", i),
-                                g_strdup(td->track)); 
+                                g_strdup(td->track));
             g_hash_table_insert(h,
                                 g_strdup_printf("i[%d]", i),
                                 g_strdup_printf("%ld", td->start));
@@ -406,7 +406,7 @@ static void token_request() {
     password_md5 = g_compute_checksum_for_string(G_CHECKSUM_MD5, password, -1);
     auth_token = g_string_new(password_md5);
     g_free(password_md5);
-    
+
     t = time(NULL);
     if (t == -1)
         g_error("scrobble: Can't get current time: %s", g_strerror(errno));
@@ -442,13 +442,13 @@ static void token_request() {
         g_free(uri_string);
     }
     g_free(timestamp);
-    g_free(auth_token_md5);    
+    g_free(auth_token_md5);
 
     /* Prepare the message and queue it*/
     message = soup_message_new_from_uri("GET", uri);
     soup_session_queue_message(g_session, message, token_callback, NULL);
     g_token_requested = TRUE;
-    
+
     /* Cleanup */
     soup_uri_free(uri);
 }
@@ -503,7 +503,7 @@ static void token_callback(SoupSession* session, SoupMessage* msg, gpointer user
     if (g_nowplaying_url)
         g_free(g_nowplaying_url);
     g_nowplaying_url = g_strndup(bol, eol-bol);
-    
+
     /* Read the fourth line: scrobble URL */
     len -= (eol-bol) + 1;
     bol = eol+1;
