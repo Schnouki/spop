@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node name="/org/mpris/MediaPlayer2">
+  <interface name="org.mpris.MediaPlayer2">
+    <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="true"/>
+    <method name="Raise"/>
+    <method name="Quit"/>
+    <property name="CanQuit" type="b" access="read"/>
+    <property name="CanRaise" type="b" access="read"/>
+    <property name="HasTrackList" type="b" access="read"/>
+    <property name="Identity" type="s" access="read"/>
+    <property name="DesktopEntry" type="s" access="read"/>
+    <property name="SupportedUriSchemes" type="as" access="read"/>
+    <property name="SupportedMimeTypes" type="as" access="read"/>
+  </interface>
+</node>
