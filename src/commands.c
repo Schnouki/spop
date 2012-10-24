@@ -41,6 +41,9 @@
 #define jb_add_bool(jb, name, val) {\
     json_builder_set_member_name(jb, name); \
     json_builder_add_boolean_value(jb, val); }
+#define jb_add_double(jb, name, val) {\
+    json_builder_set_member_name(jb, name); \
+    json_builder_add_double_value(jb, val); }
 #define jb_add_int(jb, name, val) {\
     json_builder_set_member_name(jb, name); \
     json_builder_add_int_value(jb, val); }
@@ -53,7 +56,8 @@ static void json_tracks_array(GArray* tracks, JsonBuilder* jb) {
     sp_track* track;
 
     bool track_avail;
-    int track_duration, track_popularity;
+    guint track_duration;
+    int track_popularity;
     gchar* track_name;
     gchar* track_artist;
     gchar* track_album;
@@ -318,7 +322,9 @@ gboolean list_tracks(command_context* ctx, guint idx) {
 /* {{{ Status and play mode */
 gboolean status(command_context* ctx) {
     sp_track* track;
-    int track_nb, total_tracks, track_duration, track_position, track_popularity;
+    int track_nb, total_tracks, track_popularity;
+    guint track_duration;
+    guint64 track_position;
     queue_status qs;
     gchar* track_name;
     gchar* track_artist;
@@ -346,7 +352,7 @@ gboolean status(command_context* ctx) {
         jb_add_string(ctx->jb, "title", track_name);
         jb_add_string(ctx->jb, "album", track_album);
         jb_add_int(ctx->jb, "duration", track_duration);
-        jb_add_int(ctx->jb, "position", track_position);
+        jb_add_double(ctx->jb, "position", track_position/1000.);
         jb_add_string(ctx->jb, "uri", track_link);
         jb_add_int(ctx->jb, "popularity", track_popularity);
         g_free(track_name);
@@ -841,7 +847,8 @@ static gboolean _uri_info_track_cb(gpointer* data) {
     gchar* name;
     gchar* artist;
     gchar* album;
-    int duration, popularity;
+    guint duration;
+    int popularity;
     track_get_data(track, &name, &artist, &album, NULL, &duration, &popularity);
     gboolean available = track_available(track);
 

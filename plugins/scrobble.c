@@ -125,11 +125,13 @@ static void now_playing_request(sp_track* track) {
 
     /* Get some informations about the current track */
     td = g_malloc(sizeof(track_data));
-    track_get_data(track, &td->track, &td->artist, &td->album, NULL, &td->length, NULL);
+    guint length_ms;
+    track_get_data(track, &td->track, &td->artist, &td->album, NULL, &length_ms, NULL);
 
     if (!td->artist) td->artist = g_strdup("");
     if (!td->track)  td->track  = g_strdup("");
     if (!td->album)  td->album  = g_strdup("");
+    td->length = length_ms / 1000;
 
     td->np_submitted = FALSE;
     td->np_submitting = FALSE;
@@ -176,7 +178,7 @@ static gboolean now_playing_handler(gpointer data) {
         return FALSE;
 
     /* Prepare the message and queue it */
-    len = g_strdup_printf("%d", td->length);
+    len = g_strdup_printf("%u", td->length);
     g_debug("scrobble: Sending \"Now playing\" request for \"%s - %s\"", td->artist, td->track);
     message = soup_form_request_new("POST", g_nowplaying_url,
                                     "s", g_token,
@@ -235,7 +237,7 @@ static void scrobble_request() {
     }
     td = g_tracks->data;
 
-    td->play_time = session_play_time();
+    td->play_time = session_play_time() / 1000;
     /* Try to scrobble this. If it fails, try again in a second */
     if (scrobble_handler(NULL))
         g_timeout_add_seconds(1, scrobble_handler, NULL);

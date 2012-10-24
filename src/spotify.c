@@ -46,7 +46,7 @@ static sp_playlist* g_starred_playlist = NULL;
 
 static sp_session* g_session = NULL;
 
-static unsigned int g_audio_time = 0;
+static guint g_audio_time = 0;
 static unsigned int g_audio_samples = 0;
 static unsigned int g_audio_rate = 44100;
 
@@ -273,16 +273,16 @@ void session_play(gboolean play) {
     cb_notify_main_thread(NULL);
 }
 
-void session_seek(int pos) {
-    sp_session_player_seek(g_session, pos*1000);
+void session_seek(guint pos) {
+    sp_session_player_seek(g_session, pos);
     g_audio_time = pos;
     g_audio_samples = 0;
 
     cb_notify_main_thread(NULL);
 }
 
-int session_play_time() {
-    return g_audio_time + (g_audio_samples / g_audio_rate);
+guint session_play_time() {
+    return g_audio_time + (1000 * g_audio_samples) / g_audio_rate;
 }
 
 void session_get_offline_sync_status(sp_offline_sync_status* status, gboolean* sync_in_progress,
@@ -381,7 +381,7 @@ GArray* tracks_get_playlist(sp_playlist* pl) {
 }
 
 void track_get_data(sp_track* track, gchar** name, gchar** artist, gchar** album, gchar** link,
-                    int* duration, int* popularity) {
+                    guint* duration, int* popularity) {
     sp_artist** art = NULL;
     sp_album* alb = NULL;
     sp_link* lnk;
@@ -429,7 +429,7 @@ void track_get_data(sp_track* track, gchar** name, gchar** artist, gchar** album
         sp_link_release(lnk);
     }
     if (duration) {
-        *duration = sp_track_duration(track) / 1000;
+        *duration = sp_track_duration(track);
     }
     if (popularity) {
         *popularity = sp_track_popularity(track);
@@ -611,7 +611,7 @@ int cb_music_delivery(sp_session* session, const sp_audioformat* format, const v
         g_audio_samples += n;
     }
     else if (n > 0) {
-        g_audio_time += g_audio_samples / g_audio_rate;
+        g_audio_time += (1000 * g_audio_samples) / g_audio_rate;
         g_audio_samples = n;
         g_audio_rate = format->sample_rate;
     }

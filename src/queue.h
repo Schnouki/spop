@@ -45,7 +45,7 @@ void queue_remove_tracks(gboolean notif, int idx, int nb);
 void queue_play(gboolean notif);
 void queue_stop(gboolean notif);
 void queue_toggle(gboolean notif);
-void queue_seek(int pos);
+void queue_seek(guint pos);
 
 /* Information about the queue */
 queue_status queue_get_status(sp_track** current_track, int* current_track_number, int* total_tracks);

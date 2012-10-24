@@ -84,13 +84,13 @@ static void notification_callback(const GString* status, gpointer data) {
         g_string_printf(text, "[stopped]%s", rep_shuf->str);
     else {
         /* Read more data */
-        int track_min, track_sec, pos_min, pos_sec;
+        guint track_min, track_sec, pos_min, pos_sec;
         gchar* track_name;
         gchar* track_artist;
         GString* short_title = NULL;
 
         track_get_data(cur_track, &track_name, &track_artist, NULL, NULL, &track_sec, NULL);
-        pos_sec = session_play_time();
+        pos_sec = session_play_time() / 1000;
         track_min = track_sec / 60;
         track_sec %= 60;
         pos_min = pos_sec / 60;
@@ -113,7 +113,7 @@ static void notification_callback(const GString* status, gpointer data) {
 
         g_string_append_printf(text,
                                "[<b>" col("#afd", "%d") ":</b> " col("#adf", "%s") " / " col("#fad", "%s") "]"
-                               " [<b>" col("#dfa", "%d:%02d") "</b>/" col("#dfa", "%d:%02d") "]%s",
+                               " [<b>" col("#dfa", "%u:%02u") "</b>/" col("#dfa", "%u:%02u") "]%s",
                                cur_track_nb+1, track_artist, short_title->str,
                                pos_min, pos_sec, track_min, track_sec, rep_shuf->str);
 

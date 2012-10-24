@@ -48,8 +48,8 @@ int playlist_get_offline_download_completed(sp_playlist* pl);
 void session_load(sp_track* track);
 void session_unload();
 void session_play(gboolean play);
-void session_seek(int pos);
-int session_play_time();
+void session_seek(guint pos);
+guint session_play_time();
 void session_get_offline_sync_status(sp_offline_sync_status* status, gboolean* sync_in_progress,
                                      int* tracks_to_sync, int* num_playlists, int* time_left);
 
@@ -66,7 +66,7 @@ gboolean session_remove_callback(spop_session_callback_ptr func, gpointer user_d
 
 /* Tracks management */
 GArray* tracks_get_playlist(sp_playlist* pl);
-void track_get_data(sp_track* track, gchar** name, gchar** artist, gchar** album, gchar** link, int* duration, int* popularity);
+void track_get_data(sp_track* track, gchar** name, gchar** artist, gchar** album, gchar** link, guint* duration, int* popularity);
 gboolean track_available(sp_track* track);
 
 sp_image* track_get_image(sp_track* track);

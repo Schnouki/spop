@@ -277,7 +277,7 @@ void queue_toggle(gboolean notif) {
     if (notif) queue_notify();
 }
 
-void queue_seek(int pos) {
+void queue_seek(guint pos) {
     sp_track* track;
     int dur;
 
@@ -285,7 +285,7 @@ void queue_seek(int pos) {
     case PLAYING:
     case PAUSED:
         track = g_queue_peek_nth(&g_queue, g_current_track);
-        dur = sp_track_duration(track) / 1000;
+        dur = sp_track_duration(track);
 
         if (dur <= 0)
             g_warning("Can't get track duration.");
