@@ -97,7 +97,6 @@ int main(int argc, char** argv) {
     g_set_application_name("spop " SPOP_VERSION);
     g_set_prgname("spop");
     g_type_init();
-    g_thread_init(NULL);
 
     printf("%s\n", copyright_notice);
 

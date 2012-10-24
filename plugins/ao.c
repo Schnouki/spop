@@ -48,8 +48,8 @@ static size_t g_ao_frame_size;
 
 static GQueue* g_free_bufs = NULL;
 static GQueue* g_full_bufs = NULL;
-static GMutex* g_buf_mutex = NULL;
-static GCond* g_play_cond = NULL;
+static GMutex g_buf_mutex;
+static GCond g_play_cond;
 
 /* My own strerror for libao */
 static const char* lao_strerror(void) {
@@ -75,25 +75,25 @@ static void* lao_player(gpointer data) {
         /* Device not ready: wait */
         usleep(10000);
     }
-    
-    g_mutex_lock(g_buf_mutex);
+
+    g_mutex_lock(&g_buf_mutex);
 
     while (TRUE) {
         lao_buf* buf = g_queue_pop_head(g_full_bufs);
 
         if (buf) {
             /* There is something to play */
-            g_mutex_unlock(g_buf_mutex);
-     
+            g_mutex_unlock(&g_buf_mutex);
+
             if (!ao_play(g_ao_dev, buf->buf, buf->size))
                 g_error("Error while playing sound with libao");
 
-            g_mutex_lock(g_buf_mutex);
+            g_mutex_lock(&g_buf_mutex);
             g_queue_push_tail(g_free_bufs, buf);
         }
         else {
             /* Nothing to play: wait */
-            g_cond_wait(g_play_cond, g_buf_mutex);
+            g_cond_wait(&g_play_cond, &g_buf_mutex);
         }
     }
 
@@ -129,10 +129,7 @@ static void lao_setup(const sp_audioformat* format) {
             g_queue_push_tail(g_free_bufs, &(bufs[i]));
         }
 
-        g_buf_mutex = g_mutex_new();
-        g_play_cond = g_cond_new();
-        
-        if (!g_thread_create(lao_player, NULL, FALSE, &err))
+        if (!g_thread_try_new("ao_player", lao_player, NULL, &err))
             g_error("Error while creating libao player thread: %s", err->message);
         g_ao_init = TRUE;
     }
@@ -162,12 +159,12 @@ G_MODULE_EXPORT int audio_delivery(const sp_audioformat* format, const void* fra
     /* What are we supposed to do here? */
     if (num_frames == 0) {
         /* Pause: flush the queue */
-        g_mutex_lock(g_buf_mutex);
+        g_mutex_lock(&g_buf_mutex);
         while (g_queue_get_length(g_full_bufs) > 0) {
             buf = g_queue_pop_tail(g_full_bufs);
             g_queue_push_tail(g_free_bufs, buf);
         }
-        g_mutex_unlock(g_buf_mutex);
+        g_mutex_unlock(&g_buf_mutex);
         return 0;
     }
     else {
@@ -175,11 +172,11 @@ G_MODULE_EXPORT int audio_delivery(const sp_audioformat* format, const void* fra
             lao_setup(format);
 
         /* Try to add data to the queue */
-        g_mutex_lock(g_buf_mutex);
+        g_mutex_lock(&g_buf_mutex);
 
         if (g_queue_get_length(g_free_bufs) == 0) {
             /* Can't add anything */
-            g_mutex_unlock(g_buf_mutex);
+            g_mutex_unlock(&g_buf_mutex);
             return 0;
         }
 
@@ -191,9 +188,9 @@ G_MODULE_EXPORT int audio_delivery(const sp_audioformat* format, const void* fra
 
         /* Make the buffer available to the player */
         g_queue_push_tail(g_full_bufs, buf);
-        g_cond_signal(g_play_cond);
+        g_cond_signal(&g_play_cond);
 
-        g_mutex_unlock(g_buf_mutex);
+        g_mutex_unlock(&g_buf_mutex);
 
         return size / g_ao_frame_size;
     }

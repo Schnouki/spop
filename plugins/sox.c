@@ -71,8 +71,8 @@ typedef struct {
 } sox_buf;
 static GQueue* g_free_bufs = NULL;
 static GQueue* g_full_bufs = NULL;
-static GMutex* g_buf_mutex = NULL;
-static GCond*  g_buf_cond  = NULL;
+static GMutex  g_buf_mutex;
+static GCond   g_buf_cond;
 
 /* Player thread control */
 static GThread* g_player_thread = NULL;
@@ -118,9 +118,6 @@ static void _sox_init() {
             bufs[i].buf = g_malloc(BUFSIZE);
             g_queue_push_tail(g_free_bufs, &bufs[i]);
         }
-
-        g_buf_mutex = g_mutex_new();
-        g_buf_cond  = g_cond_new();
 
         g_sox_out_type = config_get_string_opt_group("sox", "output_type", NULL);
         g_sox_out_name = config_get_string_group("sox", "output_name");
@@ -241,7 +238,7 @@ static void _sox_start(const sp_audioformat* format) {
 
     /* Start the player thread */
     g_player_stop = FALSE;
-    g_player_thread = g_thread_create(_sox_player, NULL, TRUE, &err);
+    g_player_thread = g_thread_try_new("sox_player", _sox_player, NULL, &err);
     if (!g_player_thread)
         g_error("Error while creating SoX player thread: %s", err->message);
 }
@@ -250,14 +247,14 @@ static void _sox_stop() {
     g_debug("SoX: requesting player thread to stop.");
 
     /* Flush the queue */
-    g_mutex_lock(g_buf_mutex);
+    g_mutex_lock(&g_buf_mutex);
     g_player_stop = TRUE;
     while (g_queue_get_length(g_full_bufs) > 0) {
         sox_buf* buf = g_queue_pop_tail(g_full_bufs);
         g_queue_push_tail(g_free_bufs, buf);
     }
-    g_cond_signal(g_buf_cond);
-    g_mutex_unlock(g_buf_mutex);
+    g_cond_signal(&g_buf_cond);
+    g_mutex_unlock(&g_buf_mutex);
 
     /* Wait until the thread has actually stopped */
     if (g_player_thread) {
@@ -289,20 +286,20 @@ static void* _sox_player(gpointer data) {
 /* Input callback */
 static int _sox_input_drain(sox_effect_t* effp, sox_sample_t* obuf, size_t* osamp) {
     /* Is a buffer available? */
-    g_mutex_lock(g_buf_mutex);
+    g_mutex_lock(&g_buf_mutex);
     while ((g_queue_get_length(g_full_bufs) == 0) && !g_player_stop)
-        g_cond_wait(g_buf_cond, g_buf_mutex);
+        g_cond_wait(&g_buf_cond, &g_buf_mutex);
 
     /* Should we stop now? */
     if (g_player_stop) {
-        g_mutex_unlock(g_buf_mutex);
+        g_mutex_unlock(&g_buf_mutex);
         g_debug("SoX: stopping playback.");
         *osamp = 0;
         return SOX_EOF;
     }
 
     sox_buf* buf = g_queue_pop_head(g_full_bufs);
-    g_mutex_unlock(g_buf_mutex);
+    g_mutex_unlock(&g_buf_mutex);
 
     /* Decode that buffer */
     size_t max_samples = *osamp;
@@ -317,9 +314,9 @@ static int _sox_input_drain(sox_effect_t* effp, sox_sample_t* obuf, size_t* osam
     *osamp = avail_samples;
 
     /* Make the buffer available */
-    g_mutex_lock(g_buf_mutex);
+    g_mutex_lock(&g_buf_mutex);
     g_queue_push_tail(g_free_bufs, buf);
-    g_mutex_unlock(g_buf_mutex);
+    g_mutex_unlock(&g_buf_mutex);
 
     return SOX_SUCCESS;
 }
@@ -329,9 +326,9 @@ static int _sox_output_flow(sox_effect_t* effp, const sox_sample_t* ibuf, sox_sa
                             size_t* isamp, size_t* osamp) {
     /* Should we stop now? */
     /* TODO: is the mutex really needed? */
-    g_mutex_lock(g_buf_mutex);
+    g_mutex_lock(&g_buf_mutex);
     gboolean stop = g_player_stop;
-    g_mutex_unlock(g_buf_mutex);
+    g_mutex_unlock(&g_buf_mutex);
     if (stop) {
         *osamp = 0;
         return SOX_EOF;
@@ -376,9 +373,9 @@ G_MODULE_EXPORT int audio_delivery(const sp_audioformat* format, const void* fra
         }
 
         /* Is there a free buffer? */
-        g_mutex_lock(g_buf_mutex);
+        g_mutex_lock(&g_buf_mutex);
         if (g_queue_get_length(g_free_bufs) == 0) {
-            g_mutex_unlock(g_buf_mutex);
+            g_mutex_unlock(&g_buf_mutex);
             return 0;
         }
 
@@ -397,8 +394,8 @@ G_MODULE_EXPORT int audio_delivery(const sp_audioformat* format, const void* fra
 
         /* Make the buffer available to the player */
         g_queue_push_tail(g_full_bufs, buf);
-        g_cond_signal(g_buf_cond);
-        g_mutex_unlock(g_buf_mutex);
+        g_cond_signal(&g_buf_cond);
+        g_mutex_unlock(&g_buf_mutex);
 
         return copied_frames;
     }

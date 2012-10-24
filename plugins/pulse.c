@@ -44,14 +44,14 @@ static int               g_latency = 500000;
 static pa_sample_spec    g_ss;
 static pa_buffer_attr    g_bufattr;
 
-static GStaticRecMutex g_pulse_mutex = G_STATIC_REC_MUTEX_INIT;
+static GRecMutex g_pulse_mutex;
 
 #define pulse_check(op) { int ret = (op); if (ret != 0) { g_error("PulseAudio: %s: %s", #op, pa_strerror(ret)); } }
 #define pulse_check_val(val) { if (!(val)) { int err = pa_context_errno(g_ctx); g_error("PulseAudio: %s is NULL: %s", #val, pa_strerror(err)); } }
 
 /* Private callbacks */
 static void pulse_state_cb(pa_context* c, gpointer userdata) {
-    g_static_rec_mutex_lock(&g_pulse_mutex);
+    g_rec_mutex_lock(&g_pulse_mutex);
     pa_context_state_t state = pa_context_get_state(c);
     gchar* st;
     switch(state) {
@@ -68,11 +68,11 @@ static void pulse_state_cb(pa_context* c, gpointer userdata) {
 
     g_started = (state == PA_CONTEXT_READY);
     if (g_started) g_starting = FALSE;
-    g_static_rec_mutex_unlock(&g_pulse_mutex);
+    g_rec_mutex_unlock(&g_pulse_mutex);
 }
 
 static void pulse_stream_state_cb(pa_stream* s, gpointer userdata) {
-    g_static_rec_mutex_lock(&g_pulse_mutex);
+    g_rec_mutex_lock(&g_pulse_mutex);
     pa_stream_state_t state = pa_stream_get_state(s);
     gchar* st;
     switch(state) {
@@ -86,11 +86,11 @@ static void pulse_stream_state_cb(pa_stream* s, gpointer userdata) {
     g_debug("PulseAudio stream state: %s (%d)", st, state);
 
     g_stream_ready = (state == PA_STREAM_READY);
-    g_static_rec_mutex_unlock(&g_pulse_mutex);
+    g_rec_mutex_unlock(&g_pulse_mutex);
 }
 
 static void pulse_underflow_cb(pa_stream* s, gpointer userdata) {
-    g_static_rec_mutex_lock(&g_pulse_mutex);
+    g_rec_mutex_lock(&g_pulse_mutex);
     static int underflows = 0;
     g_debug("PulseAudio: underflow");
     if ((++underflows >= 5) && (g_latency < 4000000)) {
@@ -101,7 +101,7 @@ static void pulse_underflow_cb(pa_stream* s, gpointer userdata) {
         pulse_check_val(pa_stream_set_buffer_attr(s, &g_bufattr, NULL, NULL));
         g_debug("PulseAudio: latency increased to %d", g_latency);
     }
-    g_static_rec_mutex_unlock(&g_pulse_mutex);
+    g_rec_mutex_unlock(&g_pulse_mutex);
 }
 
 /* "Private" function used to set up the PulseAudio connection */
@@ -197,8 +197,8 @@ static int pulse_audio_delivery(const sp_audioformat* format, const void* frames
 }
 
 G_MODULE_EXPORT int audio_delivery(const sp_audioformat* format, const void* frames, int num_frames) {
-    g_static_rec_mutex_lock(&g_pulse_mutex);
+    g_rec_mutex_lock(&g_pulse_mutex);
     int ret = pulse_audio_delivery(format, frames, num_frames);
-    g_static_rec_mutex_unlock(&g_pulse_mutex);
+    g_rec_mutex_unlock(&g_pulse_mutex);
     return ret;
 }
