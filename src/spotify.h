@@ -71,6 +71,7 @@ gboolean track_available(sp_track* track);
 
 sp_image* track_get_image(sp_track* track);
 gboolean track_get_image_data(sp_track* track, gpointer* data, gsize* len);
+gboolean track_get_image_file(sp_track* track, gchar** filename);
 
 /* Browsing */
 sp_albumbrowse* albumbrowse_create(sp_album* album, albumbrowse_complete_cb* callback, gpointer userdata);

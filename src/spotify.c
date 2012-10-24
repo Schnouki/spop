@@ -522,6 +522,63 @@ gboolean track_get_image_data(sp_track* track, gpointer* data, gsize* len) {
     return TRUE;
 }
 
+static void _track_write_image_to_file(sp_image* img, gpointer data) {
+    GError* err = NULL;
+    const guchar* img_data = NULL;
+    gsize len;
+    gchar* filename = (gchar*) data;
+
+    img_data = sp_image_data(img, &len);
+    if (!img_data)
+        g_error("Can't read image data");
+    g_debug("Saving image to %s", filename);
+    if (!g_file_set_contents(filename, (gchar*) img_data, len, &err))
+        g_error("Can't save image to file: %s", err->message);
+    g_free(filename);
+    sp_image_release(img);
+}
+
+gboolean track_get_image_file(sp_track* track, gchar** filename) {
+    if (!filename)
+         return FALSE;
+
+    sp_image* img = track_get_image(track);
+    if (!img) {
+        /* No cover */
+        *filename = NULL;
+        return FALSE;
+    }
+
+    /* Build filename */
+    const guchar* img_id = sp_image_image_id(img);
+    gchar* b64_id = g_base64_encode(img_id, 20);
+    gchar* img_name = g_strdup_printf("%s.jpg", b64_id);
+    /* Avoid / in base64-encoded file name! */
+    g_strdelimit(img_name, "/", '_');
+    *filename = g_build_filename(g_get_user_cache_dir(), g_get_prgname(), img_name, NULL);
+    g_free(b64_id);
+    g_free(img_name);
+
+    /* If the file already exists, we're done. */
+    if (g_file_test(*filename, G_FILE_TEST_EXISTS | G_FILE_TEST_IS_REGULAR)) {
+        sp_image_release(img);
+    }
+
+    /* If image is already loaded, write it to the file now */
+    else if (sp_image_is_loaded(img)) {
+        gchar* fn_copy = g_strdup(*filename);
+        _track_write_image_to_file(img, fn_copy);
+    }
+
+    /* Load the image and write it with a callback */
+    else {
+        gchar* fn_copy = g_strdup(*filename);
+        sp_image_add_load_callback(img, _track_write_image_to_file, fn_copy);
+    }
+
+    return TRUE;
+}
+
 
 /****************
  *** Browsing ***
