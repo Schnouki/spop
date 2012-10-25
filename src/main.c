@@ -23,6 +23,15 @@
  * Program grant you additional permission to convey the resulting work.
  */
 
+#if __APPLE__
+// In Mac OS X 10.5 and later trying to use the daemon function gives a “‘daemon’ is deprecated”
+// error, which prevents compilation because we build with "-Werror".
+// Since this is supposed to be portable cross-platform code, we don't care that daemon is
+// deprecated on Mac OS X 10.5, so we use this preprocessor trick to eliminate the error message.
+// See: <http://www.opensource.apple.com/source/mDNSResponder/mDNSResponder-258.13/mDNSPosix/PosixDaemon.c>
+#define daemon fake_daemon_function
+#endif
+
 #include <errno.h>
 #include <glib.h>
 #include <glib-object.h>
@@ -31,6 +40,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+#if __APPLE__
+#undef daemon
+extern int daemon(int, int);
+#endif
 
 #include "spop.h"
 #include "config.h"
