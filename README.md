@@ -22,7 +22,7 @@ it with your keyboard and a few scripts, and just forget about it.
   plain-text command, get an easily parsable JSON output.
 - **Portable:** designed to be platform-agnostic, it should work on any platform
   supported both by Glib and libspotify. (But so far it has only been tested on
-  Linux.)
+  Linux and Apple OS X)
 - **Free software:** the source code is available under the terms of the GNU
   GPLv3 license (or, at your option, any later version), with an exception
   allowing to distribute code linked against libspotify. Everyone is welcome to
