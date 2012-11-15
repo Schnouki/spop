@@ -369,7 +369,7 @@ gboolean interface_write(GIOChannel* chan, const gchar* str) {
     GError* err = NULL;
     int client = g_io_channel_unix_get_fd(chan);
 
-    if (str) {
+    if (str && chan->is_writeable) {
         status = g_io_channel_write_chars(chan, str, -1, NULL, &err);
         if (status != G_IO_STATUS_NORMAL) {
             if (err)
