@@ -1,0 +1,8 @@
+[Unit]
+Description=Spop: a Spotify client daemon
+
+[Service]
+ExecStart=/usr/bin/spopd -f
+
+[Install]
+WantedBy=multi-user.target

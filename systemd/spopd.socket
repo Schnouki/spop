@@ -1,0 +1,9 @@
+[Unit]
+Description=Spop Daemon Socket
+
+[Socket]
+ListenStream=127.0.0.1:6602
+ListenStream=[::1]:6602
+
+[Install]
+WantedBy=sockets.target

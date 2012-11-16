@@ -41,6 +41,8 @@
 #include "config.h"
 #include "interface.h"
 
+#include "sd-daemon.h"
+
 const char proto_greetings[] = "spop " SPOP_VERSION "\n";
 
 /* Channels and plugins that have to be notified when something changes
@@ -104,64 +106,84 @@ static command_full_descriptor g_commands[] = {
     {  NULL, 0, {}}
 };
 
+/* Internal helper */
+static void interface_init_chan(int sock) {
+    /* Create an IO channel and add it to the main loop */
+    GIOChannel* chan = g_io_channel_unix_new(sock);
+    if (!chan)
+        g_error("Can't create IO channel for the main socket.");
+    g_io_channel_set_close_on_unref(chan, TRUE);
+    g_io_add_watch(chan, G_IO_IN|G_IO_HUP, interface_event, NULL);
+}
+
 /* Functions called directly from spop */
 void interface_init() {
-    const char* ip_addr;
-    const char* port;
-    struct addrinfo hints;
-    struct addrinfo* res;
-    struct addrinfo* rp;
-    int _true = 1;
-    int ret;
+    /* Try to use systemd socket activation */
+    int n, sock;
 
-    /* Get what we need from the config */
-    ip_addr = config_get_string_opt("listen_address", NULL);
-    port = config_get_string_opt("listen_port", "6602");
-
-    /* Get corresponding addrinfo's */
-    bzero(&hints, sizeof(hints));
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_flags = AI_V4MAPPED | AI_ADDRCONFIG | AI_NUMERICHOST | AI_NUMERICSERV;
-    ret = getaddrinfo(ip_addr, port, &hints, &res);
-    if (ret != 0)
-        g_error("Can't get address info: %s", gai_strerror(ret));
-
-    /* Handle each address */
-    for (rp = res; rp != NULL; rp = rp->ai_next) {
-        char hostname[NI_MAXHOST];
-
-        ret = getnameinfo(rp->ai_addr, rp->ai_addrlen, hostname, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
-        if (ret != 0)
-            g_error("Can't convert address to text: %s", gai_strerror(ret));
-        g_debug("Will listen on %s:%s...", hostname, port);
-
-        /* Create the socket */
-        int sock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
-        if (sock < 0)
-            g_error("Can't create socket: %s", g_strerror(errno));
-        if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &_true, sizeof(int)) == -1)
-            g_error("Can't set socket options: %s", g_strerror(errno));
-
-        /* Bind the socket */
-        if (bind(sock, rp->ai_addr, rp->ai_addrlen) != 0)
-            g_error("Can't bind socket: %s", g_strerror(errno));
-
-        /* Start listening */
-        if (listen(sock, SOMAXCONN) != 0)
-            g_error("Can't listen on socket: %s", g_strerror(errno));
-
-        /* Create an IO channel and add it to the main loop */
-        GIOChannel* chan = g_io_channel_unix_new(sock);
-        if (!chan)
-            g_error("Can't create IO channel for the main socket.");
-        g_io_channel_set_close_on_unref(chan, TRUE);
-        g_io_add_watch(chan, G_IO_IN|G_IO_HUP, interface_event, NULL);
-
-        g_info("Listening on %s: %s", hostname, port);
+    n = sd_listen_fds(1);
+    if (n < 0)
+        g_error("Can't check file descriptors passed by the system manager: %s", g_strerror(errno));
+    else if (n > 0) {
+        /* Use these sockets */
+        for (sock = SD_LISTEN_FDS_START; sock < SD_LISTEN_FDS_START + n; sock++) {
+            interface_init_chan(sock);
+        }
+        g_info("Listening to %d systemd sockets", n);
     }
+    else {
+        /* Traditional socket creation... */
+        const char* ip_addr;
+        const char* port;
+        struct addrinfo hints;
+        struct addrinfo* res;
+        struct addrinfo* rp;
+        int _true = 1;
+        int ret;
 
-    freeaddrinfo(res);
+        /* Get what we need from the config */
+        ip_addr = config_get_string_opt("listen_address", NULL);
+        port = config_get_string_opt("listen_port", "6602");
+
+        /* Get corresponding addrinfo's */
+        bzero(&hints, sizeof(hints));
+        hints.ai_family = AF_UNSPEC;
+        hints.ai_socktype = SOCK_STREAM;
+        hints.ai_flags = AI_V4MAPPED | AI_ADDRCONFIG | AI_NUMERICHOST | AI_NUMERICSERV;
+        ret = getaddrinfo(ip_addr, port, &hints, &res);
+        if (ret != 0)
+            g_error("Can't get address info: %s", gai_strerror(ret));
+
+        /* Handle each address */
+        for (rp = res; rp != NULL; rp = rp->ai_next) {
+            char hostname[NI_MAXHOST];
+
+            ret = getnameinfo(rp->ai_addr, rp->ai_addrlen, hostname, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
+            if (ret != 0)
+                g_error("Can't convert address to text: %s", gai_strerror(ret));
+            g_debug("Will listen on %s:%s...", hostname, port);
+
+            /* Create the socket */
+            sock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+            if (sock < 0)
+                g_error("Can't create socket: %s", g_strerror(errno));
+            if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &_true, sizeof(int)) == -1)
+                g_error("Can't set socket options: %s", g_strerror(errno));
+
+            /* Bind the socket */
+            if (bind(sock, rp->ai_addr, rp->ai_addrlen) != 0)
+                g_error("Can't bind socket: %s", g_strerror(errno));
+
+            /* Start listening */
+            if (listen(sock, SOMAXCONN) != 0)
+                g_error("Can't listen on socket: %s", g_strerror(errno));
+
+            interface_init_chan(sock);
+            g_info("Listening on %s: %s", hostname, port);
+        }
+
+        freeaddrinfo(res);
+    }
 }
 
 /* Interface event -- accept connections, create IO channels for clients */

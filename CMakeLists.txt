@@ -65,6 +65,7 @@ set(SPOPD
   src/main.c
   src/plugin.c
   src/queue.c
+  src/sd-daemon.c
   src/spotify.c
   src/utils.c
 )
@@ -197,6 +198,9 @@ endif(SOUP_FOUND)
 
 # dspop client
 install(PROGRAMS dspop/dspop DESTINATION bin)
+
+# systemd service files
+install(DIRECTORY systemd DESTINATION lib/systemd/system)
 
 # Common to all source files
 set(SRC
