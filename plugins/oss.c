@@ -41,7 +41,7 @@
 static int g_oss_fd = -1;
 static struct pollfd g_pfd;
 static size_t g_oss_frame_size;
-static GStaticMutex g_oss_mutex = G_STATIC_MUTEX_INIT;
+static GMutex g_oss_mutex;
 
 /* "Private" functions, used to set up the OSS device */
 static void oss_open() {
@@ -106,8 +106,8 @@ static void oss_setup(const sp_audioformat* format) {
 G_MODULE_EXPORT int audio_delivery(const sp_audioformat* format, const void* frames, int num_frames) {
     int ret;
 
-    g_static_mutex_lock(&g_oss_mutex);
-    
+    g_mutex_lock(&g_oss_mutex);
+
     /* What are we supposed to do here? */
     if (num_frames == 0) {
         /* Pause: close the device */
@@ -136,6 +136,6 @@ G_MODULE_EXPORT int audio_delivery(const sp_audioformat* format, const void* fra
         }
     }
 
-    g_static_mutex_unlock(&g_oss_mutex);
+    g_mutex_unlock(&g_oss_mutex);
     return ret;
 }

@@ -30,7 +30,7 @@
 #include "config.h"
 
 /* Mutex for accessing config file */
-static GStaticMutex config_mutex = G_STATIC_MUTEX_INIT;
+static GMutex config_mutex;
 
 /* Data structure representing the configuration file */
 static GKeyFile* g_config_file = NULL;
@@ -40,11 +40,11 @@ static void config_ready() {
     gchar* cfg_path;
     GError* err;
 
-    g_static_mutex_lock(&config_mutex);
+    g_mutex_lock(&config_mutex);
 
     if (g_config_file) {
         /* Ready to use the config file */
-        g_static_mutex_unlock(&config_mutex);
+        g_mutex_unlock(&config_mutex);
         return;
     }
 
@@ -59,7 +59,7 @@ static void config_ready() {
     if (!g_key_file_load_from_file(g_config_file, cfg_path, G_KEY_FILE_NONE, &err))
         g_error("Can't read configuration file: %s", err->message);
     g_free(cfg_path);
-    g_static_mutex_unlock(&config_mutex);
+    g_mutex_unlock(&config_mutex);
 }
 
 /* Read options from the config file. To avoid repetitions, this is put in an ugly macro :) */
