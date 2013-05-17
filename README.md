@@ -46,9 +46,9 @@ Right now, several plugins are available:
 
 3. Prepare your configuration file:
 
-        mkdir -p ~/.config/spopd
-        cp spop/spopd.conf.sample ~/.config/spopd/spopd.conf
-        nano ~/.config/spopd/spopd.conf
+        mkdir -p ~/.config/spop
+        cp spop/spopd.conf.sample ~/.config/spop/spopd.conf
+        nano ~/.config/spop/spopd.conf
 
 3. Compile and run spop:
 
