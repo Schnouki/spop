@@ -38,7 +38,7 @@ static GKeyFile* g_config_file = NULL;
 /* Internal function: initialize the data structure and load the config file */
 static void config_ready() {
     gchar* cfg_path;
-    GError* err;
+    GError* err = NULL;
 
     g_mutex_lock(&config_mutex);
 
