@@ -37,6 +37,9 @@ Right now, several plugins are available:
 - *scrobble:* scrobble your music to [LastFM][] or [LibreFM][] (requires [libsoup][])
 - *awesome:* keep an eye on your player in [Awesome][], an extremely powerful
   window manager
+- *mpris2:* support the [MPRIS2][] standard to control spopd like any other
+  media player from your desktop or using the multimedia keys on your keyboard
+  (work in progress)
 
 ## How to use
 1. Install [libspotify][] (preferably using your favorite package manager)
@@ -153,4 +156,5 @@ ask me if you have any question regarding spop!
 [LibreFM]: http://libre.fm/
 [libsoup]: http://live.gnome.org/LibSoup
 [MPD]: http://mpd.wikia.com/
+[MPRIS2]: http://specifications.freedesktop.org/mpris-spec/latest/
 [premium account]: http://www.spotify.com/uk/get-spotify/overview/
