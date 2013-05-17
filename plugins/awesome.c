@@ -143,7 +143,6 @@ G_MODULE_EXPORT void spop_awesome_init() {
     GError* err = NULL;
 
     /* Init D-Bus */
-    g_type_init();
     g_connection = dbus_g_bus_get(DBUS_BUS_SESSION, &err);
     if (!g_connection)
         g_error("Can't connect to D-Bus: %s", err->message);
