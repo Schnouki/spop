@@ -74,7 +74,7 @@ add_executable(spopd ${SPOPD})
 set_target_properties(spopd PROPERTIES
   COMPILE_FLAGS "${SPOTIFY_CFLAGS} ${GLIB2_CFLAGS} ${GMODULE2_CFLAGS} ${GTHREAD2_CFLAGS} ${JSON_GLIB_CFLAGS}"
 )
-target_link_libraries(spopd dl ${SPOTIFY_LIBRARIES} ${GLIB2_LIBRARIES}
+target_link_libraries(spopd dl rt ${SPOTIFY_LIBRARIES} ${GLIB2_LIBRARIES}
   ${GMODULE2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${JSON_GLIB_LIBRARIES})
 set(targets ${targets} spopd)
 
