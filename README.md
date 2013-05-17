@@ -43,18 +43,18 @@ Right now, several plugins are available:
 2. Download spop's source code:
 
         git clone git://github.com/Schnouki/spop.git
-        
+
 3. Prepare your configuration file:
 
         mkdir -p ~/.config/spopd
         cp spop/spopd.conf.sample ~/.config/spopd/spopd.conf
         nano ~/.config/spopd/spopd.conf
-        
+
 3. Compile and run spop:
 
         cd spop
         ./build_and_run -fv
-        
+
 4. Connect to the daemon and issue some commands:
 
         telnet localhost 6602
