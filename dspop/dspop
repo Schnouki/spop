@@ -87,7 +87,7 @@ def format_track(track):
     s = s.replace("%A%", track["artist"])
     s = s.replace("%T%", track["title"])
     s = s.replace("%a%", track["album"])
-    s = s.replace("%d%", "%d:%02d" % divmod(track["duration"], 60))
+    s = s.replace("%d%", "%d:%02d" % divmod(track["duration"]/1000, 60))
     s = s.replace("%U%", track["uri"])
 
     return s
@@ -177,7 +177,7 @@ def menu_playlist(sc, idx):
         return False
     else:
         sc.play(idx, choice-1)
-        return True        
+        return True
 # }}}
 
 if __name__ == "__main__":
