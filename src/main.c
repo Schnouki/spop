@@ -97,6 +97,11 @@ int main(int argc, char** argv) {
     g_set_application_name("spop " SPOP_VERSION);
     g_set_prgname("spop");
 
+    /* PulseAudio properties */
+    g_setenv("PULSE_PROP_application.name", "spop " SPOP_VERSION, TRUE);
+    g_setenv("PULSE_PROP_media.role", "music", TRUE);
+    //g_setenv("PULSE_PROP_application.icon_name", "music", TRUE);
+
     printf("%s\n", copyright_notice);
 
     /* Log handler */

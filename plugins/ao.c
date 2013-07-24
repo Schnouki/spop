@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include "spop.h"
 #include "audio.h"
 
 #define BUFSIZE  8192
@@ -44,6 +45,7 @@ typedef struct {
 static gboolean g_ao_init = FALSE;
 static int g_ao_driver = -1;
 static ao_device* g_ao_dev = NULL;
+static ao_option* g_ao_options = NULL;
 static size_t g_ao_frame_size;
 
 static GQueue* g_free_bufs = NULL;
@@ -111,6 +113,7 @@ static void lao_setup(const sp_audioformat* format) {
 
         ao_initialize();
         g_ao_driver = ao_default_driver_id();
+        ao_append_option(&g_ao_options, "client_name", "spop " SPOP_VERSION);
 
         g_free_bufs = g_queue_new();
         if (!g_free_bufs)
@@ -146,7 +149,7 @@ static void lao_setup(const sp_audioformat* format) {
     g_ao_frame_size = sizeof(int16_t) * format->channels;
 
     /* Open the device */
-    g_ao_dev = ao_open_live(g_ao_driver, &lao_fmt, NULL);
+    g_ao_dev = ao_open_live(g_ao_driver, &lao_fmt, g_ao_options);
     if (!g_ao_dev)
         g_error("Error while opening libao device: %s", lao_strerror());
 }
