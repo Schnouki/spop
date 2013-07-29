@@ -28,10 +28,10 @@ import socket
 import subprocess
 
 # {{{ Parameters
-# %n%: number - %A%: artist - %T%: title - %a%: album - %d%: duration - %U%: URI
-TRACK_FMT="%n% - %a% - %A% - %T% (%d%)"
+# Possible values: {index}, {artist}, {track}, {album}, {duration}, {uri}
+TRACK_FMT = "{index} - {album} - {artist} - {track} ({duration})"
 
-DMENU_OPTS=["-i",  "-l", "40"]
+DMENU_OPTS = ["-i",  "-l", "40"]
 # }}}
 # {{{ Spop client
 class SpopClient:
@@ -82,15 +82,15 @@ def dmenu(items):
     return items.index(out)
 
 def format_track(track):
-    s = TRACK_FMT
-    s = s.replace("%n%", str(track["index"]))
-    s = s.replace("%A%", track["artist"])
-    s = s.replace("%T%", track["title"])
-    s = s.replace("%a%", track["album"])
-    s = s.replace("%d%", "%d:%02d" % divmod(track["duration"]/1000, 60))
-    s = s.replace("%U%", track["uri"])
-
-    return s
+    params = {
+        "album": track["album"],
+        "artist": track["artist"],
+        "duration": "%d:%02d" % divmod(track["duration"]/1000, 60),
+        "index": track["index"],
+        "track": track["title"],
+        "uri": track["uri"]
+    }
+    return TRACK_FMT.format(**params)
 
 def format_folder(items, indent=0):
     dst, indices = [], []
@@ -105,7 +105,7 @@ def format_folder(items, indent=0):
             dst.extend(rdst)
             indices.extend(rind)
         elif it["type"] == "playlist":
-            dst.append(" "*indent + "%s (%d)" % (it["name"], it["tracks"]))
+            dst.append(" "*indent + "{0[name]} ({0[tracks]})".format(it))
             indices.append(it["index"])
     return dst, indices
 # }}}
