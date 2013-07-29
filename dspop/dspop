@@ -58,9 +58,9 @@ class SpopClient:
                     pass
 
     def __getattr__(self, name):
-        if name in ("repeat", "shuffle", "qclear", "qls", "ls", "goto", "add", "play"):
+        if name in ("repeat", "shuffle", "qclear", "qls", "ls", "goto", "add", "play", "offline_toggle"):
             def func(*attrs):
-                return self._command(name, *attrs)
+                return self._command(name.replace("_", "-"), *attrs)
             return func
         else:
             raise AttributeError
@@ -92,20 +92,24 @@ def format_track(track):
     }
     return TRACK_FMT.format(**params)
 
-def format_folder(items, indent=0):
+def format_folder(items, indent=0, offline_status=False):
     dst, indices = [], []
     for it in items:
         if it["type"] == "separator":
-            dst.append(" "*indent + "-"*40)
+            dst.append(" " * (indent + (4 if offline_status else 0)) + "-"*40)
             indices.append(None)
         elif it["type"] == "folder":
-            dst.append(" "*indent + "+ " + it["name"])
+            dst.append(" " * (indent + (4 if offline_status else 0)) + "+ " + it["name"])
             indices.append(None)
-            rdst, rind = format_folder(it["playlists"], indent+2)
+            rdst, rind = format_folder(it["playlists"], indent+2, offline_status)
             dst.extend(rdst)
             indices.extend(rind)
         elif it["type"] == "playlist":
-            dst.append(" "*indent + "{0[name]} ({0[tracks]})".format(it))
+            s = " "*indent
+            if offline_status:
+                s = ("[X] " if it["offline"] else "[ ] ") + s
+            s += "{0[name]} ({0[tracks]})".format(it)
+            dst.append(s)
             indices.append(it["index"])
     return dst, indices
 # }}}
@@ -113,7 +117,7 @@ def format_folder(items, indent=0):
 def main_menu(sc):
     done = False
     while not done:
-        choice = dmenu(["[ Queue ]>", "[ Playlists ]>", "[ Repeat ]", "[ Shuffle ]"])
+        choice = dmenu(["[ Queue ]>", "[ Playlists ]>", "[ Offline playlists ]>", "[ Repeat ]", "[ Shuffle ]"])
 
         if choice is None:
             done = True
@@ -122,6 +126,8 @@ def main_menu(sc):
         elif choice == 1:
             done = menu_playlists(sc)
         elif choice == 2:
+            menu_offline(sc)
+        elif choice == 3:
             sc.repeat()
         else:
             sc.shuffle()
@@ -178,6 +184,19 @@ def menu_playlist(sc, idx):
     else:
         sc.play(idx, choice-1)
         return True
+
+def menu_offline(sc):
+    while True:
+        pls = sc.ls()["playlists"]
+        items, indices = format_folder(pls, offline_status=True)
+        choice = dmenu(items)
+        if choice is None:
+            return False
+        else:
+            idx = indices[choice]
+            if idx is None:
+                continue
+            sc.offline_toggle(idx)
 # }}}
 
 if __name__ == "__main__":
