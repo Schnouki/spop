@@ -34,14 +34,31 @@ audio_delivery_func_ptr g_audio_delivery_func = NULL;
 
 static GList* g_plugins_close_functions = NULL;
 
+static GModule* plugin_open(char* module_name, char** search_path, gsize size_search_path) {
+    int i;
+    gchar* module_path;
+    GModule* module;
+
+    for (i=0; i < size_search_path; i++) {
+        module_path = g_module_build_path(search_path[i], module_name);
+        module = g_module_open(module_path, G_MODULE_BIND_LAZY);
+        g_free(module_path);
+        if (module)
+            return module;
+    }
+    return g_module_open(module_name, G_MODULE_BIND_LAZY);
+}
+
 void plugins_init() {
     GString* module_name = NULL;
     GModule* module;
 
     gchar* audio_output;
 
+    char** search_path;
+    gsize search_path_size;
     char** plugins;
-    gsize size;
+    gsize plugins_size;
     void (*plugin_init)();
     void (*plugin_close)();
 
@@ -51,11 +68,13 @@ void plugins_init() {
     if (!module_name)
         g_error("Can't allocate memory.");
 
+    search_path = config_get_string_list("plugins_search_path", &search_path_size);
+
     /* Load audio plugin */
     audio_output = config_get_string("audio_output");
     g_string_printf(module_name, "libspop_audio_%s", audio_output);
 
-    module = g_module_open(module_name->str, G_MODULE_BIND_LAZY);
+    module = plugin_open(module_name->str, search_path, search_path_size);
     if (!module)
         g_error("Can't load %s audio plugin: %s", audio_output, g_module_error());
 
@@ -63,14 +82,14 @@ void plugins_init() {
         g_error("Can't find symbol in audio plugin: %s", g_module_error());
 
     /* Now load other plugins */
-    plugins = config_get_string_list("plugins", &size);
-    for (i=0; i < size; i++) {
+    plugins = config_get_string_list("plugins", &plugins_size);
+    for (i=0; i < plugins_size; i++) {
         g_strstrip(plugins[i]);
         g_info("Loading plugin %s...", plugins[i]);
 
         /* Load the module and the symbols (spop_<module>_init and spop_<module>_close) */
         g_string_printf(module_name, "libspop_plugin_%s", plugins[i]);
-        module = g_module_open(module_name->str, G_MODULE_BIND_LAZY);
+        module = plugin_open(module_name->str, search_path, search_path_size);
         if (!module) {
             g_warning("Can't load plugin \"%s\": %s", plugins[i], g_module_error());
             continue;
@@ -95,6 +114,7 @@ void plugins_init() {
     }
     g_string_free(module_name, TRUE);
     g_strfreev(plugins);
+    g_strfreev(search_path);
 }
 
 void plugins_close() {
