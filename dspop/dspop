@@ -117,19 +117,28 @@ def format_folder(items, indent=0, offline_status=False):
 def main_menu(sc):
     done = False
     while not done:
-        choice = dmenu(["[ Queue ]>", "[ Playlists ]>", "[ Offline playlists ]>", "[ Repeat ]", "[ Shuffle ]"])
+        choices = [
+            ("queue",     "[ Queue ]>"),
+            ("playlists", "[ Playlists ]>"),
+            ("repeat",    "[ Repeat ]"),
+            ("shuffle",   "[ Shuffle ]"),
+            ("sep",       "-"*40),
+            ("offline",   "[ Offline playlists ]>"),
+        ]
+        idx = dmenu([ch[1] for ch in choices])
+        choice = None if idx is None else choices[idx][0]
 
         if choice is None:
             done = True
-        elif choice == 0:
+        elif choice == "queue":
             done = menu_queue(sc)
-        elif choice == 1:
+        elif choice == "playlists":
             done = menu_playlists(sc)
-        elif choice == 2:
+        elif choice == "offline":
             menu_offline(sc)
-        elif choice == 3:
+        elif choice == "repeat":
             sc.repeat()
-        else:
+        elif choice == "shuffle":
             sc.shuffle()
 
 def menu_queue(sc):
@@ -202,3 +211,7 @@ def menu_offline(sc):
 if __name__ == "__main__":
     sc = SpopClient("localhost", 6602)
     main_menu(sc)
+
+# Local Variables:
+# mode: python
+# End:
