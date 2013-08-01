@@ -30,6 +30,8 @@ import subprocess
 # {{{ Parameters
 # Possible values: {index}, {artist}, {track}, {album}, {duration}, {uri}
 TRACK_FMT = "{index} - {album} - {artist} - {track} ({duration})"
+SEARCH_ALBUM_FMT = "{album} - {artist}"
+SEARCH_TRACK_FMT = "{album} - {artist} - {track} ({duration})"
 
 DMENU_OPTS = ["-i",  "-l", "40"]
 # }}}
@@ -58,7 +60,8 @@ class SpopClient:
                     pass
 
     def __getattr__(self, name):
-        if name in ("repeat", "shuffle", "qclear", "qls", "ls", "goto", "add", "play", "offline_toggle"):
+        if name in ("repeat", "shuffle", "qclear", "qls", "ls", "goto", "add", "play", "offline_toggle",
+                    "search", "uadd", "uplay"):
             def func(*attrs):
                 return self._command(name.replace("_", "-"), *attrs)
             return func
@@ -80,6 +83,33 @@ def dmenu(items):
 
     out = out[:-1].decode()
     return items.index(out)
+
+def dmenu_input(prompt):
+    args = ["dmenu", "-p", prompt]
+    args.extend(DMENU_OPTS)
+    p = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    out, _ = p.communicate()
+    return out[:-1].decode()
+
+
+def format_search_album(track):
+    params = {
+        "album": track["title"],
+        "artist": track["artist"],
+        "uri": track["uri"]
+    }
+    return SEARCH_ALBUM_FMT.format(**params)
+
+def format_search_track(track):
+    params = {
+        "album": track["album"],
+        "artist": track["artist"],
+        "duration": "%d:%02d" % divmod(track["duration"]/1000, 60),
+        "index": track["index"],
+        "track": track["title"],
+        "uri": track["uri"]
+    }
+    return SEARCH_TRACK_FMT.format(**params)
 
 def format_track(track):
     params = {
@@ -123,6 +153,7 @@ def main_menu(sc):
             ("repeat",    "[ Repeat ]"),
             ("shuffle",   "[ Shuffle ]"),
             ("sep",       "-"*40),
+            ("search",    "[ Search ]>"),
             ("offline",   "[ Offline playlists ]>"),
         ]
         idx = dmenu([ch[1] for ch in choices])
@@ -140,6 +171,8 @@ def main_menu(sc):
             sc.repeat()
         elif choice == "shuffle":
             sc.shuffle()
+        elif choice == "search":
+            done = menu_search(sc)
 
 def menu_queue(sc):
     items = ["[ Clear queue ]"]
@@ -206,6 +239,41 @@ def menu_offline(sc):
             if idx is None:
                 continue
             sc.offline_toggle(idx)
+
+def menu_search(sc):
+    query = dmenu_input("Query:")
+    if len(query) == 0:
+        return False
+
+    res = sc.search(query)
+    items = []
+
+    if len(res["albums"]) > 0:
+        items.append((None, "Albums:"))
+        for album in res["albums"]:
+            if not album["available"]:
+                continue
+            items.append((album["uri"], "  " + format_search_album(album)))
+
+    if len(res["tracks"]) > 0:
+        items.append((None, "Tracks:"))
+        for track in res["tracks"]:
+            if not track["available"]:
+                continue
+            items.append((track["uri"], "  " + format_search_track(track)))
+
+    while True:
+        idx = dmenu([it[1] for it in items])
+        uri = None if idx is None else items[idx][0]
+        if uri is None:
+            return False
+
+        sel_items = ["[ Set as queue ]", "[ Add to queue ]"]
+        sel_choice = dmenu(sel_items)
+        if sel_choice == 0:
+            sc.uplay(uri)
+        elif sel_choice == 1:
+            sc.uadd(uri)
 # }}}
 
 if __name__ == "__main__":
