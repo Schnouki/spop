@@ -248,14 +248,14 @@ def menu_search(sc):
     res = sc.search(query)
     items = []
 
-    if len(res["albums"]) > 0:
+    if "albums" in res and len(res["albums"]) > 0:
         items.append((None, "Albums:"))
         for album in res["albums"]:
             if not album["available"]:
                 continue
             items.append((album["uri"], "  " + format_search_album(album)))
 
-    if len(res["tracks"]) > 0:
+    if "tracks" in res and len(res["tracks"]) > 0:
         items.append((None, "Tracks:"))
         for track in res["tracks"]:
             if not track["available"]:
