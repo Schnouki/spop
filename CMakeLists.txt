@@ -196,6 +196,19 @@ if(SOUP_FOUND)
   set(targets ${targets} spop_plugin_scrobble)
 endif(SOUP_FOUND)
 
+# Generic plugin: web
+if(SOUP_FOUND)
+  set(PLUGIN_WEB
+    plugins/web.c
+  )
+  add_library(spop_plugin_web MODULE ${PLUGIN_WEB})
+  set_target_properties(spop_plugin_web PROPERTIES
+    COMPILE_FLAGS "${GLIB2_CFLAGS} ${JSON_GLIB_CFLAGS} ${SOUP_CFLAGS}"
+  )
+  target_link_libraries(spop_plugin_web ${GLIB2_LIBRARIES} ${JSON_GLIB_LIBRARIES} ${SOUP_LIBRARIES})
+  set(targets ${targets} spop_plugin_web)
+endif(SOUP_FOUND)
+
 # dspop client
 install(PROGRAMS dspop/dspop DESTINATION bin)
 

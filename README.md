@@ -40,6 +40,8 @@ Right now, several plugins are available:
 - *mpris2:* support the [MPRIS2][] standard to control spopd like any other
   media player from your desktop or using the multimedia keys on your keyboard
   (work in progress)
+- *web:* provide an HTTP API to run commands from any browser of HTTP client
+  (requires [libsoup][])
 
 ## How to use
 1. Install [libspotify][] (preferably using your favorite package manager)
@@ -133,8 +135,14 @@ the following commands:
 - `bye`: close the connection to the spop daemon
 - `quit`: exit spop
 
-## Furthermore...
+If you enable the *web* plugin, you will be able to use almost all of these
+commands from your favourite HTTP client:
 
+    $ curl -i http://localhost:8080/api/ls
+    $ curl -i http://localhost:8080/api/play/1/2
+    $ curl -i http://localhost:8080/api/search/artist:"Sigur%20Rós"
+
+## Furthermore...
 This doc is probably lacking a gazillion useful informations, so feel free to
 ask me if you have any question regarding spop!
 
