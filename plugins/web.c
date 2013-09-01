@@ -31,23 +31,37 @@
 #include "spop.h"
 #include "commands.h"
 #include "config.h"
+#include "interface.h"
 #include "spotify.h"
 
 #define WEB_DEFAULT_IP   "127.0.0.1"
 #define WEB_DEFAULT_PORT 8080
 
-/* Command finalizer (for async commands) */
 typedef struct {
     SoupServer* server;
     SoupMessage* msg;
-} web_command_context;
-static void web_command_finalize(gchar* json_result, web_command_context* ctx) {
+} web_context;
+
+/* Command finalizer (for async commands) */
+static void web_command_finalize(gchar* json_result, web_context* ctx) {
     /* Send the JSON response to the client */
     soup_message_set_status(ctx->msg, SOUP_STATUS_OK);
     soup_message_set_response(ctx->msg, "application/json", SOUP_MEMORY_COPY,
                               json_result, strlen(json_result));
     soup_server_unpause_message(ctx->server, ctx->msg);
     g_free(ctx);
+}
+
+/* Callback for the idle command */
+static void web_idle_notify(const GString* status, web_context* ctx) {
+    /* Send the JSON status to the client */
+    soup_message_set_status(ctx->msg, SOUP_STATUS_OK);
+    soup_message_set_response(ctx->msg, "application/json", SOUP_MEMORY_COPY,
+                              status->str, status->len);
+    soup_server_unpause_message(ctx->server, ctx->msg);
+    interface_notify_remove_callback((spop_notify_callback_ptr) web_idle_notify, ctx);
+    g_free(ctx);
+
 }
 
 /* Requests handler */
@@ -103,11 +117,11 @@ static void web_api_handler(SoupServer* server, SoupMessage* msg,
     g_debug("web: found command %s with %d parameter(s)", cmd_desc->name, cmd_len-1);
 
     /* Run the command if possible */
-    web_command_context* ctx = NULL;
+    web_context* ctx = NULL;
     switch(cmd_desc->type) {
     case CT_FUNC:
         /* Run the command asynchronously */
-        ctx = g_new0(web_command_context, 1);
+        ctx = g_new0(web_context, 1);
         ctx->server = server;
         ctx->msg = msg;
         soup_server_pause_message(server, msg);
@@ -116,6 +130,13 @@ static void web_api_handler(SoupServer* server, SoupMessage* msg,
         break;
 
     case CT_IDLE:
+        /* Register the notification callback */
+        ctx = g_new0(web_context, 1);
+        ctx->server = server;
+        ctx->msg = msg;
+        soup_server_pause_message(server, msg);
+        if (!interface_notify_add_callback((spop_notify_callback_ptr) web_idle_notify, ctx))
+            g_error("Could not add a web idle callback.");
         break;
 
     default:
