@@ -37,7 +37,15 @@ typedef struct {
     void*       func;
     command_arg args[MAX_CMD_ARGS];
 } command_descriptor;
-typedef void (*command_finalize_func)(gchar* json_result, gpointer data);
+typedef enum { CT_FUNC=0, CT_BYE, CT_QUIT, CT_IDLE } command_type;
+typedef struct {
+    gchar*             name;
+    command_type       type;
+    command_descriptor desc;
+} command_full_descriptor;
+extern command_full_descriptor commands_descriptors[];
+
+typedef void (*command_finalize_func)(const gchar* json_result, gpointer data);
 typedef struct {
     JsonBuilder* jb;
     command_finalize_func finalize;

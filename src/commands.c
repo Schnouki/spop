@@ -108,6 +108,53 @@ static void json_playlist_offline_status(sp_playlist* pl, JsonBuilder* jb) {
     }
 }
 /* }}} */
+/* {{{ Commands descriptors */
+command_full_descriptor commands_descriptors[] = {
+    { "ls",      CT_FUNC, { list_playlists, {CA_NONE}}},
+    { "ls",      CT_FUNC, { list_tracks,    {CA_INT, CA_NONE}}},
+
+    { "status",  CT_FUNC, { status,  {CA_NONE}}},
+    { "repeat",  CT_FUNC, { repeat,  {CA_NONE}}},
+    { "shuffle", CT_FUNC, { shuffle, {CA_NONE}}},
+
+    { "qls",     CT_FUNC, { list_queue,         {CA_NONE}}},
+    { "qclear",  CT_FUNC, { clear_queue,        {CA_NONE}}},
+    { "qrm",     CT_FUNC, { remove_queue_item,  {CA_INT, CA_NONE}}},
+    { "qrm",     CT_FUNC, { remove_queue_items, {CA_INT, CA_INT}}},
+
+    { "play",    CT_FUNC, { play_playlist, {CA_INT, CA_NONE}}},
+    { "play",    CT_FUNC, { play_track,    {CA_INT, CA_INT}} },
+
+    { "add",     CT_FUNC, { add_playlist, {CA_INT, CA_NONE}}},
+    { "add",     CT_FUNC, { add_track,    {CA_INT, CA_INT}} },
+
+    { "play",    CT_FUNC, { play,   {CA_NONE}}},
+    { "toggle",  CT_FUNC, { toggle, {CA_NONE}}},
+    { "stop",    CT_FUNC, { stop,   {CA_NONE}}},
+    { "seek",    CT_FUNC, { seek,   {CA_INT, CA_NONE}}},
+
+    { "next",    CT_FUNC, { goto_next, {CA_NONE}}},
+    { "prev",    CT_FUNC, { goto_prev, {CA_NONE}}},
+    { "goto",    CT_FUNC, { goto_nb,   {CA_INT, CA_NONE}}},
+
+    { "offline-status", CT_FUNC, { offline_status, {CA_NONE}}},
+    { "offline-toggle", CT_FUNC, { offline_toggle, {CA_INT, CA_NONE}}},
+
+    { "image",   CT_FUNC, { image, {CA_NONE}}},
+
+    { "uinfo",   CT_FUNC, { uri_info, {CA_URI, CA_NONE}}},
+    { "uadd",    CT_FUNC, { uri_add,  {CA_URI, CA_NONE}}},
+    { "uplay",   CT_FUNC, { uri_play, {CA_URI, CA_NONE}}},
+
+    { "search",  CT_FUNC, { search, {CA_STR, CA_NONE}}},
+
+    { "bye",     CT_BYE,  {}},
+    { "quit",    CT_QUIT, {}},
+    { "idle",    CT_IDLE, {}},
+
+    {  NULL, 0, {}}
+};
+/* }}} */
 /* {{{ Commands management */
 #define CMD_CALLBACK_WAIT_TIME 100
 #define CMD_CALLBACK_MAX_CALLS  30

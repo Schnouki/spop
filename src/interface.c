@@ -54,58 +54,6 @@ typedef struct {
     gpointer data;
 } notification_callback;
 
-typedef enum { CT_FUNC=0, CT_BYE, CT_QUIT, CT_IDLE } command_type;
-typedef struct {
-    gchar*             name;
-    command_type       type;
-    command_descriptor desc;
-} command_full_descriptor;
-static command_full_descriptor g_commands[] = {
-    { "ls",      CT_FUNC, { list_playlists, {CA_NONE}}},
-    { "ls",      CT_FUNC, { list_tracks,    {CA_INT, CA_NONE}}},
-
-    { "status",  CT_FUNC, { status,  {CA_NONE}}},
-    { "repeat",  CT_FUNC, { repeat,  {CA_NONE}}},
-    { "shuffle", CT_FUNC, { shuffle, {CA_NONE}}},
-
-    { "qls",     CT_FUNC, { list_queue,         {CA_NONE}}},
-    { "qclear",  CT_FUNC, { clear_queue,        {CA_NONE}}},
-    { "qrm",     CT_FUNC, { remove_queue_item,  {CA_INT, CA_NONE}}},
-    { "qrm",     CT_FUNC, { remove_queue_items, {CA_INT, CA_INT}}},
-
-    { "play",    CT_FUNC, { play_playlist, {CA_INT, CA_NONE}}},
-    { "play",    CT_FUNC, { play_track,    {CA_INT, CA_INT}} },
-
-    { "add",     CT_FUNC, { add_playlist, {CA_INT, CA_NONE}}},
-    { "add",     CT_FUNC, { add_track,    {CA_INT, CA_INT}} },
-
-    { "play",    CT_FUNC, { play,   {CA_NONE}}},
-    { "toggle",  CT_FUNC, { toggle, {CA_NONE}}},
-    { "stop",    CT_FUNC, { stop,   {CA_NONE}}},
-    { "seek",    CT_FUNC, { seek,   {CA_INT, CA_NONE}}},
-
-    { "next",    CT_FUNC, { goto_next, {CA_NONE}}},
-    { "prev",    CT_FUNC, { goto_prev, {CA_NONE}}},
-    { "goto",    CT_FUNC, { goto_nb,   {CA_INT, CA_NONE}}},
-
-    { "offline-status", CT_FUNC, { offline_status, {CA_NONE}}},
-    { "offline-toggle", CT_FUNC, { offline_toggle, {CA_INT, CA_NONE}}},
-
-    { "image",   CT_FUNC, { image, {CA_NONE}}},
-
-    { "uinfo",   CT_FUNC, { uri_info, {CA_URI, CA_NONE}}},
-    { "uadd",    CT_FUNC, { uri_add,  {CA_URI, CA_NONE}}},
-    { "uplay",   CT_FUNC, { uri_play, {CA_URI, CA_NONE}}},
-
-    { "search",  CT_FUNC, { search, {CA_STR, CA_NONE}}},
-
-    { "bye",     CT_BYE,  {}},
-    { "quit",    CT_QUIT, {}},
-    { "idle",    CT_IDLE, {}},
-
-    {  NULL, 0, {}}
-};
-
 /* Internal helper */
 static void interface_init_chan(int sock) {
     /* Create an IO channel and add it to the main loop */
@@ -326,12 +274,12 @@ command_result interface_handle_command(GIOChannel* chan, gchar* command){
     /* Now execute the command */
     command_full_descriptor* cmd_desc = NULL;
 
-    for (i=0; g_commands[i].name != NULL; i++) {
+    for (i=0; commands_descriptors[i].name != NULL; i++) {
         int nb_args = 0;
-        while ((nb_args < MAX_CMD_ARGS) && (g_commands[i].desc.args[nb_args] != CA_NONE))
+        while ((nb_args < MAX_CMD_ARGS) && (commands_descriptors[i].desc.args[nb_args] != CA_NONE))
             nb_args += 1;
-        if ((strcmp(g_commands[i].name, argv[0]) == 0) && (nb_args == argc-1)) {
-            cmd_desc = &(g_commands[i]);
+        if ((strcmp(commands_descriptors[i].name, argv[0]) == 0) && (nb_args == argc-1)) {
+            cmd_desc = &(commands_descriptors[i]);
             break;
         }
     }
