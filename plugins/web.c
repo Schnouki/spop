@@ -46,7 +46,7 @@ typedef struct {
 static void web_command_finalize(gchar* json_result, web_context* ctx) {
     /* Send the JSON response to the client */
     soup_message_set_status(ctx->msg, SOUP_STATUS_OK);
-    soup_message_set_response(ctx->msg, "application/json", SOUP_MEMORY_COPY,
+    soup_message_set_response(ctx->msg, "application/json; charset=utf-8", SOUP_MEMORY_COPY,
                               json_result, strlen(json_result));
     soup_server_unpause_message(ctx->server, ctx->msg);
     g_free(ctx);
@@ -56,7 +56,7 @@ static void web_command_finalize(gchar* json_result, web_context* ctx) {
 static void web_idle_notify(const GString* status, web_context* ctx) {
     /* Send the JSON status to the client */
     soup_message_set_status(ctx->msg, SOUP_STATUS_OK);
-    soup_message_set_response(ctx->msg, "application/json", SOUP_MEMORY_COPY,
+    soup_message_set_response(ctx->msg, "application/json; charset=utf-8", SOUP_MEMORY_COPY,
                               status->str, status->len);
     soup_server_unpause_message(ctx->server, ctx->msg);
     interface_notify_remove_callback((spop_notify_callback_ptr) web_idle_notify, ctx);
