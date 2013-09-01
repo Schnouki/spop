@@ -407,9 +407,26 @@ gboolean interface_notify_add_callback(spop_notify_callback_ptr func, gpointer d
     }
 
     /* Callback/data not in the list: add them */
-    ncb = g_malloc(sizeof(notification_callback));
+    ncb = g_new0(notification_callback, 1);
     ncb->func = func;
     ncb->data = data;
     g_notification_callbacks = g_list_prepend(g_notification_callbacks, ncb);
     return TRUE;
+}
+
+gboolean interface_notify_remove_callback(spop_notify_callback_ptr func, gpointer data) {
+    notification_callback* ncb;
+    GList* cur;
+
+    /* Look for the callback/data couple in the list */
+    cur = g_notification_callbacks;
+    while (cur != NULL) {
+        ncb = cur->data;
+        if ((ncb->func == func) && (ncb->data == data)) {
+            g_notification_callbacks = g_list_delete_link(g_notification_callbacks, cur);
+            return TRUE;
+        }
+        cur = cur->next;
+    }
+    return FALSE;
 }
