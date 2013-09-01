@@ -71,9 +71,9 @@ If you want to install spop somewhere on your system, do the following steps:
     sudo make install
 
 ## Commands
-At the moment, spop can not modify your playlists or do any search on Spotify
-(but this will come...). So you will have to create some playlists using the
-official Spotify client. Then, you will be able to use the following commands:
+At the moment, spop can not modify your playlists. So you will have to create
+some playlists using the official Spotify client. Then, you will be able to use
+the following commands:
 
 - `ls`: list all your playlists
 - `ls pl`: list the contents of playlist number `pl`
@@ -141,7 +141,6 @@ ask me if you have any question regarding spop!
 - On GitHub: <https://github.com/inbox/new/Schnouki>
 - By e-mail: <`my_nickname@my_nickname.net`> (by the way, my nickname
   is "Schnouki")
-- On identi.ca: <http://identi.ca/schnouki>
 - On Twitter: <http://www.twitter.com/Schnouki>
 
 [Awesome]: http://awesome.naquadah.org/
