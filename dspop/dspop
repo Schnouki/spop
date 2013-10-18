@@ -29,9 +29,9 @@ import subprocess
 
 # {{{ Parameters
 # Possible values: {index}, {artist}, {track}, {album}, {duration}, {uri}
-TRACK_FMT = "{index} - {album} - {artist} - {track} ({duration})"
-SEARCH_ALBUM_FMT = "{album} - {artist}"
-SEARCH_TRACK_FMT = "{album} - {artist} - {track} ({duration})"
+TRACK_FMT = "{index} - {artist} - {album} - {track} ({duration})"
+SEARCH_ALBUM_FMT = "({year}) {artist} - {album} ({tracks} tracks)"
+SEARCH_TRACK_FMT = "{artist} - {album} - {track} ({duration})"
 
 DMENU_OPTS = ["-i",  "-l", "40"]
 # }}}
@@ -61,7 +61,7 @@ class SpopClient:
 
     def __getattr__(self, name):
         if name in ("repeat", "shuffle", "qclear", "qls", "ls", "goto", "add", "play", "offline_toggle",
-                    "search", "uadd", "uplay"):
+                    "search", "uadd", "uinfo", "uplay"):
             def func(*attrs):
                 return self._command(name.replace("_", "-"), *attrs)
             return func
@@ -92,11 +92,13 @@ def dmenu_input(prompt):
     return out[:-1].decode()
 
 
-def format_search_album(track):
+def format_search_album(album):
     params = {
-        "album": track["title"],
-        "artist": track["artist"],
-        "uri": track["uri"]
+        "album": album["title"],
+        "artist": album["artist"],
+        "year": album["year"],
+        "type": album["album_type"],
+        "tracks": len(album["tracks"]),
     }
     return SEARCH_ALBUM_FMT.format(**params)
 
@@ -247,13 +249,22 @@ def menu_search(sc):
 
     res = sc.search(query)
     items = []
+    albums, singles = [], []
 
     if "albums" in res and len(res["albums"]) > 0:
-        items.append((None, "Albums:"))
         for album in res["albums"]:
             if not album["available"]:
                 continue
-            items.append((album["uri"], "  " + format_search_album(album)))
+            ainfo = sc.uinfo(album["uri"])
+            item = (album["uri"], "  " + format_search_album(ainfo))
+            if ainfo["album_type"] == "single":
+                singles.append(item)
+            else:
+                albums.append(item)
+
+    if len(albums) > 0:
+        items.append((None, "Albums:"))
+        items.extend(albums)
 
     if "tracks" in res and len(res["tracks"]) > 0:
         items.append((None, "Tracks:"))
@@ -261,6 +272,10 @@ def menu_search(sc):
             if not track["available"]:
                 continue
             items.append((track["uri"], "  " + format_search_track(track)))
+
+    if len(singles) > 0:
+        items.append((None, "Singles:"))
+        items.extend(singles)
 
     while True:
         idx = dmenu([it[1] for it in items])
