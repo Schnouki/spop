@@ -35,7 +35,7 @@
 #include "audio.h"
 
 #define BUFSIZE  8192
-#define BUFNB    8
+#define BUFNB    16
 
 typedef struct {
     size_t size;
@@ -55,6 +55,10 @@ static GQueue* g_free_bufs = NULL;
 static GQueue* g_full_bufs = NULL;
 static GMutex g_buf_mutex;
 static GCond g_play_cond;
+
+/* Prototypes for private functions */
+static void lao_setup(const sp_audioformat* format);
+static void lao_close();
 
 /* My own strerror for libao */
 static const char* lao_strerror(void) {
@@ -97,17 +101,28 @@ static void* lao_player(gpointer data) {
             g_queue_push_tail(g_free_bufs, buf);
         }
         else {
-            /* Nothing to play: wait */
+            /* Nothing to play */
             if (g_playing)
                 g_stutters += 1;
-            g_cond_wait(&g_play_cond, &g_buf_mutex);
+
+            /* Wait for new data to be available. If nothing happens in a few
+               seconds, playback may have stopped for good. In that case it
+               makes sense to close the device. */
+            gint64 wait_end = g_get_monotonic_time() + 5 * G_TIME_SPAN_SECOND;
+            if (!g_cond_wait_until(&g_play_cond, &g_buf_mutex, wait_end)) {
+                /* Timeout: better reset the device */
+                lao_close();
+
+                /* Now wait until we're ready to play again */
+                g_cond_wait(&g_play_cond, &g_buf_mutex);
+            }
         }
     }
 
     return NULL;
 }
 
-/* "Private" functions, used to set up the libao device */
+/* "Private" function, used to set up the libao device */
 static void lao_setup(const sp_audioformat* format) {
     ao_sample_format lao_fmt;
 
@@ -157,6 +172,14 @@ static void lao_setup(const sp_audioformat* format) {
     g_ao_dev = ao_open_live(g_ao_driver, &lao_fmt, g_ao_options);
     if (!g_ao_dev)
         g_error("Error while opening libao device: %s", lao_strerror());
+}
+
+/* "Private" function, used to shut down the libao device */
+static void lao_close() {
+    if (g_ao_dev) {
+        ao_close(g_ao_dev);
+        g_ao_dev = NULL;
+    }
 }
 
 /* "Public" function, called from a libspotify callback */
