@@ -127,6 +127,8 @@ def format_track(track):
 def format_folder(items, indent=0, offline_status=False):
     dst, indices = [], []
     for it in items:
+        if not it:
+            continue
         if it["type"] == "separator":
             dst.append(" " * (indent + (4 if offline_status else 0)) + "-"*40)
             indices.append(None)
