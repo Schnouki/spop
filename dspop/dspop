@@ -50,14 +50,13 @@ class SpopClient:
 
         buf = b""
         while True:
-            tmp = self._sock.recv(128)
+            tmp = self._sock.recv(1024)
             buf += tmp
-            if len(tmp) < 128:
-                try:
-                    obj = json.loads(buf.decode())
-                    return obj
-                except:
-                    pass
+            try:
+                obj = json.loads(buf.decode())
+                return obj
+            except:
+                pass
 
     def __getattr__(self, name):
         if name in ("repeat", "shuffle", "qclear", "qls", "ls", "goto", "add", "play", "offline_toggle",
