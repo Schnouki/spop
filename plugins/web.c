@@ -78,9 +78,6 @@ static void web_api_handler(SoupServer* server, SoupMessage* msg,
         return;
     }
 
-    /* Get infos about the client and log the request */
-    g_debug("web: %s GET %s", soup_client_context_get_host(client), path);
-
     /* Parse the path */
     const gchar* subpath = path+5; /* Strip "/api/" */
     gchar** cmd = g_strsplit(subpath, "/", -1);
@@ -159,10 +156,6 @@ static void web_static_handler(SoupServer* server, SoupMessage* msg,
         return;
     }
 
-    /* Get infos about the client and log the request */
-    const gchar* client_host = soup_client_context_get_host(client);
-    g_info("web: [%s] GET %s", client_host, path);
-
     /* Build the full path */
     gchar* decoded_path = soup_uri_decode(path);
     if (strcmp(decoded_path, "/") == 0) {
@@ -215,10 +208,20 @@ static void web_static_handler(SoupServer* server, SoupMessage* msg,
     soup_message_set_status(msg, SOUP_STATUS_OK);
     soup_message_set_response(msg, content_type, SOUP_MEMORY_TAKE, body, length);
 
-    g_debug("web: [%s] GET %s OK (%ld bytes)", client_host, full_real_path, length);
     return;
 }
 
+/* Request logger */
+static void web_logger(SoupServer* server, SoupMessage* msg, SoupClientContext* client, gpointer user_data) {
+    SoupURI* uri = soup_message_get_uri(msg);
+    if (uri) {
+        gchar* path = soup_uri_to_string(uri, TRUE);
+        g_info("web: [%s] %s %s %u (%ld)", soup_client_context_get_host(client),
+               msg->method, path,
+               msg->status_code, soup_message_headers_get_content_length(msg->response_headers));
+        g_free(path);
+    }
+}
 
 /* Plugin initialization */
 G_MODULE_EXPORT void spop_web_init() {
@@ -255,6 +258,7 @@ G_MODULE_EXPORT void spop_web_init() {
 
     soup_server_add_handler(server, "/api", web_api_handler, NULL, NULL);
     soup_server_add_handler(server, "/", web_static_handler, static_root, NULL);
+    g_signal_connect(server, "request-finished", G_CALLBACK(web_logger), NULL);
 
     /* Start the server */
     soup_server_run_async(server);
