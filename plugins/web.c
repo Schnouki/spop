@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Thomas Jost
+ * Copyright (C) 2013, 2014 Thomas Jost
  *
  * This file is part of spop.
  *
@@ -23,9 +23,12 @@
  * Program grant you additional permission to convey the resulting work.
  */
 
+#include <errno.h>
 #include <glib.h>
 #include <gmodule.h>
 #include <libsoup/soup.h>
+#include <limits.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "spop.h"
@@ -64,7 +67,7 @@ static void web_idle_notify(const GString* status, web_context* ctx) {
 
 }
 
-/* Requests handler */
+/* API requests handler */
 static void web_api_handler(SoupServer* server, SoupMessage* msg,
                             const char* path, GHashTable* query,
                             SoupClientContext* client, gpointer user_data) {
@@ -145,12 +148,96 @@ static void web_api_handler(SoupServer* server, SoupMessage* msg,
     g_strfreev(cmd);
 }
 
+/* Static file requests handler */
+static void web_static_handler(SoupServer* server, SoupMessage* msg,
+                               const char* path, GHashTable* query,
+                               SoupClientContext* client, gpointer static_root) {
+
+    /* Only respond to GET and HEAD */
+    if (msg->method != SOUP_METHOD_GET && msg->method != SOUP_METHOD_HEAD) {
+        soup_message_set_status(msg, SOUP_STATUS_NOT_IMPLEMENTED);
+        return;
+    }
+
+    /* Get infos about the client and log the request */
+    const gchar* client_host = soup_client_context_get_host(client);
+    g_info("web: [%s] GET %s", client_host, path);
+
+    /* Build the full path */
+    gchar* decoded_path = soup_uri_decode(path);
+    if (strcmp(decoded_path, "/") == 0) {
+        /* "Redirect" / to /index.html */
+        g_free(decoded_path);
+        decoded_path = g_strdup("/index.html");
+    }
+    gchar* full_path = g_build_filename((gchar*) static_root, decoded_path, NULL);
+    g_free(decoded_path);
+    gchar* full_real_path = realpath(full_path, NULL);
+    if (!full_real_path) {
+        g_debug("web: realpath error (%s): %s", full_path, g_strerror(errno));
+        g_free(full_path);
+        soup_message_set_status(msg, SOUP_STATUS_NOT_FOUND);
+        return;
+    }
+    g_free(full_path);
+
+    /* Make sure it's a regular file in the static root */
+    if (!g_str_has_prefix(full_real_path, (gchar*) static_root) || !g_file_test(full_real_path, G_FILE_TEST_IS_REGULAR)) {
+        free(full_real_path);
+        soup_message_set_status(msg, SOUP_STATUS_NOT_FOUND);
+        return;
+    }
+
+    /* Try to guess the content type */
+    gchar* content_type;
+    if (g_str_has_suffix(full_real_path, ".css"))
+        content_type = "text/css";
+    else if (g_str_has_suffix(full_real_path, ".js"))
+        content_type = "application/javascript";
+    else if (g_str_has_suffix(full_real_path, ".html"))
+        content_type = "text/html";
+    else
+        content_type = "application/octet-stream";
+
+    /* Now serve the file! */
+    /* FIXME: this should be asynchronous and should not load the entire file in memory... */
+    GError* err = NULL;
+    gchar* body = NULL;
+    gsize length;
+    if (!g_file_get_contents(full_real_path, &body, &length, &err)) {
+        g_warning("web: error while reading %s: %s", full_real_path, err->message);
+        free(full_real_path);
+        soup_message_set_status(msg, SOUP_STATUS_INTERNAL_SERVER_ERROR);
+        return;
+    }
+    free(full_real_path);
+
+    soup_message_set_status(msg, SOUP_STATUS_OK);
+    soup_message_set_response(msg, content_type, SOUP_MEMORY_TAKE, body, length);
+
+    g_debug("web: [%s] GET %s OK (%ld bytes)", client_host, full_real_path, length);
+    return;
+}
+
+
 /* Plugin initialization */
 G_MODULE_EXPORT void spop_web_init() {
     /* Get IP/port to listen on */
     gchar* default_ip = g_strdup(WEB_DEFAULT_IP);
     gchar* web_ip = config_get_string_opt_group("web", "ip", default_ip);
     guint web_port = config_get_int_opt_group("web", "port", WEB_DEFAULT_PORT);
+
+    /* Get the root for static files */
+    gchar* default_static_root = g_strdup(WEB_STATIC_ROOT);
+    gchar* static_root = config_get_string_opt_group("web", "root", default_static_root);
+    g_free(default_static_root);
+
+    /* Ensure the static root ends with a / */
+    if (!g_str_has_suffix(static_root, "/")) {
+        char* new_static_root = g_strdup_printf("%s/", static_root);
+        g_free(static_root);
+        static_root = new_static_root;
+    }
 
     SoupAddress* addr = soup_address_new(web_ip, web_port);
     g_free(default_ip);
@@ -167,6 +254,7 @@ G_MODULE_EXPORT void spop_web_init() {
         g_error("Could not initialize web server");
 
     soup_server_add_handler(server, "/api", web_api_handler, NULL, NULL);
+    soup_server_add_handler(server, "/", web_static_handler, static_root, NULL);
 
     /* Start the server */
     soup_server_run_async(server);

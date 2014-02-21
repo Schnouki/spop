@@ -204,9 +204,11 @@ if(SOUP_FOUND)
   add_library(spop_plugin_web MODULE ${PLUGIN_WEB})
   set_target_properties(spop_plugin_web PROPERTIES
     COMPILE_FLAGS "${GLIB2_CFLAGS} ${JSON_GLIB_CFLAGS} ${SOUP_CFLAGS}"
+    COMPILE_DEFINITIONS "WEB_STATIC_ROOT=\"${CMAKE_INSTALL_PREFIX}/share/spop/web\""
   )
   target_link_libraries(spop_plugin_web ${GLIB2_LIBRARIES} ${JSON_GLIB_LIBRARIES} ${SOUP_LIBRARIES})
   set(targets ${targets} spop_plugin_web)
+  install(DIRECTORY awesome DESTINATION share/spop)
 endif(SOUP_FOUND)
 
 # dspop client

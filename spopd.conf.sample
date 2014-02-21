@@ -95,3 +95,6 @@ password = PASSWORD
 # to allow any host to use the web API (or :: if you're using IPv6).
 #ip = 127.0.0.1
 #port = 8080
+
+# Static files root -- defaults to $INSTALL_PREFIX/spop/web
+#root = /home/myself/path/to/spop/web
