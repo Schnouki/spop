@@ -116,6 +116,15 @@ static void web_api_handler(SoupServer* server, SoupMessage* msg,
 
     g_debug("web: found command %s with %d parameter(s)", cmd_desc->name, cmd_len-1);
 
+    /* Add headers to prevent browser from caching answers */
+    soup_message_headers_append(msg->response_headers,
+                                "Expires", "Mon, 26 Jul 1997 05:00:00 GMT");
+    /* soup_message_headers_append(msg->response_headers, */
+    /*                             "Last-Modified", "Mon, 26 Jul 1997 05:00:00 GMT"); */
+    soup_message_headers_append(msg->response_headers,
+                                "Cache-Control", "no-cache, must-revalidate");
+    soup_message_headers_append(msg->response_headers, "Pragma", "no-cache");
+
     /* Run the command if possible */
     web_context* ctx = NULL;
     switch(cmd_desc->type) {
