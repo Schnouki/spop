@@ -1,0 +1,36 @@
+<html>
+<head>
+<title>Spop</title>
+<link rel="stylesheet" href="css/normalize.css" type="text/css">
+<link rel="stylesheet" href="css/main.css" type="text/css" media="screen" />
+<link rel="stylesheet" href="css/font-awesome.min.css" type="text/css">
+<script data-main="js/main" src="lib/require.js" type="text/javascript"></script>
+</head>
+<body>
+  <div id="status">
+    <img data-bind="attr:{src:img_src}"/>
+    <div class="info">
+      <div class="title"    data-bind="text:title"></div>
+      <div class="artist"   data-bind="text:artist"></div>
+      <div class="album"    data-bind="text:album"></div>
+      <div class="position" data-bind="text:format('$1 / $2', current_track, total_tracks)"></div>
+    </div>
+    <div class="playback">
+      <label class="fl1 btn">
+        <input type="checkbox" data-bind="checked:proxy_repeat"/>
+        <i class="fa fa-2x fa-repeat"></i>
+      </label>
+      <label class="fl1 btn">
+        <input type="checkbox" data-bind="checked:proxy_shuffle"/>
+        <i class="fa fa-2x fa-random"></i>
+      </label>
+    </div>
+    <div class="buttons">
+      <a href="#" class="prev btn fl1"><i class="fa fa-2x fa-backward"></i></a>
+      <a href="#" class="stop btn fl3" data-bind="toggle:not(stopped)"><i class="fa fa-2x fa-stop"></i></a>
+      <a href="#" class="play btn fl3"><i class="fa fa-2x" data-bind="classes:{'fa-play':not(playing),'fa-pause':playing}"></i></a>
+      <a href="#" class="next btn fl1"><i class="fa fa-2x fa-forward"></i></a>
+    </div>
+  </div>
+</body>
+</html>

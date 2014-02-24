@@ -1,0 +1,65 @@
+/*
+ * Copyright (C) 2014 Thomas Jost
+ * This file is part of spop and is Licensed under the GPLv3. See COPYING for
+ * details.
+ */
+
+.hidden {
+    display: none !important;
+}
+
+.fl1 { flex: 1; }
+.fl3 { flex: 3; }
+
+.btn {
+    border: 1px solid rgba(0, 0, 0, 0.4);
+    border-radius: 4px;
+    box-shadow: 0px 1px 1px rgba(255, 255, 255, 0.6) inset;
+    color: #3E3E40;
+    display: inline-block;
+    background-image: linear-gradient(to bottom, rgb(239, 239, 239) 0px, rgb(200, 200, 200) 100%);
+    background-repeat: repeat-x;
+    background-color: #C8C8C8;
+    margin: 1em 1em 0em 0em;
+    padding: 0.75em 1.875em 0.5625em;
+    text-align: center;
+    text-shadow: 0px 1px 0px rgba(255, 255, 255, 0.4);
+    filter: none !important;
+}
+.btn:first-child { margin-left: 1em; }
+
+.btn:hover, .btn:focus, .btn:active {
+    background-image: linear-gradient(to bottom, #F5F5F5 0px, #CCC 100%);
+    background-repeat: repeat-x;
+    background-color: #CCC;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+@media screen and (min-width: 640px) {
+    #status {
+        margin: 0 auto;
+        width: 600px;
+    }
+}
+
+@media screen and (max-width: 640px) {
+    #status {
+        width: 100%;
+    }
+}
+
+#status {
+    text-align: center;
+}
+#status img {
+    min-width: 300px;
+}
+#status .buttons, #status .playback {
+    display: flex;
+}
+
+#status .playback input { display: none; }
+#status .playback label.btn input:checked + i {
+    color: #88BD32;
+}
