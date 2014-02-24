@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011, 2012, 2013 Thomas Jost
+ * Copyright (C) 2010, 2011, 2012, 2013, 2014 Thomas Jost
  *
  * This file is part of spop.
  *

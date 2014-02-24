@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011, 2012, 2013 Thomas Jost
+ * Copyright (C) 2010, 2011, 2012, 2013, 2014 Thomas Jost
  *
  * This file is part of spop.
  *
@@ -35,7 +35,7 @@
 #include "audio.h"
 
 #define BUFSIZE  8192
-#define BUFNB    8
+#define BUFNB    16
 
 typedef struct {
     size_t size;
@@ -48,10 +48,17 @@ static ao_device* g_ao_dev = NULL;
 static ao_option* g_ao_options = NULL;
 static size_t g_ao_frame_size;
 
+static gboolean g_playing = FALSE;
+static int g_stutters = 0;
+
 static GQueue* g_free_bufs = NULL;
 static GQueue* g_full_bufs = NULL;
 static GMutex g_buf_mutex;
 static GCond g_play_cond;
+
+/* Prototypes for private functions */
+static void lao_setup(const sp_audioformat* format);
+static void lao_close();
 
 /* My own strerror for libao */
 static const char* lao_strerror(void) {
@@ -94,15 +101,28 @@ static void* lao_player(gpointer data) {
             g_queue_push_tail(g_free_bufs, buf);
         }
         else {
-            /* Nothing to play: wait */
-            g_cond_wait(&g_play_cond, &g_buf_mutex);
+            /* Nothing to play */
+            if (g_playing)
+                g_stutters += 1;
+
+            /* Wait for new data to be available. If nothing happens in a few
+               seconds, playback may have stopped for good. In that case it
+               makes sense to close the device. */
+            gint64 wait_end = g_get_monotonic_time() + 5 * G_TIME_SPAN_SECOND;
+            if (!g_cond_wait_until(&g_play_cond, &g_buf_mutex, wait_end)) {
+                /* Timeout: better reset the device */
+                lao_close();
+
+                /* Now wait until we're ready to play again */
+                g_cond_wait(&g_play_cond, &g_buf_mutex);
+            }
         }
     }
 
     return NULL;
 }
 
-/* "Private" functions, used to set up the libao device */
+/* "Private" function, used to set up the libao device */
 static void lao_setup(const sp_audioformat* format) {
     ao_sample_format lao_fmt;
 
@@ -154,6 +174,14 @@ static void lao_setup(const sp_audioformat* format) {
         g_error("Error while opening libao device: %s", lao_strerror());
 }
 
+/* "Private" function, used to shut down the libao device */
+static void lao_close() {
+    if (g_ao_dev) {
+        ao_close(g_ao_dev);
+        g_ao_dev = NULL;
+    }
+}
+
 /* "Public" function, called from a libspotify callback */
 G_MODULE_EXPORT int audio_delivery(const sp_audioformat* format, const void* frames, int num_frames) {
     lao_buf* buf;
@@ -163,6 +191,7 @@ G_MODULE_EXPORT int audio_delivery(const sp_audioformat* format, const void* fra
     if (num_frames == 0) {
         /* Pause: flush the queue */
         g_mutex_lock(&g_buf_mutex);
+        g_playing = FALSE;
         while (g_queue_get_length(g_full_bufs) > 0) {
             buf = g_queue_pop_tail(g_full_bufs);
             g_queue_push_tail(g_free_bufs, buf);
@@ -176,6 +205,7 @@ G_MODULE_EXPORT int audio_delivery(const sp_audioformat* format, const void* fra
 
         /* Try to add data to the queue */
         g_mutex_lock(&g_buf_mutex);
+        g_playing = TRUE;
 
         if (g_queue_get_length(g_free_bufs) == 0) {
             /* Can't add anything */
@@ -197,4 +227,26 @@ G_MODULE_EXPORT int audio_delivery(const sp_audioformat* format, const void* fra
 
         return size / g_ao_frame_size;
     }
+}
+
+/* Increment stats->samples by the number of frames in a buffer */
+static void _compute_samples_in_buffer(lao_buf* buf, int* samples) {
+    if (buf) {
+        *samples += buf->size / g_ao_frame_size;
+    }
+}
+
+/* "Public" function, called from a libspotify callback */
+G_MODULE_EXPORT void get_audio_buffer_stats(sp_session* session, sp_audio_buffer_stats* stats) {
+    g_mutex_lock(&g_buf_mutex);
+
+    /* Compute the number of samples in each buffer */
+    stats->samples = 0;
+    if (g_full_bufs)
+        g_queue_foreach(g_full_bufs, (GFunc) _compute_samples_in_buffer, &(stats->samples));
+
+    stats->stutter = g_stutters;
+    g_stutters = 0;
+
+    g_mutex_unlock(&g_buf_mutex);
 }

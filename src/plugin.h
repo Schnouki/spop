@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011, 2012, 2013 Thomas Jost
+ * Copyright (C) 2010, 2011, 2012, 2013, 2014 Thomas Jost
  *
  * This file is part of spop.
  *
@@ -30,6 +30,9 @@
 
 typedef int (*audio_delivery_func_ptr)(const sp_audioformat*, const void*, int);
 extern audio_delivery_func_ptr g_audio_delivery_func;
+
+typedef void (*audio_buffer_stats_func_ptr)(sp_session*, sp_audio_buffer_stats*);
+extern audio_buffer_stats_func_ptr g_audio_buffer_stats_func;
 
 void plugins_init();
 void plugins_close();

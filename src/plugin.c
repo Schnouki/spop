@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011, 2012, 2013 Thomas Jost
+ * Copyright (C) 2010, 2011, 2012, 2013, 2014 Thomas Jost
  *
  * This file is part of spop.
  *
@@ -31,6 +31,7 @@
 #include "plugin.h"
 
 audio_delivery_func_ptr g_audio_delivery_func = NULL;
+audio_buffer_stats_func_ptr g_audio_buffer_stats_func = NULL;
 
 static GList* g_plugins_close_functions = NULL;
 
@@ -80,6 +81,9 @@ void plugins_init() {
 
     if (!g_module_symbol(module, "audio_delivery", (void**) &g_audio_delivery_func))
         g_error("Can't find symbol in audio plugin: %s", g_module_error());
+
+    if (!g_module_symbol(module, "get_audio_buffer_stats", (void**) &g_audio_buffer_stats_func))
+        g_audio_buffer_stats_func = NULL;
 
     /* Now load other plugins */
     plugins = config_get_string_list("plugins", &plugins_size);

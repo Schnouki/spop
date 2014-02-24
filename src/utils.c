@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011, 2012, 2013 Thomas Jost
+ * Copyright (C) 2010, 2011, 2012, 2013, 2014 Thomas Jost
  *
  * This file is part of spop.
  *
@@ -24,28 +24,22 @@
  */
 
 #include <glib.h>
-#include <string.h>
 
 #include "utils.h"
 
-/* Replace all occurences of old by new in str */
+/* Replace all occurences of old by new in str
+ * (from https://bugzilla.gnome.org/show_bug.cgi?id=65987) */
 void g_string_replace(GString* str, const char* old, const gchar* new) {
-    gchar* pos_beg = NULL; /* Beginning of the substring where old will be searched */
-    gchar* pos_ptr = NULL; /* Position where old is found */
+    gchar *new_str, **arr;
 
-    int len_old, len_new;
-    len_old = strlen(old);
-    len_new = strlen(new);
+    arr = g_strsplit(str->str, old, -1);
+    if (arr != NULL && arr[0] != NULL)
+        new_str = g_strjoinv(new, arr);
+    else
+        new_str = g_strdup(new);
+    g_strfreev(arr);
 
-    pos_beg = str->str;
-    while ((pos_ptr = g_strstr_len(pos_beg,
-                                   (str->len - (pos_beg - str->str)),
-                                   old)) != NULL) {
-        gssize pos = pos_ptr - str->str;
-        g_string_erase(str, pos, len_old);
-        g_string_insert_len(str, pos, new, len_new);
-        pos_beg = pos_ptr + len_new;
-    }
+    g_string_assign(str, new_str);
 }
 
 /* Add a line number with a fixed width determined by the greatest possible value */

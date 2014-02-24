@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011, 2012, 2013 Thomas Jost
+ * Copyright (C) 2010, 2011, 2012, 2013, 2014 Thomas Jost
  *
  * This file is part of spop.
  *
@@ -107,6 +107,9 @@ void session_init() {
     cache_path = g_build_filename(g_get_user_cache_dir(), g_get_prgname(), NULL);
 
     /* libspotify session config */
+    if (g_audio_buffer_stats_func)
+        g_sp_session_callbacks.get_audio_buffer_stats = g_audio_buffer_stats_func;
+
     sp_session_config config = {
         .api_version = SPOTIFY_API_VERSION,
         .cache_location = cache_path,
@@ -662,7 +665,7 @@ void cb_notify_main_thread(sp_session* session) {
     g_idle_add_full(G_PRIORITY_DEFAULT, session_libspotify_event, NULL, NULL);
 }
 int cb_music_delivery(sp_session* session, const sp_audioformat* format, const void* frames, int num_frames) {
-    int n =  g_audio_delivery_func(format, frames, num_frames);
+    int n = g_audio_delivery_func(format, frames, num_frames);
 
     if (format->sample_rate == g_audio_rate) {
         g_audio_samples += n;
