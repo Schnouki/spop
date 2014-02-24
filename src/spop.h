@@ -29,7 +29,7 @@
 #include <glib.h>
 
 #define SPOP_VERSION "0.0.1"
-#define SPOP_YEAR    "2010, 2011, 2012, 2013"
+#define SPOP_YEAR    "2010, 2011, 2012, 2013, 2014"
 
 /* Verbosity */
 extern gboolean debug_mode;
