@@ -53,11 +53,13 @@ static void config_ready() {
     if (!g_config_file)
         g_error( "Could not allocate a data structure for reading the configuration file.");
 
-    /* Name of the configuration file. TODO: read path from command-line option. */
-    cfg_path = g_build_filename(g_get_user_config_dir(), g_get_prgname(), "spopd.conf", NULL);
+    /* Name of the configuration file. */
+    cfg_path = g_strdup(g_getenv("SPOPD_CONFIG"));
+    if (!cfg_path)
+        cfg_path = g_build_filename(g_get_user_config_dir(), g_get_prgname(), "spopd.conf", NULL);
 
     if (!g_key_file_load_from_file(g_config_file, cfg_path, G_KEY_FILE_NONE, &err))
-        g_error("Can't read configuration file: %s", err->message);
+        g_error("Can't read configuration file '%s': %s", cfg_path, err->message);
     g_free(cfg_path);
     g_mutex_unlock(&config_mutex);
 }

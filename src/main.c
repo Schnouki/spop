@@ -89,7 +89,7 @@ int main(int argc, char** argv) {
 
     /* Parse command line options */
     int opt;
-    while ((opt = getopt(argc, argv, "dfhv")) != -1) {
+    while ((opt = getopt(argc, argv, "dfhvc:")) != -1) {
         switch (opt) {
         case 'd':
             debug_mode = TRUE;
@@ -97,12 +97,15 @@ int main(int argc, char** argv) {
             verbose_mode = TRUE;
         case 'f':
             daemon_mode = FALSE; break;
+	case 'c':
+	    g_setenv("SPOPD_CONFIG", optarg, 1); break;
         default:
             printf("Usage: spopd [options]\n"
                    "Options:\n"
                    "  -d        debug mode (implies -f and -v)\n"
                    "  -f        run in foreground (default: fork to background)\n"
                    "  -v        verbose mode (implies -f)\n"
+                   "  -c        location and name of configuration file\n"
                    "  -h        display this message\n");
             return 0;
         }
