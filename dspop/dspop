@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright (C) 2010, 2011, 2012, 2013 Thomas Jost
+# Copyright (C) 2010, 2011, 2012, 2013, 2014 Thomas Jost
 #
 # This file is part of spop.
 #
@@ -28,12 +28,12 @@ import socket
 import subprocess
 
 # {{{ Parameters
-# Possible values: {index}, {artist}, {track}, {album}, {duration}, {uri}
-TRACK_FMT = "{index} - {artist} - {album} - {track} ({duration})"
+# Possible values: {index}, {artist}, {track}, {album}, {duration}, {uri}, {playing}
+TRACK_FMT = "{playing}{index} - {artist} - {album} - {track} ({duration})"
 SEARCH_ALBUM_FMT = "({year}) {artist} - {album} ({tracks} tracks)"
 SEARCH_TRACK_FMT = "{artist} - {album} - {track} ({duration})"
 
-DMENU_OPTS = ["-i",  "-l", "40"]
+DMENU_OPTS = ["-i", "-l", "40"]
 # }}}
 # {{{ Spop client
 class SpopClient:
@@ -60,7 +60,7 @@ class SpopClient:
 
     def __getattr__(self, name):
         if name in ("repeat", "shuffle", "qclear", "qls", "ls", "goto", "add", "play", "offline_toggle",
-                    "search", "uadd", "uinfo", "uplay"):
+                    "search", "status", "uadd", "uinfo", "uplay"):
             def func(*attrs):
                 return self._command(name.replace("_", "-"), *attrs)
             return func
@@ -112,16 +112,23 @@ def format_search_track(track):
     }
     return SEARCH_TRACK_FMT.format(**params)
 
-def format_track(track):
-    params = {
-        "album": track["album"],
-        "artist": track["artist"],
-        "duration": "%d:%02d" % divmod(track["duration"]/1000, 60),
-        "index": track["index"],
-        "track": track["title"],
-        "uri": track["uri"]
-    }
-    return TRACK_FMT.format(**params)
+def format_tracks(tracks, current_track):
+    index_len = len(str(len(tracks)))
+    index_format = "%{}d".format(index_len)
+
+    items = []
+    for track in tracks:
+        params = {
+            "album": track["album"],
+            "artist": track["artist"],
+            "duration": "%d:%02d" % divmod(track["duration"]/1000, 60),
+            "index": index_format % track["index"],
+            "track": track["title"],
+            "uri": track["uri"],
+            "playing": "* " if current_track["uri"] == track["uri"] else "  ",
+        }
+        items.append(TRACK_FMT.format(**params))
+    return items
 
 def format_folder(items, indent=0, offline_status=False):
     dst, indices = [], []
@@ -181,7 +188,8 @@ def menu_queue(sc):
     items = ["[ Clear queue ]"]
 
     tracks = sc.qls()["tracks"]
-    items.extend(map(format_track, tracks))
+    current_track = sc.status()
+    items.extend(format_tracks(tracks, current_track))
 
     choice = dmenu(items)
 
@@ -215,7 +223,8 @@ def menu_playlist(sc, idx):
 
     # TODO: handle unavailable tracks
     items = ["[ Set as queue ]", "[ Add to queue ]"]
-    items.extend(map(format_track, tracks))
+    current_track = sc.status()
+    items.extend(format_tracks(tracks, current_track))
 
     choice = dmenu(items)
     if choice is None:
