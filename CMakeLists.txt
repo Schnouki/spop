@@ -200,7 +200,7 @@ endif(SOUP_FOUND)
 install(PROGRAMS dspop/dspop DESTINATION bin)
 
 # systemd service files
-install(DIRECTORY systemd DESTINATION lib/systemd/system)
+install(DIRECTORY systemd/ DESTINATION lib/systemd/user)
 
 # Common to all source files
 set(SRC
