@@ -144,10 +144,13 @@ if(GIO_UNIX_FOUND)
                 org.mpris.MediaPlayer2 mpris2-generated Mpris2)
   gdbus_codegen("${CMAKE_CURRENT_SOURCE_DIR}/plugins/mpris2" "org.mpris.MediaPlayer2.Player.xml"
                 org.mpris.MediaPlayer2 mpris2-player-generated Mpris2)
+  gdbus_codegen("${CMAKE_CURRENT_SOURCE_DIR}/plugins/mpris2" "org.mpris.MediaPlayer2.TrackList.xml"
+                org.mpris.MediaPlayer2 mpris2-tracklist-generated Mpris2)
 
   set(PLUGIN_MPRIS2
     plugins/mpris2/mpris2-generated.c
     plugins/mpris2/mpris2-player-generated.c
+    plugins/mpris2/mpris2-tracklist-generated.c
     plugins/mpris2/plugin.c
     plugins/mpris2/spop-mpris2.c
   )
