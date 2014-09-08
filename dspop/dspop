@@ -125,7 +125,7 @@ def format_tracks(tracks, current_track):
             "index": index_format % track["index"],
             "track": track["title"],
             "uri": track["uri"],
-            "playing": "* " if current_track["uri"] == track["uri"] else "  ",
+            "playing": "* " if "uri" in current_track and current_track["uri"] == track["uri"] else "  ",
         }
         items.append(TRACK_FMT.format(**params))
     return items
