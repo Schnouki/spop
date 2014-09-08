@@ -37,71 +37,71 @@ static const gchar* MPRIS2_URI_SCHEMES[] = {"spotify", NULL};
 /* }}} */
 /* {{{ Init interfaces skeleton */
 Mpris2* spop_mpris2_skeleton_new() {
-    Mpris2* iface = mpris2__skeleton_new();
-    if (!iface)
-        g_error("Can't init Mpris2 skeleton");
+    Mpris2* obj = mpris2__skeleton_new();
+    if (!obj)
+        g_error("Can't init Mpris2 object");
 
     /* Methods: connect signals */
-    g_signal_connect(iface, "handle-raise", G_CALLBACK(spop_mpris2_raise), NULL);
-    g_signal_connect(iface, "handle-quit",  G_CALLBACK(spop_mpris2_quit),  NULL);
+    g_signal_connect(obj, "handle-raise", G_CALLBACK(spop_mpris2_raise), NULL);
+    g_signal_connect(obj, "handle-quit",  G_CALLBACK(spop_mpris2_quit),  NULL);
 
     /* Properties: set values */
-    mpris2__set_can_quit(iface, TRUE);
-    mpris2__set_can_raise(iface, FALSE);
-    mpris2__set_fullscreen(iface, FALSE);
-    mpris2__set_can_set_fullscreen(iface, FALSE);
-    mpris2__set_has_track_list(iface, FALSE); // TODO
-    mpris2__set_identity(iface, "spop");
-    mpris2__set_desktop_entry(iface, NULL); // FIXME?
-    mpris2__set_supported_uri_schemes(iface, MPRIS2_URI_SCHEMES);
-    mpris2__set_supported_mime_types(iface, NULL); // FIXME?
+    mpris2__set_can_quit(obj, TRUE);
+    mpris2__set_can_raise(obj, FALSE);
+    mpris2__set_fullscreen(obj, FALSE);
+    mpris2__set_can_set_fullscreen(obj, FALSE);
+    mpris2__set_has_track_list(obj, FALSE); // TODO
+    mpris2__set_identity(obj, "spop");
+    mpris2__set_desktop_entry(obj, NULL); // FIXME?
+    mpris2__set_supported_uri_schemes(obj, MPRIS2_URI_SCHEMES);
+    mpris2__set_supported_mime_types(obj, NULL); // FIXME?
 
-    return iface;
+    return obj;
 }
 
 Mpris2Player* spop_mpris2_player_skeleton_new() {
-    Mpris2Player* iface = mpris2_player_skeleton_new();
-    if (!iface)
-        g_error("Can't init Mpris2Player interface");
+    Mpris2Player* obj = mpris2_player_skeleton_new();
+    if (!obj)
+        g_error("Can't init Mpris2Player object");
 
     /* Methods: connect signals */
-    g_signal_connect(iface, "handle-next",         G_CALLBACK(spop_mpris2_player_next),         NULL);
-    g_signal_connect(iface, "handle-open-uri",     G_CALLBACK(spop_mpris2_player_open_uri),     NULL);
-    g_signal_connect(iface, "handle-pause",        G_CALLBACK(spop_mpris2_player_pause),        NULL);
-    g_signal_connect(iface, "handle-play",         G_CALLBACK(spop_mpris2_player_play),         NULL);
-    g_signal_connect(iface, "handle-play-pause",   G_CALLBACK(spop_mpris2_player_play_pause),   NULL);
-    g_signal_connect(iface, "handle-previous",     G_CALLBACK(spop_mpris2_player_previous),     NULL);
-    g_signal_connect(iface, "handle-seek",         G_CALLBACK(spop_mpris2_player_seek),         NULL);
-    g_signal_connect(iface, "handle-set-position", G_CALLBACK(spop_mpris2_player_set_position), NULL);
-    g_signal_connect(iface, "handle-stop",         G_CALLBACK(spop_mpris2_player_stop),         NULL);
+    g_signal_connect(obj, "handle-next",         G_CALLBACK(spop_mpris2_player_next),         NULL);
+    g_signal_connect(obj, "handle-open-uri",     G_CALLBACK(spop_mpris2_player_open_uri),     NULL);
+    g_signal_connect(obj, "handle-pause",        G_CALLBACK(spop_mpris2_player_pause),        NULL);
+    g_signal_connect(obj, "handle-play",         G_CALLBACK(spop_mpris2_player_play),         NULL);
+    g_signal_connect(obj, "handle-play-pause",   G_CALLBACK(spop_mpris2_player_play_pause),   NULL);
+    g_signal_connect(obj, "handle-previous",     G_CALLBACK(spop_mpris2_player_previous),     NULL);
+    g_signal_connect(obj, "handle-seek",         G_CALLBACK(spop_mpris2_player_seek),         NULL);
+    g_signal_connect(obj, "handle-set-position", G_CALLBACK(spop_mpris2_player_set_position), NULL);
+    g_signal_connect(obj, "handle-stop",         G_CALLBACK(spop_mpris2_player_stop),         NULL);
 
     /* Properties: set values for constants */
-    mpris2_player_set_minimum_rate(iface, 1.0);
-    mpris2_player_set_maximum_rate(iface, 1.0);
-    mpris2_player_set_rate(iface, 1.0);
-    mpris2_player_set_volume(iface, 1.0);
-    mpris2_player_set_can_control(iface, TRUE);
-    mpris2_player_set_can_go_next(iface, TRUE);
-    mpris2_player_set_can_go_previous(iface, TRUE);
-    mpris2_player_set_can_pause(iface, TRUE);
-    mpris2_player_set_can_seek(iface, TRUE);
+    mpris2_player_set_minimum_rate(obj, 1.0);
+    mpris2_player_set_maximum_rate(obj, 1.0);
+    mpris2_player_set_rate(obj, 1.0);
+    mpris2_player_set_volume(obj, 1.0);
+    mpris2_player_set_can_control(obj, TRUE);
+    mpris2_player_set_can_go_next(obj, TRUE);
+    mpris2_player_set_can_go_previous(obj, TRUE);
+    mpris2_player_set_can_pause(obj, TRUE);
+    mpris2_player_set_can_seek(obj, TRUE);
 
     /* Set initial values for properties */
-    spop_mpris2_player_update_properties(iface);
+    spop_mpris2_player_update_properties(obj);
 
     /* Connect signals to be notified when a client changes a property */
-    g_signal_connect(iface, "notify::loop-status",     G_CALLBACK(on_spop_mpris2_player_set_loop_status),     NULL);
-    g_signal_connect(iface, "notify::rate",            G_CALLBACK(on_spop_mpris2_player_set_rate),            NULL);
-    g_signal_connect(iface, "notify::shuffle",         G_CALLBACK(on_spop_mpris2_player_set_shuffle),         NULL);
-    g_signal_connect(iface, "notify::volume",          G_CALLBACK(on_spop_mpris2_player_set_volume),          NULL);
+    g_signal_connect(obj, "notify::loop-status",     G_CALLBACK(on_spop_mpris2_player_set_loop_status),     NULL);
+    g_signal_connect(obj, "notify::rate",            G_CALLBACK(on_spop_mpris2_player_set_rate),            NULL);
+    g_signal_connect(obj, "notify::shuffle",         G_CALLBACK(on_spop_mpris2_player_set_shuffle),         NULL);
+    g_signal_connect(obj, "notify::volume",          G_CALLBACK(on_spop_mpris2_player_set_volume),          NULL);
 
-    /* Add some callbacks to be update timer and be notified of track changes */
-    if (!interface_notify_add_callback(spop_mpris2_player_notification_callback, (gpointer) iface))
+    /* Add some callbacks to be update the timer and to be notified of track changes */
+    if (!interface_notify_add_callback(spop_mpris2_player_notification_callback, (gpointer) obj))
         g_error("Could not add MPRIS2 callback.");
 
-    g_timeout_add(200, (GSourceFunc) spop_mpris2_player_update_position, (gpointer) iface);
+    g_timeout_add(200, (GSourceFunc) spop_mpris2_player_update_position, (gpointer) obj);
 
-    return iface;
+    return obj;
 }
 /* }}} */
 /* {{{ org.mpris.MediaPlayer2 methods implementation */
