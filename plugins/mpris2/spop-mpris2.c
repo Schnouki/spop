@@ -48,6 +48,8 @@ Mpris2* spop_mpris2_skeleton_new() {
     /* Properties: set values */
     mpris2__set_can_quit(iface, TRUE);
     mpris2__set_can_raise(iface, FALSE);
+    mpris2__set_fullscreen(iface, FALSE);
+    mpris2__set_can_set_fullscreen(iface, FALSE);
     mpris2__set_has_track_list(iface, FALSE); // TODO
     mpris2__set_identity(iface, "spop");
     mpris2__set_desktop_entry(iface, NULL); // FIXME?

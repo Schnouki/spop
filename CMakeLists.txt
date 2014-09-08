@@ -140,9 +140,9 @@ if(GIO_UNIX_FOUND)
       MAIN_DEPENDENCY "${DIR}/${XML}"
     )
   endmacro(GDBUS_CODEGEN)
-  gdbus_codegen("${CMAKE_CURRENT_SOURCE_DIR}/plugins/mpris2" "mpris2.xml"
+  gdbus_codegen("${CMAKE_CURRENT_SOURCE_DIR}/plugins/mpris2" "org.mpris.MediaPlayer2.xml"
                 org.mpris.MediaPlayer2 mpris2-generated Mpris2)
-  gdbus_codegen("${CMAKE_CURRENT_SOURCE_DIR}/plugins/mpris2" "mpris2-player.xml"
+  gdbus_codegen("${CMAKE_CURRENT_SOURCE_DIR}/plugins/mpris2" "org.mpris.MediaPlayer2.Player.xml"
                 org.mpris.MediaPlayer2 mpris2-player-generated Mpris2)
 
   set(PLUGIN_MPRIS2
