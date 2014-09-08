@@ -38,7 +38,10 @@ extern gboolean verbose_mode;
 /* Logging */
 #define G_LOG_LEVEL_LIBSPOTIFY (1 << (G_LOG_LEVEL_USER_SHIFT))
 
+#ifndef g_info
 #define g_info(...) g_log(G_LOG_DOMAIN, G_LOG_LEVEL_INFO, __VA_ARGS__)
+#endif
+
 #define g_log_libspotify(...) g_log(G_LOG_DOMAIN, G_LOG_LEVEL_LIBSPOTIFY, __VA_ARGS__)
 
 #endif
