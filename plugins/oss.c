@@ -37,6 +37,7 @@
 #include <unistd.h>
 
 #include "audio.h"
+#include "config.h"
 
 static int g_oss_fd = -1;
 static struct pollfd g_pfd;
@@ -45,9 +46,13 @@ static GMutex g_oss_mutex;
 
 /* "Private" functions, used to set up the OSS device */
 static void oss_open() {
+    const gchar *oss_dev;
+
+    oss_dev = config_get_string_opt_group("oss", "device", "/dev/dsp");
+
     /* Open the device */
     g_debug("Opening OSS device");
-    g_oss_fd = open("/dev/dsp", O_WRONLY);
+    g_oss_fd = open(oss_dev, O_WRONLY);
     if (g_oss_fd == -1)
         g_error("Can't open OSS device: %s", g_strerror(errno));
 
