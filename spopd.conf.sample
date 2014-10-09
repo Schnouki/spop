@@ -15,6 +15,17 @@ spotify_password = PASSWORD
 # Prefer high bitrate for offlinesync. This is the default.
 #offline_high_bitrate = true
 
+# Settings path -- the location where Spotify will write setting files and
+# per-user cache items. This includes playlists, track metadata, etc. Defaults
+# to $XDG_CACHE_HOME/spop (usually ~/.cache/spop).
+#settings_path = /var/lib/spop
+
+# Cache path -- the location where Spotify will write cache files. This cache
+# include tracks, cached browse results and coverarts. Set to empty string to
+# disable cache. Can be the same as the settings path. Defaults to
+# $XDG_CACHE_HOME/spop (usually ~/.cache/spop).
+#cache_path = /var/lib/spop
+
 # Cache size, in megabytes. The default value is 0, which means 10% of disk free
 # space.
 #cache_size = 0

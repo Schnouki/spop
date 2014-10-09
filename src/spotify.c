@@ -23,6 +23,7 @@
  * Program grant you additional permission to convey the resulting work.
  */
 
+#include <errno.h>
 #include <fcntl.h>
 #include <glib.h>
 #include <libspotify/api.h>
@@ -100,11 +101,22 @@ static sp_session_callbacks g_sp_session_callbacks = {
 void session_init() {
     sp_error error;
     gchar* cache_path;
+    gchar* settings_path;
 
     g_debug("Creating session...");
 
-    /* Cache path */
-    cache_path = g_build_filename(g_get_user_cache_dir(), g_get_prgname(), NULL);
+    /* Cache and settings path */
+    cache_path = config_get_string_opt("cache_path", NULL);
+    if (!cache_path)
+        cache_path = g_build_filename(g_get_user_cache_dir(), g_get_prgname(), NULL);
+    settings_path = config_get_string_opt("settings_path", NULL);
+    if (!settings_path)
+        settings_path = g_build_filename(g_get_user_cache_dir(), g_get_prgname(), NULL);
+
+    /* The settings path is not automatically created by libspotify */
+    if (g_mkdir_with_parents(settings_path, 0600) != 0) {
+        g_error("Can't create the settings path: %s", g_strerror(errno));
+    }
 
     /* libspotify session config */
     if (g_audio_buffer_stats_func)
@@ -113,7 +125,7 @@ void session_init() {
     sp_session_config config = {
         .api_version = SPOTIFY_API_VERSION,
         .cache_location = cache_path,
-        .settings_location = cache_path,
+        .settings_location = settings_path,
         .application_key = g_appkey,
         .application_key_size = g_appkey_size,
         .user_agent = "spop " SPOP_VERSION,
