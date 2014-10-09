@@ -66,7 +66,12 @@ audio_output = oss
 
 # Pretty-print the JSON output. This makes the output easier to read, which may
 # be useful when debugging or using spop using only a telnet client...
-# pretty_json = false
+#pretty_json = false
+
+# Proxy configuration
+#proxy=http://proxy.lan:3128
+#proxy_username=
+#proxy_password=
 
 [scrobble]
 # API endpoint of the scrobbling service you're using.

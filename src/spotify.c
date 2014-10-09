@@ -102,6 +102,9 @@ void session_init() {
     sp_error error;
     gchar* cache_path;
     gchar* settings_path;
+    gchar* proxy;
+    gchar* proxy_username;
+    gchar* proxy_password;
 
     g_debug("Creating session...");
 
@@ -121,6 +124,9 @@ void session_init() {
     /* libspotify session config */
     if (g_audio_buffer_stats_func)
         g_sp_session_callbacks.get_audio_buffer_stats = g_audio_buffer_stats_func;
+    proxy = config_get_string_opt("proxy", NULL);
+    proxy_username = config_get_string_opt("proxy_username", NULL);
+    proxy_password = config_get_string_opt("proxy_password", NULL);
 
     sp_session_config config = {
         .api_version = SPOTIFY_API_VERSION,
@@ -134,6 +140,9 @@ void session_init() {
         .compress_playlists = FALSE,
         .dont_save_metadata_for_playlists = FALSE,
         .initially_unload_playlists = FALSE,
+        .proxy = proxy,
+        .proxy_username = proxy_username,
+        .proxy_password = proxy_password,
         NULL,
     };
 
