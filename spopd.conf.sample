@@ -88,3 +88,7 @@ password = PASSWORD
 # List of effets to apply to the audio output, with their parameters. See `man
 # soxeffects' for details.
 #effects = gain -3; pad 0 3; reverb
+
+[oss]
+# Device to use for OSS output. Default is /dev/dsp
+#device = /dev/dsp
