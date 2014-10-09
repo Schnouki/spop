@@ -285,7 +285,11 @@ void session_seek(guint pos) {
 }
 
 guint session_play_time() {
-    return g_audio_time + (1000 * g_audio_samples) / g_audio_rate;
+    /* If there are more that 4,294,967 samples, (1000 * g_audio_samples) will
+     * overflow a 32 bit integer. So let's do some floating-point math
+     * instead. */
+    gfloat time = g_audio_time + (1000. * g_audio_samples) / g_audio_rate;
+    return (guint) time;
 }
 
 void session_get_offline_sync_status(sp_offline_sync_status* status, gboolean* sync_in_progress,
