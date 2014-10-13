@@ -111,7 +111,7 @@ official Spotify client. Then, you will be able to use the following commands:
 - `play`: start playing from the queue
 - `toggle` or `pause`: toggle pause mode
 - `stop`: stop playback
-- `seek pos`: go to position `pos` (in seconds) in the current track
+- `seek pos`: go to position `pos` (in milliseconds) in the current track
 - `next`: switch to the next track in the queue
 - `prev`: switch to the previous track in the queue
 - `goto tr`: switch to track number `tr` in the queue
@@ -143,7 +143,6 @@ ask me if you have any question regarding spop!
 - On GitHub: <https://github.com/inbox/new/Schnouki>
 - By e-mail: <`my_nickname@my_nickname.net`> (by the way, my nickname
   is "Schnouki")
-- On identi.ca: <http://identi.ca/schnouki>
 - On Twitter: <http://www.twitter.com/Schnouki>
 
 [Awesome]: http://awesome.naquadah.org/

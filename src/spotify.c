@@ -303,6 +303,8 @@ void session_seek(guint pos) {
     g_audio_samples = 0;
 
     cb_notify_main_thread(NULL);
+
+    queue_notify();
 }
 
 guint session_play_time() {
