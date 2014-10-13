@@ -52,6 +52,7 @@ gboolean list_playlists(command_context* ctx);
 gboolean list_tracks(command_context* ctx, guint idx);
 
 gboolean status(command_context* ctx);
+gboolean notify(command_context* ctx);
 gboolean repeat(command_context* ctx);
 gboolean shuffle(command_context* ctx);
 

@@ -33,6 +33,7 @@
 #include "spop.h"
 #include "commands.h"
 #include "config.h"
+#include "interface.h"
 #include "queue.h"
 #include "spotify.h"
 #include "utils.h"
@@ -361,6 +362,11 @@ gboolean status(command_context* ctx) {
         g_free(track_link);
     }
     return TRUE;
+}
+
+gboolean notify(command_context* ctx) {
+    queue_notify();
+    return status(ctx);
 }
 
 gboolean repeat(command_context* ctx) {

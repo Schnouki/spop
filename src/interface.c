@@ -65,6 +65,7 @@ static command_full_descriptor g_commands[] = {
     { "ls",      CT_FUNC, { list_tracks,    {CA_INT, CA_NONE}}},
 
     { "status",  CT_FUNC, { status,  {CA_NONE}}},
+    { "notify",  CT_FUNC, { notify,  {CA_NONE}}},
     { "repeat",  CT_FUNC, { repeat,  {CA_NONE}}},
     { "shuffle", CT_FUNC, { shuffle, {CA_NONE}}},
 

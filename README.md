@@ -123,6 +123,8 @@ official Spotify client. Then, you will be able to use the following commands:
 - `status`: display informations about the queue, the current track, etc.
 - `idle`: wait for something to change (pause, switch to other track, new track
   in queue...), then display `status`. Mostly useful in notification scripts.
+- `notify`: unlock all the currently idle sessions, just like if something had
+  changed.
 - `image`: get the cover image for the current track (base64-encoded JPEG image).
 - `offline-status`: display informations about the current status of the offline
   cache (number of offline playlists, sync status...).
