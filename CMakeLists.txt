@@ -22,6 +22,7 @@
 # Program grant you additional permission to convey the resulting work.
 
 cmake_minimum_required(VERSION 2.8)
+include(CheckIncludeFiles)
 
 project(spop C)
 
@@ -41,6 +42,9 @@ pkg_check_modules(GTHREAD2 REQUIRED gthread-2.0)
 string(REPLACE ";" " " GTHREAD2_CFLAGS "${GTHREAD2_CFLAGS}")
 pkg_check_modules(JSON_GLIB REQUIRED json-glib-1.0>=0.12)
 string(REPLACE ";" " " JSON_GLIB_CFLAGS "${JSON_GLIB_CFLAGS}")
+
+# Check for optional headers
+check_include_files("sys/soundcard.h" HAVE_SYS_SOUNDCARD_H)
 
 # Check for optional libraries
 pkg_check_modules(AO ao)
@@ -79,15 +83,17 @@ target_link_libraries(spopd dl rt ${SPOTIFY_LIBRARIES} ${GLIB2_LIBRARIES}
 set(targets ${targets} spopd)
 
 # Audio plugin: OSS
-set(AUDIO_OSS
-  plugins/oss.c
-)
-add_library(spop_audio_oss MODULE ${AUDIO_OSS})
-set_target_properties(spop_audio_oss PROPERTIES
-  COMPILE_FLAGS "${GLIB2_CFLAGS}"
-)
-target_link_libraries(spop_audio_oss ${GLIB2_LIBRARIES})
-set(targets ${targets} spop_audio_oss)
+if(HAVE_SYS_SOUNDCARD_H)
+  set(AUDIO_OSS
+    plugins/oss.c
+  )
+  add_library(spop_audio_oss MODULE ${AUDIO_OSS})
+  set_target_properties(spop_audio_oss PROPERTIES
+    COMPILE_FLAGS "${GLIB2_CFLAGS}"
+  )
+  target_link_libraries(spop_audio_oss ${GLIB2_LIBRARIES})
+  set(targets ${targets} spop_audio_oss)
+endif(HAVE_SYS_SOUNDCARD_H)
 
 # Audio plugin: libao
 if(AO_FOUND)
