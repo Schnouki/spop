@@ -1,9 +1,12 @@
 #!/bin/sh
 
-if [ -d build ]; then
+if [ -d build -a -e build/Makefile ]; then
     cd build && make rebuild_cache || exit 1
 else
-    mkdir build && cd build && cmake -Wdev -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=/usr .. || exit 1
+    if [ ! -d build ]; then
+      mkdir build || exit 1
+    fi
+    cd build && cmake -Wdev -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=/usr .. || exit 1
 fi
 
 make all || exit 1
