@@ -70,6 +70,19 @@ If you want to install spop somewhere on your system, do the following steps:
     make
     sudo make install
 
+### Debian
+
+Add Mopidy APT repository for `libspotify` from `https://github.com/mopidy/libspotify-deb`:
+
+    wget -q -O - http://apt.mopidy.com/mopidy.gpg | sudo apt-key add -
+    echo -e "deb http://apt.mopidy.com/ stable main contrib non-free\ndeb-src http://apt.mopidy.com/ stable main contrib non-free" | sudo tee /etc/apt/sources.list.d/mopidy.list
+    sudo apt-get update
+
+Install required libraries via `apt-get`:
+
+    sudo apt-get install libjson-glib-dev libao-dev libdbus-glib-1-dev libnotify-dev libsoup2.4-dev libsox-dev libspotify-dev
+
+
 ## Commands
 At the moment, spop can not modify your playlists or do any search on Spotify
 (but this will come...). So you will have to create some playlists using the
