@@ -112,13 +112,19 @@ void session_init() {
     cache_path = config_get_string_opt("cache_path", NULL);
     if (!cache_path)
         cache_path = g_build_filename(g_get_user_cache_dir(), g_get_prgname(), NULL);
+
+    /* The cache path is not automatically created by libspotify */
+    if (g_mkdir_with_parents(cache_path, 0700) != 0) {
+        g_error("Can't create the cache path %s: %s", cache_path, g_strerror(errno));
+    }
+
     settings_path = config_get_string_opt("settings_path", NULL);
     if (!settings_path)
         settings_path = g_build_filename(g_get_user_cache_dir(), g_get_prgname(), NULL);
 
     /* The settings path is not automatically created by libspotify */
-    if (g_mkdir_with_parents(settings_path, 0600) != 0) {
-        g_error("Can't create the settings path: %s", g_strerror(errno));
+    if (g_mkdir_with_parents(settings_path, 0700) != 0) {
+        g_error("Can't create the settings path %s: %s", settings_path, g_strerror(errno));
     }
 
     /* libspotify session config */
