@@ -28,6 +28,21 @@
 
 #include <glib.h>
 
+/* Commands management */
+#define MAX_CMD_ARGS 2
+typedef enum { CA_NONE=0, CA_INT, CA_STR, CA_URI } command_arg;
+typedef struct {
+    void*       func;
+    command_arg args[MAX_CMD_ARGS];
+} command_descriptor;
+typedef enum { CT_FUNC=0, CT_BYE, CT_QUIT, CT_IDLE } command_type;
+typedef struct {
+    gchar*             name;
+    command_type       type;
+    command_descriptor desc;
+} command_full_descriptor;
+extern command_full_descriptor g_commands[];
+
 /* Functions called directly from spop */
 void interface_init();
 

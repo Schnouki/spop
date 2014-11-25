@@ -54,13 +54,7 @@ typedef struct {
     gpointer data;
 } notification_callback;
 
-typedef enum { CT_FUNC=0, CT_BYE, CT_QUIT, CT_IDLE } command_type;
-typedef struct {
-    gchar*             name;
-    command_type       type;
-    command_descriptor desc;
-} command_full_descriptor;
-static command_full_descriptor g_commands[] = {
+command_full_descriptor g_commands[] = {
     { "ls",      CT_FUNC, { list_playlists, {CA_NONE}}},
     { "ls",      CT_FUNC, { list_tracks,    {CA_INT, CA_NONE}}},
 

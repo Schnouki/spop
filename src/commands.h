@@ -30,13 +30,8 @@
 #include <json-glib/json-glib.h>
 #include <libspotify/api.h>
 
-/* Commands management */
-#define MAX_CMD_ARGS 2
-typedef enum { CA_NONE=0, CA_INT, CA_STR, CA_URI } command_arg;
-typedef struct {
-    void*       func;
-    command_arg args[MAX_CMD_ARGS];
-} command_descriptor;
+#include "interface.h"
+
 typedef void (*command_finalize_func)(gchar* json_result, gpointer data);
 typedef struct {
     JsonBuilder* jb;
