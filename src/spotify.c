@@ -117,8 +117,8 @@ void session_init() {
         settings_path = g_build_filename(g_get_user_cache_dir(), g_get_prgname(), NULL);
 
     /* The settings path is not automatically created by libspotify */
-    if (g_mkdir_with_parents(settings_path, 0600) != 0) {
-        g_error("Can't create the settings path: %s", g_strerror(errno));
+    if (g_mkdir_with_parents(settings_path, 0700) != 0) {
+        g_error("Can't create the settings path %s: %s", settings_path, g_strerror(errno));
     }
 
     /* libspotify session config */
