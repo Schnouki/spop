@@ -88,6 +88,10 @@ At the moment, spop can not modify your playlists or do any search on Spotify
 (but this will come...). So you will have to create some playlists using the
 official Spotify client. Then, you will be able to use the following commands:
 
+- `help`: list all available commands
+
+---
+
 - `ls`: list all your playlists
 - `ls pl`: list the contents of playlist number `pl`
 

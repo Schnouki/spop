@@ -55,6 +55,8 @@ typedef struct {
 } notification_callback;
 
 command_full_descriptor g_commands[] = {
+    { "help",    CT_FUNC, { help, {CA_NONE}}},
+
     { "ls",      CT_FUNC, { list_playlists, {CA_NONE}}},
     { "ls",      CT_FUNC, { list_tracks,    {CA_INT, CA_NONE}}},
 

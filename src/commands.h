@@ -43,6 +43,8 @@ gboolean command_run(command_finalize_func finalize, gpointer finalize_data, com
 void command_end(command_context* ctx);
 
 /* Actual commands */
+gboolean help(command_context* ctx);
+
 gboolean list_playlists(command_context* ctx);
 gboolean list_tracks(command_context* ctx, guint idx);
 

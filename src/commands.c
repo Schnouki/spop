@@ -208,6 +208,45 @@ void command_end(command_context* ctx) {
 /****************
  *** Commands ***
  ****************/
+gboolean help(command_context* ctx) {
+  int i, n;
+  command_arg arg;
+
+  json_builder_set_member_name(ctx->jb, "commands");
+  json_builder_begin_array(ctx->jb);
+
+  for (i = 0; g_commands[i].name != NULL; i++) {
+    // name property
+    json_builder_begin_object(ctx->jb);
+    jb_add_string(ctx->jb, "command", g_commands[i].name);
+
+    // args array property
+    json_builder_set_member_name(ctx->jb, "args");
+    json_builder_begin_array(ctx->jb);
+    for (n = 0; g_commands[i].desc.args[n] != CA_NONE && n < MAX_CMD_ARGS; n++) {
+      arg = g_commands[i].desc.args[n];
+      if (arg == CA_INT) {
+        json_builder_add_string_value(ctx->jb, "Integer");
+      } else if (arg == CA_STR) {
+        json_builder_add_string_value(ctx->jb, "String");
+      } else if (arg == CA_URI) {
+        json_builder_add_string_value(ctx->jb, "URI");
+      } else {
+        json_builder_add_string_value(ctx->jb, "undefined");
+      }
+    }
+    json_builder_end_array(ctx->jb); // end args array
+
+    json_builder_end_object(ctx->jb); // end command object
+  }
+  json_builder_end_array(ctx->jb); // end commands array
+
+  jb_add_string(ctx->jb, "version", SPOP_VERSION);
+
+  return TRUE;
+}
+
+
 /* {{{ Lists */
 gboolean list_playlists(command_context* ctx) {
     int i, n, t;
