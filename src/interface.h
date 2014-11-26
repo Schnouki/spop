@@ -40,6 +40,7 @@ typedef struct {
     gchar*             name;
     command_type       type;
     command_descriptor desc;
+    gchar*             summary;
 } command_full_descriptor;
 extern command_full_descriptor g_commands[];
 

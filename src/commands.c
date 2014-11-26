@@ -236,6 +236,7 @@ gboolean help(command_context* ctx) {
       }
     }
     json_builder_end_array(ctx->jb); // end args array
+    jb_add_string(ctx->jb, "summary", g_commands[i].summary);
 
     json_builder_end_object(ctx->jb); // end command object
   }
