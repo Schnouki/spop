@@ -52,6 +52,17 @@
     json_builder_set_member_name(jb, name); \
     json_builder_add_string_value(jb, val); }
 
+typedef enum { UICRT_ERROR=-1, UICRT_DONE, UICRT_WAIT } uri_image_cb_result_type;
+typedef struct {
+    command_context* ctx;
+    sp_link* link;
+    sp_image_size size;
+    gint count;
+    sp_track* track;
+    sp_album* album;
+    sp_image* image;
+} uri_image_cb_data;
+
 static void json_tracks_array(GArray* tracks, JsonBuilder* jb) {
     int i;
     sp_track* track;
@@ -172,6 +183,10 @@ gboolean command_run(command_finalize_func finalize, gpointer finalize_data, com
         if (desc->args[1] == CA_NONE) {
             gboolean (*cmd)(command_context*, sp_link*) = desc->func;
             ret = cmd(ctx, arg1);
+        } else if (desc->args[1] == CA_INT) {
+            _str_to_uint(arg2, argv[2]);
+            gboolean (*cmd)(command_context*, sp_link*, guint) = desc->func;
+            ret = cmd(ctx, arg1, arg2);
         }
         else
             g_error("Unknown argument type");
@@ -878,6 +893,214 @@ static gboolean _uri_info_track_cb(gpointer* data) {
     command_end(ctx);
     return FALSE;
 }
+
+/* Fetch track. Requires track link */
+static uri_image_cb_result_type _uri_image_cb_track(uri_image_cb_data* data) {
+    command_context* ctx = data->ctx;
+    sp_link* link = data->link;
+
+    sp_linktype type = sp_link_type(link);
+    sp_track* track = NULL;
+
+    // Check preconditions
+    if (data->track) {
+        return UICRT_DONE;
+    } else if (type != SP_LINKTYPE_TRACK) {
+        return UICRT_ERROR;
+    }
+
+    // get track by link
+    track = sp_link_as_track(link);
+    if (!track) {
+        g_debug("Invalid track link");
+        jb_add_string(ctx->jb, "error", "invalid track link");
+        return UICRT_ERROR;
+    }
+
+    if (!sp_track_is_loaded(track)) {
+        /* If track is not loaded, wait a little */
+        if (++data->count < CMD_CALLBACK_MAX_CALLS)
+            return UICRT_WAIT;
+        else {
+            g_debug("Track not loaded error");
+            jb_add_string(ctx->jb, "error", "track not loaded");
+            return UICRT_ERROR;
+        }
+    }
+
+    // assign track to data for next loop
+    data->track = track;
+    sp_track_add_ref(track);
+
+    return UICRT_DONE;
+}
+
+/* Fetch album. Requires album link or loaded track */
+static uri_image_cb_result_type _uri_image_cb_album(uri_image_cb_data* data) {
+    command_context* ctx = data->ctx;
+    sp_link* link = data->link;
+    sp_album* album = NULL;
+    sp_linktype type = sp_link_type(link);
+
+    // Check preconditions
+    if (data->album) {
+        return UICRT_DONE;
+    } else if (type == SP_LINKTYPE_ALBUM) {
+        album = sp_link_as_album(link);
+        if (!album) {
+            g_debug("Invalid album link");
+            jb_add_string(ctx->jb, "error", "invalid album link");
+            return UICRT_ERROR;
+        }
+    } else if (data->track) {
+        album = sp_track_album(data->track);
+        if (!album) {
+            g_debug("Track without album");
+            jb_add_string(ctx->jb, "error", "track without album");
+            return UICRT_ERROR;
+        }
+    } else {
+        g_debug("Album precondition failed");
+        jb_add_string(ctx->jb, "error", "album precondition failed");
+        return UICRT_ERROR;
+    }
+
+    // If album is not loaded, wait a little
+    if (!sp_album_is_loaded(album)) {
+        if (++data->count < CMD_CALLBACK_MAX_CALLS)
+            return UICRT_WAIT;
+        else {
+            g_debug("Album not loaded error");
+            jb_add_string(ctx->jb, "error", "album not loaded");
+            return UICRT_ERROR;
+        }
+    }
+
+    // assign album to data for next loop
+    data->album = album;
+    sp_album_add_ref(album);
+
+    return UICRT_DONE;
+}
+
+/* Fetch image. Requires loaded album */
+static uri_image_cb_result_type _uri_image_cb_image(uri_image_cb_data* data) {
+    command_context* ctx = data->ctx;
+
+    const void* img_id = NULL;
+    sp_image* image = NULL;
+
+    if (data->image) {
+        return UICRT_DONE;
+    } else if (!data->album) {
+        g_debug("Album absent");
+        jb_add_string(ctx->jb, "error", "album absent");
+        return UICRT_ERROR;
+    }
+
+    // fetch the cover image id
+    img_id = sp_album_cover(data->album, SP_IMAGE_SIZE_NORMAL);
+    if (!img_id) {
+        g_debug("Image id not found");
+        jb_add_string(ctx->jb, "error", "Image absent");
+        return UICRT_ERROR;
+    }
+
+    image = image_id_get_image(img_id);
+    if (!sp_image_is_loaded(image)) {
+        if (++data->count < CMD_CALLBACK_MAX_CALLS * 3) {
+            return UICRT_WAIT;
+        } else {
+            g_debug("Image not loaded error");
+            jb_add_string(ctx->jb, "error", "image not loaded");
+            return UICRT_ERROR;
+        }
+    }
+    data->image = image;
+
+    return UICRT_DONE;
+}
+
+/* Fetch image data. Requires loaded image */
+static uri_image_cb_result_type _uri_image_cb_image_data(uri_image_cb_data* data) {
+    command_context* ctx = data->ctx;
+
+    const guchar* img_data = NULL;
+    gsize len = NULL;
+    gchar* b64data = NULL;
+
+    if (!data->image) {
+        g_debug("Image not loaded");
+        jb_add_string(ctx->jb, "error", "image not loaded");
+      return UICRT_ERROR;
+    }
+
+    /* Now track, album, and image are loaded and can be processed */
+    img_data = sp_image_data(data->image, &len);
+    if (!img_data) {
+        g_debug("Image data absent");
+        jb_add_string(ctx->jb, "error", "image data absent");
+        return UICRT_ERROR;
+    }
+
+    b64data = g_base64_encode(img_data, len);
+    jb_add_string(ctx->jb, "status", "ok");
+    jb_add_string(ctx->jb, "data", b64data);
+
+    return UICRT_DONE;
+}
+
+/* Free all allocated data in uri_image_cb_data */
+static void _uri_image_cb_free(uri_image_cb_data* data) {
+    if (data->link) {
+        sp_link_release(data->link);
+        data->link = NULL;
+    }
+    if (data->track) {
+        sp_track_release(data->track);
+        data->track = NULL;
+    }
+    if (data->album) {
+        sp_album_release(data->album);
+        data->album = NULL;
+    }
+    if (data->image) {
+        sp_image_release(data->image);
+        data->image = NULL;
+    }
+}
+
+/* Load cover image via track or album link */
+static gboolean _uri_image_cb(uri_image_cb_data* data) {
+    command_context* ctx = data->ctx;
+    sp_linktype type = sp_link_type(data->link);
+
+    uri_image_cb_result_type result = UICRT_DONE;
+
+    if (type == SP_LINKTYPE_TRACK) {
+        result = _uri_image_cb_track(data);
+    }
+    if (result == UICRT_DONE) {
+        result = _uri_image_cb_album(data);
+    }
+    if (result == UICRT_DONE) {
+        result = _uri_image_cb_image(data);
+    }
+    if (result == UICRT_DONE) {
+        result = _uri_image_cb_image_data(data);
+    }
+
+    if (result == UICRT_WAIT) {
+        return TRUE;
+    }
+
+    _uri_image_cb_free(data);
+    g_free(data);
+    command_end(ctx);
+
+    return FALSE;
+}
+
   /* }}} */
   /* {{{ uri_add/uri_play callbacks */
 static void _uri_add_album_cb(sp_albumbrowse* ab, gpointer userdata) {
@@ -1185,6 +1408,50 @@ gboolean uri_add(command_context* ctx, sp_link* lnk) {
 gboolean uri_play(command_context* ctx, sp_link* lnk) {
     return _uri_add_play(ctx, lnk, TRUE);
 }
+
+gboolean uri_image(command_context* ctx, sp_link* lnk) {
+  return uri_image_size(ctx, lnk, (guint) SP_IMAGE_SIZE_NORMAL);
+}
+
+gboolean uri_image_size(command_context* ctx, sp_link* lnk, guint size) {
+    sp_linktype type = sp_link_type(lnk);
+    gboolean done = TRUE;
+
+    if (size < SP_IMAGE_SIZE_NORMAL || size > SP_IMAGE_SIZE_LARGE) {
+        jb_add_string(ctx->jb, "error", "invalid size");
+        sp_link_release(lnk);
+        return done;
+    }
+
+    switch(type) {
+    case SP_LINKTYPE_INVALID:
+        jb_add_string(ctx->jb, "error", "invalid URI");
+        sp_link_release(lnk);
+        break;
+    case SP_LINKTYPE_TRACK:
+    case SP_LINKTYPE_ALBUM: {
+        uri_image_cb_data* data = g_malloc0(sizeof(uri_image_cb_data));
+        data->ctx = ctx;
+        data->link = lnk;
+        data->size = (sp_image_size) size;
+        data->count = 0;
+
+        // If false the image could not be processed immediately and we'll wait to catch track, album and cover image
+        if (_uri_image_cb(data)) {
+          g_timeout_add(CMD_CALLBACK_WAIT_TIME, (GSourceFunc) _uri_image_cb, (gpointer*) data);
+        }
+        done = FALSE;
+        break;
+    }
+    default:
+        jb_add_string(ctx->jb, "error", "link not supported");
+        sp_link_release(lnk);
+        break;
+    }
+
+    return done;
+}
+
 /* }}} */
 /* {{{ Search */
 static void _search_cb(sp_search* srch, gpointer userdata) {

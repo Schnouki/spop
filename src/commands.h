@@ -84,6 +84,8 @@ gboolean image(command_context* ctx);
 gboolean uri_info(command_context* ctx, sp_link* lnk);
 gboolean uri_add(command_context* ctx, sp_link* lnk);
 gboolean uri_play(command_context* ctx, sp_link* lnk);
+gboolean uri_image(command_context* ctx, sp_link* lnk);
+gboolean uri_image_size(command_context* ctx, sp_link* lnk, guint size);
 
 gboolean search(command_context* ctx, const gchar* query);
 
