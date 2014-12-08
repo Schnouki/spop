@@ -223,7 +223,7 @@ gboolean help(command_context* ctx) {
     // args array property
     json_builder_set_member_name(ctx->jb, "args");
     json_builder_begin_array(ctx->jb);
-    for (n = 0; g_commands[i].desc.args[n] != CA_NONE && n < MAX_CMD_ARGS; n++) {
+    for (n = 0; n < MAX_CMD_ARGS && g_commands[i].desc.args[n] != CA_NONE; n++) {
       arg = g_commands[i].desc.args[n];
       if (arg == CA_INT) {
         json_builder_add_string_value(ctx->jb, "Integer");
