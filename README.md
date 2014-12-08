@@ -118,6 +118,11 @@ official Spotify client. Then, you will be able to use the following commands:
   only)
 - `uplay uri`: replace the contents of the queue with the given Spotify URI
   (playlist, track or album only) and start playing
+- `uimage uri`: get the cover image for given uri (base64-encoded JPEG image).
+  Uri must be an track or album uri.
+- `uimage uri size`: get the cover image for given uri (base64-encoded JPEG
+  image).  Uri must be an track or album uri. Use 0 for normal size, 1 for
+  large size and 2 for small size.
 
 ---
 

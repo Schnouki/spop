@@ -503,6 +503,10 @@ gboolean track_available(sp_track* track) {
     return (sp_track_get_availability(g_session, track) == SP_TRACK_AVAILABILITY_AVAILABLE);
 }
 
+sp_image* image_id_get_image(const void* img_id) {
+  return sp_image_create(g_session, img_id);
+}
+
 sp_image* track_get_image(sp_track* track) {
     sp_album* alb = NULL;
     sp_image* img = NULL;
