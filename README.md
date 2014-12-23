@@ -121,8 +121,8 @@ official Spotify client. Then, you will be able to use the following commands:
 - `uimage uri`: get the cover image for given uri (base64-encoded JPEG image).
   Uri must be an track or album uri.
 - `uimage uri size`: get the cover image for given uri (base64-encoded JPEG
-  image).  Uri must be an track or album uri. Use 0 for normal size, 1 for
-  large size and 2 for small size.
+  image).  Uri must be an track or album uri. Use 0 for normal size (300px), 1
+  for small size (64px) and 2 for large size (640px).
 
 ---
 
