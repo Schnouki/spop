@@ -254,11 +254,17 @@ void spop_log_handler(const gchar* log_domain, GLogLevelFlags log_level, const g
     else if (log_level & G_LOG_LEVEL_MESSAGE)
         level = "MSG ";
     else if (log_level & G_LOG_LEVEL_INFO) {
-        if (!verbose_mode) return;
+        if (!verbose_mode) {
+            g_rec_mutex_unlock(&g_log_mutex);
+            return;
+        }
         level = "INFO";
     }
     else if (log_level & G_LOG_LEVEL_DEBUG) {
-        if (!debug_mode) return;
+        if (!debug_mode) {
+            g_rec_mutex_unlock(&g_log_mutex);
+            return;
+        }
         level = "DBG ";
     }
     else if (log_level & G_LOG_LEVEL_LIBSPOTIFY)
