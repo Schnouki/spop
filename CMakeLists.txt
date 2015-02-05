@@ -223,7 +223,7 @@ set(SRC
   ${PLUGIN_SCROBBLE}
 )
 set_source_files_properties(${SRC}
-  COMPILE_FLAGS "-O2 -Wall -Werror"
+  COMPILE_FLAGS "-O2 -Wall" #-Werror
 )
 include_directories(src)
 
