@@ -1039,7 +1039,7 @@ static uri_image_cb_result_type _uri_image_cb_image(uri_image_cb_data* data) {
     }
 
     // fetch the cover image id
-    img_id = sp_album_cover(data->album, SP_IMAGE_SIZE_NORMAL);
+    img_id = sp_album_cover(data->album, data->size);
     if (!img_id) {
         g_debug("Image id not found");
         jb_add_string(ctx->jb, "error", "Image absent");
