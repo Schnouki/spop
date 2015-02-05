@@ -1066,7 +1066,7 @@ static uri_image_cb_result_type _uri_image_cb_image_data(uri_image_cb_data* data
     command_context* ctx = data->ctx;
 
     const guchar* img_data = NULL;
-    gsize len = NULL;
+    gsize len = 0;
     gchar* b64data = NULL;
 
     if (!data->image) {
