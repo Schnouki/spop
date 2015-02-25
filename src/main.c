@@ -71,6 +71,7 @@ static void exit_handler();
 static void sigint_handler(int signum);
 
 /* Logging stuff */
+static GRecMutex g_log_mutex;
 static const gchar* g_log_file_path = NULL;
 static GIOChannel* g_log_channel = NULL;
 static void logging_init();
@@ -221,6 +222,7 @@ void logging_init() {
 void sighup_handler(int signum) {
     GError* err = NULL;
 
+    g_rec_mutex_lock(&g_log_mutex);
     if (g_log_channel && (g_io_channel_shutdown(g_log_channel, TRUE, &err) != G_IO_STATUS_NORMAL))
         g_error("Can't close log file: %s", err->message);
 
@@ -229,6 +231,7 @@ void sighup_handler(int signum) {
         if (!g_log_channel)
             g_error("Can't open log file (%s): %s", g_log_file_path, err->message);
     }
+    g_rec_mutex_unlock(&g_log_mutex);
 }
 
 void spop_log_handler(const gchar* log_domain, GLogLevelFlags log_level, const gchar* message, gpointer user_data) {
@@ -238,6 +241,8 @@ void spop_log_handler(const gchar* log_domain, GLogLevelFlags log_level, const g
 
     GError* err = NULL;
     gchar* level = "";
+
+    g_rec_mutex_lock(&g_log_mutex);
 
     /* Convert log_level to a string */
     if (log_level & G_LOG_LEVEL_ERROR)
@@ -249,11 +254,17 @@ void spop_log_handler(const gchar* log_domain, GLogLevelFlags log_level, const g
     else if (log_level & G_LOG_LEVEL_MESSAGE)
         level = "MSG ";
     else if (log_level & G_LOG_LEVEL_INFO) {
-        if (!verbose_mode) return;
+        if (!verbose_mode) {
+            g_rec_mutex_unlock(&g_log_mutex);
+            return;
+        }
         level = "INFO";
     }
     else if (log_level & G_LOG_LEVEL_DEBUG) {
-        if (!debug_mode) return;
+        if (!debug_mode) {
+            g_rec_mutex_unlock(&g_log_mutex);
+            return;
+        }
         level = "DBG ";
     }
     else if (log_level & G_LOG_LEVEL_LIBSPOTIFY)
@@ -291,4 +302,6 @@ void spop_log_handler(const gchar* log_domain, GLogLevelFlags log_level, const g
         if (g_io_channel_flush(g_log_channel, &err) != G_IO_STATUS_NORMAL)
             g_error("Can't flush log file: %s", err->message);
     }
+
+    g_rec_mutex_unlock(&g_log_mutex);
 }

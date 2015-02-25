@@ -15,6 +15,17 @@ spotify_password = PASSWORD
 # Prefer high bitrate for offlinesync. This is the default.
 #offline_high_bitrate = true
 
+# Settings path -- the location where Spotify will write setting files and
+# per-user cache items. This includes playlists, track metadata, etc. Defaults
+# to $XDG_CACHE_HOME/spop (usually ~/.cache/spop).
+#settings_path = /var/lib/spop
+
+# Cache path -- the location where Spotify will write cache files. This cache
+# include tracks, cached browse results and coverarts. Set to empty string to
+# disable cache. Can be the same as the settings path. Defaults to
+# $XDG_CACHE_HOME/spop (usually ~/.cache/spop).
+#cache_path = /var/lib/spop
+
 # Cache size, in megabytes. The default value is 0, which means 10% of disk free
 # space.
 #cache_size = 0
@@ -55,7 +66,12 @@ audio_output = oss
 
 # Pretty-print the JSON output. This makes the output easier to read, which may
 # be useful when debugging or using spop using only a telnet client...
-# pretty_json = false
+#pretty_json = false
+
+# Proxy configuration
+#proxy=http://proxy.lan:3128
+#proxy_username=
+#proxy_password=
 
 [scrobble]
 # API endpoint of the scrobbling service you're using.
@@ -88,6 +104,10 @@ password = PASSWORD
 # List of effets to apply to the audio output, with their parameters. See `man
 # soxeffects' for details.
 #effects = gain -3; pad 0 3; reverb
+
+[oss]
+# Device to use for OSS output. Default is /dev/dsp
+#device = /dev/dsp
 
 [web]
 # IP/hostname and port the web server will listen on if enabled. By default it

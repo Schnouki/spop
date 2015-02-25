@@ -51,6 +51,17 @@
     json_builder_set_member_name(jb, name); \
     json_builder_add_string_value(jb, val); }
 
+typedef enum { UICRT_ERROR=-1, UICRT_DONE, UICRT_WAIT } uri_image_cb_result_type;
+typedef struct {
+    command_context* ctx;
+    sp_link* link;
+    sp_image_size size;
+    gint count;
+    sp_track* track;
+    sp_album* album;
+    sp_image* image;
+} uri_image_cb_data;
+
 static void json_tracks_array(GArray* tracks, JsonBuilder* jb) {
     int i;
     sp_track* track;
@@ -109,48 +120,53 @@ static void json_playlist_offline_status(sp_playlist* pl, JsonBuilder* jb) {
 }
 /* }}} */
 /* {{{ Commands descriptors */
-command_full_descriptor commands_descriptors[] = {
-    { "ls",      CT_FUNC, { list_playlists, {CA_NONE}}},
-    { "ls",      CT_FUNC, { list_tracks,    {CA_INT, CA_NONE}}},
+command_full_descriptor g_commands[] = {
+    { "help",    CT_FUNC, { help, {CA_NONE}}, "list all available commands"},
 
-    { "status",  CT_FUNC, { status,  {CA_NONE}}},
-    { "repeat",  CT_FUNC, { repeat,  {CA_NONE}}},
-    { "shuffle", CT_FUNC, { shuffle, {CA_NONE}}},
+    { "ls",      CT_FUNC, { list_playlists, {CA_NONE}}, "list all your playlists"},
+    { "ls",      CT_FUNC, { list_tracks,    {CA_INT, CA_NONE}}, "list the contents of playlist number arg1"},
 
-    { "qls",     CT_FUNC, { list_queue,         {CA_NONE}}},
-    { "qclear",  CT_FUNC, { clear_queue,        {CA_NONE}}},
-    { "qrm",     CT_FUNC, { remove_queue_item,  {CA_INT, CA_NONE}}},
-    { "qrm",     CT_FUNC, { remove_queue_items, {CA_INT, CA_INT}}},
+    { "status",  CT_FUNC, { status,  {CA_NONE}}, "display informations about the queue, the current track, etc."},
+    { "notify",  CT_FUNC, { notify,  {CA_NONE}}, "unlock all the currently idle sessions, just like if something had changed"},
+    { "repeat",  CT_FUNC, { repeat,  {CA_NONE}}, "toggle repeat mode"},
+    { "shuffle", CT_FUNC, { shuffle, {CA_NONE}}, "toggle shuffle mode"},
 
-    { "play",    CT_FUNC, { play_playlist, {CA_INT, CA_NONE}}},
-    { "play",    CT_FUNC, { play_track,    {CA_INT, CA_INT}} },
+    { "qls",     CT_FUNC, { list_queue,         {CA_NONE}}, "list the contents of the queue"},
+    { "qclear",  CT_FUNC, { clear_queue,        {CA_NONE}}, "clear the contents of the queue"},
+    { "qrm",     CT_FUNC, { remove_queue_item,  {CA_INT, CA_NONE}}, "remove track number arg1 from the queue"},
+    { "qrm",     CT_FUNC, { remove_queue_items, {CA_INT, CA_INT}}, "remove tracks arg1 to arg2 from the queue"},
 
-    { "add",     CT_FUNC, { add_playlist, {CA_INT, CA_NONE}}},
-    { "add",     CT_FUNC, { add_track,    {CA_INT, CA_INT}} },
+    { "play",    CT_FUNC, { play_playlist, {CA_INT, CA_NONE}}, "replace the contents of the queue with playlist arg1 and start playing"},
+    { "play",    CT_FUNC, { play_track,    {CA_INT, CA_INT}}, "replace the contents of the queue with track arg1 from playlist arg2 and start playing" },
 
-    { "play",    CT_FUNC, { play,   {CA_NONE}}},
-    { "toggle",  CT_FUNC, { toggle, {CA_NONE}}},
-    { "stop",    CT_FUNC, { stop,   {CA_NONE}}},
-    { "seek",    CT_FUNC, { seek,   {CA_INT, CA_NONE}}},
+    { "add",     CT_FUNC, { add_playlist, {CA_INT, CA_NONE}}, "add playlist number arg1 to the queue"},
+    { "add",     CT_FUNC, { add_track,    {CA_INT, CA_INT}}, "add track number arg1 from playlist number arg2 to the queue" },
 
-    { "next",    CT_FUNC, { goto_next, {CA_NONE}}},
-    { "prev",    CT_FUNC, { goto_prev, {CA_NONE}}},
-    { "goto",    CT_FUNC, { goto_nb,   {CA_INT, CA_NONE}}},
+    { "play",    CT_FUNC, { play,   {CA_NONE}}, "start playing from the queue"},
+    { "toggle",  CT_FUNC, { toggle, {CA_NONE}}, "toggle pause mode"},
+    { "stop",    CT_FUNC, { stop,   {CA_NONE}}, "stop playback"},
+    { "seek",    CT_FUNC, { seek,   {CA_INT, CA_NONE}}, "go to position arg1 (in milliseconds) in the current track"},
 
-    { "offline-status", CT_FUNC, { offline_status, {CA_NONE}}},
-    { "offline-toggle", CT_FUNC, { offline_toggle, {CA_INT, CA_NONE}}},
+    { "next",    CT_FUNC, { goto_next, {CA_NONE}}, "switch to the next track in the queue"},
+    { "prev",    CT_FUNC, { goto_prev, {CA_NONE}}, "switch to the previous track in the queue"},
+    { "goto",    CT_FUNC, { goto_nb,   {CA_INT, CA_NONE}}, "switch to track number arg1 in the queue"},
 
-    { "image",   CT_FUNC, { image, {CA_NONE}}},
+    { "offline-status", CT_FUNC, { offline_status, {CA_NONE}}, "display informations about the current status of the offline cache (number of offline playlists, sync status...)"},
+    { "offline-toggle", CT_FUNC, { offline_toggle, {CA_INT, CA_NONE}}, "toggle offline mode for playlist number arg1"},
 
-    { "uinfo",   CT_FUNC, { uri_info, {CA_URI, CA_NONE}}},
-    { "uadd",    CT_FUNC, { uri_add,  {CA_URI, CA_NONE}}},
-    { "uplay",   CT_FUNC, { uri_play, {CA_URI, CA_NONE}}},
+    { "image",   CT_FUNC, { image, {CA_NONE}}, "get the cover image for the current track (base64-encoded JPEG image)"},
 
-    { "search",  CT_FUNC, { search, {CA_STR, CA_NONE}}},
+    { "uinfo",   CT_FUNC, { uri_info, {CA_URI, CA_NONE}}, "display information about the given Spotify URI arg1"},
+    { "uadd",    CT_FUNC, { uri_add,  {CA_URI, CA_NONE}}, "add the given Spotify URI arg1 to the queue (playlist, track or album only)"},
+    { "uplay",   CT_FUNC, { uri_play, {CA_URI, CA_NONE}}, "replace the contents of the queue with the given Spotify URI arg1 (playlist, track or album only) and start playing"},
+    { "uimage",  CT_FUNC, { uri_image,      {CA_URI, CA_NONE}}, "get the cover image for the given URI"},
+    { "uimage",  CT_FUNC, { uri_image_size, {CA_URI, CA_INT}},  "get the cover image for a given URI; size must be 0 (normal), 1 (large) or 2 (small)"},
 
-    { "bye",     CT_BYE,  {}},
-    { "quit",    CT_QUIT, {}},
-    { "idle",    CT_IDLE, {}},
+    { "search",  CT_FUNC, { search, {CA_STR, CA_NONE}}, "perform a search with the given query arg1"},
+
+    { "bye",     CT_BYE,  {}, "close the connection to the spop daemon"},
+    { "quit",    CT_QUIT, {}, "exit spop"},
+    { "idle",    CT_IDLE, {}, "wait for something to change (pause, switch to other track, new track in queue...), then display status. Mostly useful in notification scripts"},
 
     {  NULL, 0, {}}
 };
@@ -218,6 +234,10 @@ gboolean command_run(command_finalize_func finalize, gpointer finalize_data, com
         if (desc->args[1] == CA_NONE) {
             gboolean (*cmd)(command_context*, sp_link*) = desc->func;
             ret = cmd(ctx, arg1);
+        } else if (desc->args[1] == CA_INT) {
+            _str_to_uint(arg2, argv[2]);
+            gboolean (*cmd)(command_context*, sp_link*, guint) = desc->func;
+            ret = cmd(ctx, arg1, arg2);
         }
         else
             g_error("Unknown argument type");
@@ -254,6 +274,46 @@ void command_end(command_context* ctx) {
 /****************
  *** Commands ***
  ****************/
+gboolean help(command_context* ctx) {
+  int i, n;
+  command_arg arg;
+
+  json_builder_set_member_name(ctx->jb, "commands");
+  json_builder_begin_array(ctx->jb);
+
+  for (i = 0; g_commands[i].name != NULL; i++) {
+    // name property
+    json_builder_begin_object(ctx->jb);
+    jb_add_string(ctx->jb, "command", g_commands[i].name);
+
+    // args array property
+    json_builder_set_member_name(ctx->jb, "args");
+    json_builder_begin_array(ctx->jb);
+    for (n = 0; n < MAX_CMD_ARGS && g_commands[i].desc.args[n] != CA_NONE; n++) {
+      arg = g_commands[i].desc.args[n];
+      if (arg == CA_INT) {
+        json_builder_add_string_value(ctx->jb, "Integer");
+      } else if (arg == CA_STR) {
+        json_builder_add_string_value(ctx->jb, "String");
+      } else if (arg == CA_URI) {
+        json_builder_add_string_value(ctx->jb, "URI");
+      } else {
+        json_builder_add_string_value(ctx->jb, "undefined");
+      }
+    }
+    json_builder_end_array(ctx->jb); // end args array
+    jb_add_string(ctx->jb, "summary", g_commands[i].summary);
+
+    json_builder_end_object(ctx->jb); // end command object
+  }
+  json_builder_end_array(ctx->jb); // end commands array
+
+  jb_add_string(ctx->jb, "version", SPOP_VERSION);
+
+  return TRUE;
+}
+
+
 /* {{{ Lists */
 gboolean list_playlists(command_context* ctx) {
     int i, n, t;
@@ -408,6 +468,11 @@ gboolean status(command_context* ctx) {
         g_free(track_link);
     }
     return TRUE;
+}
+
+gboolean notify(command_context* ctx) {
+    queue_notify();
+    return status(ctx);
 }
 
 gboolean repeat(command_context* ctx) {
@@ -919,6 +984,214 @@ static gboolean _uri_info_track_cb(gpointer* data) {
     command_end(ctx);
     return FALSE;
 }
+
+/* Fetch track. Requires track link */
+static uri_image_cb_result_type _uri_image_cb_track(uri_image_cb_data* data) {
+    command_context* ctx = data->ctx;
+    sp_link* link = data->link;
+
+    sp_linktype type = sp_link_type(link);
+    sp_track* track = NULL;
+
+    // Check preconditions
+    if (data->track) {
+        return UICRT_DONE;
+    } else if (type != SP_LINKTYPE_TRACK) {
+        return UICRT_ERROR;
+    }
+
+    // get track by link
+    track = sp_link_as_track(link);
+    if (!track) {
+        g_debug("Invalid track link");
+        jb_add_string(ctx->jb, "error", "invalid track link");
+        return UICRT_ERROR;
+    }
+
+    if (!sp_track_is_loaded(track)) {
+        /* If track is not loaded, wait a little */
+        if (++data->count < CMD_CALLBACK_MAX_CALLS)
+            return UICRT_WAIT;
+        else {
+            g_debug("Track not loaded error");
+            jb_add_string(ctx->jb, "error", "track not loaded");
+            return UICRT_ERROR;
+        }
+    }
+
+    // assign track to data for next loop
+    data->track = track;
+    sp_track_add_ref(track);
+
+    return UICRT_DONE;
+}
+
+/* Fetch album. Requires album link or loaded track */
+static uri_image_cb_result_type _uri_image_cb_album(uri_image_cb_data* data) {
+    command_context* ctx = data->ctx;
+    sp_link* link = data->link;
+    sp_album* album = NULL;
+    sp_linktype type = sp_link_type(link);
+
+    // Check preconditions
+    if (data->album) {
+        return UICRT_DONE;
+    } else if (type == SP_LINKTYPE_ALBUM) {
+        album = sp_link_as_album(link);
+        if (!album) {
+            g_debug("Invalid album link");
+            jb_add_string(ctx->jb, "error", "invalid album link");
+            return UICRT_ERROR;
+        }
+    } else if (data->track) {
+        album = sp_track_album(data->track);
+        if (!album) {
+            g_debug("Track without album");
+            jb_add_string(ctx->jb, "error", "track without album");
+            return UICRT_ERROR;
+        }
+    } else {
+        g_debug("Album precondition failed");
+        jb_add_string(ctx->jb, "error", "album precondition failed");
+        return UICRT_ERROR;
+    }
+
+    // If album is not loaded, wait a little
+    if (!sp_album_is_loaded(album)) {
+        if (++data->count < CMD_CALLBACK_MAX_CALLS)
+            return UICRT_WAIT;
+        else {
+            g_debug("Album not loaded error");
+            jb_add_string(ctx->jb, "error", "album not loaded");
+            return UICRT_ERROR;
+        }
+    }
+
+    // assign album to data for next loop
+    data->album = album;
+    sp_album_add_ref(album);
+
+    return UICRT_DONE;
+}
+
+/* Fetch image. Requires loaded album */
+static uri_image_cb_result_type _uri_image_cb_image(uri_image_cb_data* data) {
+    command_context* ctx = data->ctx;
+
+    const void* img_id = NULL;
+    sp_image* image = NULL;
+
+    if (data->image) {
+        return UICRT_DONE;
+    } else if (!data->album) {
+        g_debug("Album absent");
+        jb_add_string(ctx->jb, "error", "album absent");
+        return UICRT_ERROR;
+    }
+
+    // fetch the cover image id
+    img_id = sp_album_cover(data->album, data->size);
+    if (!img_id) {
+        g_debug("Image id not found");
+        jb_add_string(ctx->jb, "error", "Image absent");
+        return UICRT_ERROR;
+    }
+
+    image = image_id_get_image(img_id);
+    if (!sp_image_is_loaded(image)) {
+        if (++data->count < CMD_CALLBACK_MAX_CALLS * 3) {
+            return UICRT_WAIT;
+        } else {
+            g_debug("Image not loaded error");
+            jb_add_string(ctx->jb, "error", "image not loaded");
+            return UICRT_ERROR;
+        }
+    }
+    data->image = image;
+
+    return UICRT_DONE;
+}
+
+/* Fetch image data. Requires loaded image */
+static uri_image_cb_result_type _uri_image_cb_image_data(uri_image_cb_data* data) {
+    command_context* ctx = data->ctx;
+
+    const guchar* img_data = NULL;
+    gsize len = 0;
+    gchar* b64data = NULL;
+
+    if (!data->image) {
+        g_debug("Image not loaded");
+        jb_add_string(ctx->jb, "error", "image not loaded");
+      return UICRT_ERROR;
+    }
+
+    /* Now track, album, and image are loaded and can be processed */
+    img_data = sp_image_data(data->image, &len);
+    if (!img_data) {
+        g_debug("Image data absent");
+        jb_add_string(ctx->jb, "error", "image data absent");
+        return UICRT_ERROR;
+    }
+
+    b64data = g_base64_encode(img_data, len);
+    jb_add_string(ctx->jb, "status", "ok");
+    jb_add_string(ctx->jb, "data", b64data);
+
+    return UICRT_DONE;
+}
+
+/* Free all allocated data in uri_image_cb_data */
+static void _uri_image_cb_free(uri_image_cb_data* data) {
+    if (data->link) {
+        sp_link_release(data->link);
+        data->link = NULL;
+    }
+    if (data->track) {
+        sp_track_release(data->track);
+        data->track = NULL;
+    }
+    if (data->album) {
+        sp_album_release(data->album);
+        data->album = NULL;
+    }
+    if (data->image) {
+        sp_image_release(data->image);
+        data->image = NULL;
+    }
+}
+
+/* Load cover image via track or album link */
+static gboolean _uri_image_cb(uri_image_cb_data* data) {
+    command_context* ctx = data->ctx;
+    sp_linktype type = sp_link_type(data->link);
+
+    uri_image_cb_result_type result = UICRT_DONE;
+
+    if (type == SP_LINKTYPE_TRACK) {
+        result = _uri_image_cb_track(data);
+    }
+    if (result == UICRT_DONE) {
+        result = _uri_image_cb_album(data);
+    }
+    if (result == UICRT_DONE) {
+        result = _uri_image_cb_image(data);
+    }
+    if (result == UICRT_DONE) {
+        result = _uri_image_cb_image_data(data);
+    }
+
+    if (result == UICRT_WAIT) {
+        return TRUE;
+    }
+
+    _uri_image_cb_free(data);
+    g_free(data);
+    command_end(ctx);
+
+    return FALSE;
+}
+
   /* }}} */
   /* {{{ uri_add/uri_play callbacks */
 static void _uri_add_album_cb(sp_albumbrowse* ab, gpointer userdata) {
@@ -1226,6 +1499,50 @@ gboolean uri_add(command_context* ctx, sp_link* lnk) {
 gboolean uri_play(command_context* ctx, sp_link* lnk) {
     return _uri_add_play(ctx, lnk, TRUE);
 }
+
+gboolean uri_image(command_context* ctx, sp_link* lnk) {
+  return uri_image_size(ctx, lnk, (guint) SP_IMAGE_SIZE_NORMAL);
+}
+
+gboolean uri_image_size(command_context* ctx, sp_link* lnk, guint size) {
+    sp_linktype type = sp_link_type(lnk);
+    gboolean done = TRUE;
+
+    if (size < SP_IMAGE_SIZE_NORMAL || size > SP_IMAGE_SIZE_LARGE) {
+        jb_add_string(ctx->jb, "error", "invalid size");
+        sp_link_release(lnk);
+        return done;
+    }
+
+    switch(type) {
+    case SP_LINKTYPE_INVALID:
+        jb_add_string(ctx->jb, "error", "invalid URI");
+        sp_link_release(lnk);
+        break;
+    case SP_LINKTYPE_TRACK:
+    case SP_LINKTYPE_ALBUM: {
+        uri_image_cb_data* data = g_malloc0(sizeof(uri_image_cb_data));
+        data->ctx = ctx;
+        data->link = lnk;
+        data->size = (sp_image_size) size;
+        data->count = 0;
+
+        // If false the image could not be processed immediately and we'll wait to catch track, album and cover image
+        if (_uri_image_cb(data)) {
+          g_timeout_add(CMD_CALLBACK_WAIT_TIME, (GSourceFunc) _uri_image_cb, (gpointer*) data);
+        }
+        done = FALSE;
+        break;
+    }
+    default:
+        jb_add_string(ctx->jb, "error", "link not supported");
+        sp_link_release(lnk);
+        break;
+    }
+
+    return done;
+}
+
 /* }}} */
 /* {{{ Search */
 static void _search_cb(sp_search* srch, gpointer userdata) {

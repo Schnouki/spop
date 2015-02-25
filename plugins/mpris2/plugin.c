@@ -36,6 +36,7 @@ static GDBusConnection* g_conn = NULL;
 static guint g_bus_name_id = 0;
 static Mpris2* g_iface = NULL;
 static Mpris2Player* g_iface_player = NULL;
+static Mpris2TrackList* g_iface_tracklist = NULL;
 
 /* Plugin management */
 static void on_bus_acquired(GDBusConnection* conn, const gchar* name, gpointer user_data) {
@@ -51,6 +52,10 @@ static void on_bus_acquired(GDBusConnection* conn, const gchar* name, gpointer u
     if (!g_dbus_interface_skeleton_export(G_DBUS_INTERFACE_SKELETON(g_iface_player),
                                           g_conn, "/org/mpris/MediaPlayer2", &err))
         g_error("mpris2: can't export MediaPlayer2.Player: %s", err->message);
+
+    if (!g_dbus_interface_skeleton_export(G_DBUS_INTERFACE_SKELETON(g_iface_tracklist),
+                                          g_conn, "/org/mpris/MediaPlayer2", &err))
+        g_error("mpris2: can't export MediaPlayer2.TrackList: %s", err->message);
 
     g_debug("mpris2: interfaces exported.");
 }
@@ -72,6 +77,10 @@ G_MODULE_EXPORT void spop_mpris2_init() {
     g_iface_player = spop_mpris2_player_skeleton_new();
     if (!g_iface_player)
         g_error("Can't init Mpris2Player");
+
+    g_iface_tracklist = spop_mpris2_tracklist_skeleton_new();
+    if (!g_iface_tracklist)
+        g_error("Can't init Mpris2TrackList");
 
     /* Connect to D-Bus and acquire name */
     g_bus_name_id = g_bus_own_name(G_BUS_TYPE_SESSION, "org.mpris.MediaPlayer2.spopd",

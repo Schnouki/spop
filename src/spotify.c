@@ -23,6 +23,7 @@
  * Program grant you additional permission to convey the resulting work.
  */
 
+#include <errno.h>
 #include <fcntl.h>
 #include <glib.h>
 #include <libspotify/api.h>
@@ -80,7 +81,7 @@ static sp_session_callbacks g_sp_session_callbacks = {
     &cb_play_token_lost,
     &cb_log_message,
     &cb_end_of_track,
-    NULL, /* streaming_error */
+    &cb_streaming_error,
     NULL, /* userinfo_updated */
     NULL, /* start_playback */
     NULL, /* stop_playback */
@@ -100,20 +101,43 @@ static sp_session_callbacks g_sp_session_callbacks = {
 void session_init() {
     sp_error error;
     gchar* cache_path;
+    gchar* settings_path;
+    gchar* proxy;
+    gchar* proxy_username;
+    gchar* proxy_password;
 
     g_debug("Creating session...");
 
-    /* Cache path */
-    cache_path = g_build_filename(g_get_user_cache_dir(), g_get_prgname(), NULL);
+    /* Cache and settings path */
+    cache_path = config_get_string_opt("cache_path", NULL);
+    if (!cache_path)
+        cache_path = g_build_filename(g_get_user_cache_dir(), g_get_prgname(), NULL);
+
+    /* The cache path is not automatically created by libspotify */
+    if (g_mkdir_with_parents(cache_path, 0700) != 0) {
+        g_error("Can't create the cache path %s: %s", cache_path, g_strerror(errno));
+    }
+
+    settings_path = config_get_string_opt("settings_path", NULL);
+    if (!settings_path)
+        settings_path = g_build_filename(g_get_user_cache_dir(), g_get_prgname(), NULL);
+
+    /* The settings path is not automatically created by libspotify */
+    if (g_mkdir_with_parents(settings_path, 0700) != 0) {
+        g_error("Can't create the settings path %s: %s", settings_path, g_strerror(errno));
+    }
 
     /* libspotify session config */
     if (g_audio_buffer_stats_func)
         g_sp_session_callbacks.get_audio_buffer_stats = g_audio_buffer_stats_func;
+    proxy = config_get_string_opt("proxy", NULL);
+    proxy_username = config_get_string_opt("proxy_username", NULL);
+    proxy_password = config_get_string_opt("proxy_password", NULL);
 
     sp_session_config config = {
         .api_version = SPOTIFY_API_VERSION,
         .cache_location = cache_path,
-        .settings_location = cache_path,
+        .settings_location = settings_path,
         .application_key = g_appkey,
         .application_key_size = g_appkey_size,
         .user_agent = "spop " SPOP_VERSION,
@@ -122,6 +146,9 @@ void session_init() {
         .compress_playlists = FALSE,
         .dont_save_metadata_for_playlists = FALSE,
         .initially_unload_playlists = FALSE,
+        .proxy = proxy,
+        .proxy_username = proxy_username,
+        .proxy_password = proxy_password,
         NULL,
     };
 
@@ -282,10 +309,16 @@ void session_seek(guint pos) {
     g_audio_samples = 0;
 
     cb_notify_main_thread(NULL);
+
+    queue_notify();
 }
 
 guint session_play_time() {
-    return g_audio_time + (1000 * g_audio_samples) / g_audio_rate;
+    /* If there are more that 4,294,967 samples, (1000 * g_audio_samples) will
+     * overflow a 32 bit integer. So let's do some floating-point math
+     * instead. */
+    gfloat time = g_audio_time + (1000. * g_audio_samples) / g_audio_rate;
+    return (guint) time;
 }
 
 void session_get_offline_sync_status(sp_offline_sync_status* status, gboolean* sync_in_progress,
@@ -468,6 +501,10 @@ void track_get_data(sp_track* track, gchar** name, gchar** artist, gchar** album
 
 gboolean track_available(sp_track* track) {
     return (sp_track_get_availability(g_session, track) == SP_TRACK_AVAILABILITY_AVAILABLE);
+}
+
+sp_image* image_id_get_image(const void* img_id) {
+  return sp_image_create(g_session, img_id);
 }
 
 sp_image* track_get_image(sp_track* track) {
@@ -690,4 +727,7 @@ void cb_log_message(sp_session* session, const char* data) {
 void cb_end_of_track(sp_session* session) {
     g_debug("End of track.");
     g_idle_add_full(G_PRIORITY_DEFAULT, session_next_track_event, NULL, NULL);
+}
+void cb_streaming_error(sp_session* session, sp_error error) {
+    g_warning("Streaming error: %s", sp_error_message(error));
 }

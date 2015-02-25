@@ -73,6 +73,8 @@ sp_image* track_get_image(sp_track* track);
 gboolean track_get_image_data(sp_track* track, gpointer* data, gsize* len);
 gboolean track_get_image_file(sp_track* track, gchar** filename);
 
+sp_image* image_id_get_image(const void* img_id);
+
 /* Browsing */
 sp_albumbrowse* albumbrowse_create(sp_album* album, albumbrowse_complete_cb* callback, gpointer userdata);
 sp_artistbrowse* artistbrowse_create(sp_artist* artist, artistbrowse_complete_cb* callback, gpointer userdata);
@@ -93,5 +95,6 @@ int cb_music_delivery(sp_session* session, const sp_audioformat* format, const v
 void cb_play_token_lost(sp_session* session);
 void cb_log_message(sp_session* session, const char* data);
 void cb_end_of_track(sp_session* session);
+void cb_streaming_error(sp_session* session, sp_error error);
 
 #endif

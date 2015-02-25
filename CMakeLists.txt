@@ -22,6 +22,7 @@
 # Program grant you additional permission to convey the resulting work.
 
 cmake_minimum_required(VERSION 2.8)
+include(CheckIncludeFiles)
 
 project(spop C)
 
@@ -41,6 +42,9 @@ pkg_check_modules(GTHREAD2 REQUIRED gthread-2.0)
 string(REPLACE ";" " " GTHREAD2_CFLAGS "${GTHREAD2_CFLAGS}")
 pkg_check_modules(JSON_GLIB REQUIRED json-glib-1.0>=0.12)
 string(REPLACE ";" " " JSON_GLIB_CFLAGS "${JSON_GLIB_CFLAGS}")
+
+# Check for optional headers
+check_include_files("sys/soundcard.h" HAVE_SYS_SOUNDCARD_H)
 
 # Check for optional libraries
 pkg_check_modules(AO ao)
@@ -79,15 +83,17 @@ target_link_libraries(spopd dl rt ${SPOTIFY_LIBRARIES} ${GLIB2_LIBRARIES}
 set(targets ${targets} spopd)
 
 # Audio plugin: OSS
-set(AUDIO_OSS
-  plugins/oss.c
-)
-add_library(spop_audio_oss MODULE ${AUDIO_OSS})
-set_target_properties(spop_audio_oss PROPERTIES
-  COMPILE_FLAGS "${GLIB2_CFLAGS}"
-)
-target_link_libraries(spop_audio_oss ${GLIB2_LIBRARIES})
-set(targets ${targets} spop_audio_oss)
+if(HAVE_SYS_SOUNDCARD_H)
+  set(AUDIO_OSS
+    plugins/oss.c
+  )
+  add_library(spop_audio_oss MODULE ${AUDIO_OSS})
+  set_target_properties(spop_audio_oss PROPERTIES
+    COMPILE_FLAGS "${GLIB2_CFLAGS}"
+  )
+  target_link_libraries(spop_audio_oss ${GLIB2_LIBRARIES})
+  set(targets ${targets} spop_audio_oss)
+endif(HAVE_SYS_SOUNDCARD_H)
 
 # Audio plugin: libao
 if(AO_FOUND)
@@ -140,14 +146,17 @@ if(GIO_UNIX_FOUND)
       MAIN_DEPENDENCY "${DIR}/${XML}"
     )
   endmacro(GDBUS_CODEGEN)
-  gdbus_codegen("${CMAKE_CURRENT_SOURCE_DIR}/plugins/mpris2" "mpris2.xml"
+  gdbus_codegen("${CMAKE_CURRENT_SOURCE_DIR}/plugins/mpris2" "org.mpris.MediaPlayer2.xml"
                 org.mpris.MediaPlayer2 mpris2-generated Mpris2)
-  gdbus_codegen("${CMAKE_CURRENT_SOURCE_DIR}/plugins/mpris2" "mpris2-player.xml"
+  gdbus_codegen("${CMAKE_CURRENT_SOURCE_DIR}/plugins/mpris2" "org.mpris.MediaPlayer2.Player.xml"
                 org.mpris.MediaPlayer2 mpris2-player-generated Mpris2)
+  gdbus_codegen("${CMAKE_CURRENT_SOURCE_DIR}/plugins/mpris2" "org.mpris.MediaPlayer2.TrackList.xml"
+                org.mpris.MediaPlayer2 mpris2-tracklist-generated Mpris2)
 
   set(PLUGIN_MPRIS2
     plugins/mpris2/mpris2-generated.c
     plugins/mpris2/mpris2-player-generated.c
+    plugins/mpris2/mpris2-tracklist-generated.c
     plugins/mpris2/plugin.c
     plugins/mpris2/spop-mpris2.c
   )
@@ -215,7 +224,7 @@ endif(SOUP_FOUND)
 install(PROGRAMS dspop/dspop DESTINATION bin)
 
 # systemd service files
-install(DIRECTORY systemd DESTINATION lib/systemd/system)
+install(DIRECTORY systemd/ DESTINATION lib/systemd/user)
 
 # Common to all source files
 set(SRC
@@ -229,7 +238,7 @@ set(SRC
   ${PLUGIN_SCROBBLE}
 )
 set_source_files_properties(${SRC}
-  COMPILE_FLAGS "-O2 -Wall -Werror"
+  COMPILE_FLAGS "-O2 -Wall" #-Werror
 )
 include_directories(src)
 

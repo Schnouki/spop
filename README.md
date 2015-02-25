@@ -72,10 +72,27 @@ If you want to install spop somewhere on your system, do the following steps:
     make
     sudo make install
 
+### Debian
+
+Add Mopidy APT repository for `libspotify` from `https://github.com/mopidy/libspotify-deb`:
+
+    wget -q -O - http://apt.mopidy.com/mopidy.gpg | sudo apt-key add -
+    echo -e "deb http://apt.mopidy.com/ stable main contrib non-free\ndeb-src http://apt.mopidy.com/ stable main contrib non-free" | sudo tee /etc/apt/sources.list.d/mopidy.list
+    sudo apt-get update
+
+Install required libraries via `apt-get`:
+
+    sudo apt-get install libjson-glib-dev libao-dev libdbus-glib-1-dev libnotify-dev libsoup2.4-dev libsox-dev libspotify-dev
+
+
 ## Commands
 At the moment, spop can not modify your playlists. So you will have to create
 some playlists using the official Spotify client. Then, you will be able to use
 the following commands:
+
+- `help`: list all available commands
+
+---
 
 - `ls`: list all your playlists
 - `ls pl`: list the contents of playlist number `pl`
@@ -103,6 +120,11 @@ the following commands:
   only)
 - `uplay uri`: replace the contents of the queue with the given Spotify URI
   (playlist, track or album only) and start playing
+- `uimage uri`: get the cover image for given uri (base64-encoded JPEG image).
+  Uri must be an track or album uri.
+- `uimage uri size`: get the cover image for given uri (base64-encoded JPEG
+  image).  Uri must be an track or album uri. Use 0 for normal size (300px), 1
+  for small size (64px) and 2 for large size (640px).
 
 ---
 
@@ -113,7 +135,7 @@ the following commands:
 - `play`: start playing from the queue
 - `toggle` or `pause`: toggle pause mode
 - `stop`: stop playback
-- `seek pos`: go to position `pos` (in seconds) in the current track
+- `seek pos`: go to position `pos` (in milliseconds) in the current track
 - `next`: switch to the next track in the queue
 - `prev`: switch to the previous track in the queue
 - `goto tr`: switch to track number `tr` in the queue
@@ -125,6 +147,8 @@ the following commands:
 - `status`: display informations about the queue, the current track, etc.
 - `idle`: wait for something to change (pause, switch to other track, new track
   in queue...), then display `status`. Mostly useful in notification scripts.
+- `notify`: unlock all the currently idle sessions, just like if something had
+  changed.
 - `image`: get the cover image for the current track (base64-encoded JPEG image).
 - `offline-status`: display informations about the current status of the offline
   cache (number of offline playlists, sync status...).

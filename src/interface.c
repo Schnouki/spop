@@ -274,12 +274,12 @@ command_result interface_handle_command(GIOChannel* chan, gchar* command){
     /* Now execute the command */
     command_full_descriptor* cmd_desc = NULL;
 
-    for (i=0; commands_descriptors[i].name != NULL; i++) {
+    for (i=0; g_commands[i].name != NULL; i++) {
         int nb_args = 0;
-        while ((nb_args < MAX_CMD_ARGS) && (commands_descriptors[i].desc.args[nb_args] != CA_NONE))
+        while ((nb_args < MAX_CMD_ARGS) && (g_commands[i].desc.args[nb_args] != CA_NONE))
             nb_args += 1;
-        if ((strcmp(commands_descriptors[i].name, argv[0]) == 0) && (nb_args == argc-1)) {
-            cmd_desc = &(commands_descriptors[i]);
+        if ((strcmp(g_commands[i].name, argv[0]) == 0) && (nb_args == argc-1)) {
+            cmd_desc = &(g_commands[i]);
             break;
         }
     }

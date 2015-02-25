@@ -30,7 +30,6 @@
 #include <json-glib/json-glib.h>
 #include <libspotify/api.h>
 
-/* Commands management */
 #define MAX_CMD_ARGS 2
 typedef enum { CA_NONE=0, CA_INT, CA_STR, CA_URI } command_arg;
 typedef struct {
@@ -42,10 +41,12 @@ typedef struct {
     gchar*             name;
     command_type       type;
     command_descriptor desc;
+    gchar*             summary;
 } command_full_descriptor;
-extern command_full_descriptor commands_descriptors[];
+extern command_full_descriptor g_commands[];
 
 typedef void (*command_finalize_func)(const gchar* json_result, gpointer data);
+
 typedef struct {
     JsonBuilder* jb;
     command_finalize_func finalize;
@@ -56,10 +57,13 @@ gboolean command_run(command_finalize_func finalize, gpointer finalize_data, com
 void command_end(command_context* ctx);
 
 /* Actual commands */
+gboolean help(command_context* ctx);
+
 gboolean list_playlists(command_context* ctx);
 gboolean list_tracks(command_context* ctx, guint idx);
 
 gboolean status(command_context* ctx);
+gboolean notify(command_context* ctx);
 gboolean repeat(command_context* ctx);
 gboolean shuffle(command_context* ctx);
 
@@ -91,6 +95,8 @@ gboolean image(command_context* ctx);
 gboolean uri_info(command_context* ctx, sp_link* lnk);
 gboolean uri_add(command_context* ctx, sp_link* lnk);
 gboolean uri_play(command_context* ctx, sp_link* lnk);
+gboolean uri_image(command_context* ctx, sp_link* lnk);
+gboolean uri_image_size(command_context* ctx, sp_link* lnk, guint size);
 
 gboolean search(command_context* ctx, const gchar* query);
 
