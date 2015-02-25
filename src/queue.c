@@ -352,7 +352,14 @@ void queue_next(gboolean notif) {
     int n, p;
     int len = g_queue_get_length(&g_queue);
 
-    g_debug("Switching to next track.");
+    g_debug("Switching to next track (current track: %d).", g_current_track);
+
+    if (g_repeat && len == 1) {
+        /* Easy case: replay the same track */
+        queue_seek(0);
+        if (notif) queue_notify();
+        return;
+    }
 
     if (g_shuffle) {
         /* Possible cases: g_repeat, g_current_track == -1, g_shuffle_first == -1 */
@@ -398,7 +405,14 @@ void queue_prev(gboolean notif) {
     int n, p;
     int len = g_queue_get_length(&g_queue);
 
-    g_debug("Switching to previous track.");
+    g_debug("Switching to previous track (current track: %d).", g_current_track);
+
+    if (g_repeat && len == 1) {
+        /* Easy case: replay the same track */
+        queue_seek(0);
+        if (notif) queue_notify();
+        return;
+    }
 
     if (g_shuffle) {
         /* Possible cases: g_repeat, g_current_track == -1, g_shuffle_first == -1 */
@@ -458,7 +472,7 @@ void queue_goto(gboolean notif, int idx, gboolean reset_shuffle_first) {
     queue_status s = g_status;
 
     if (idx == g_current_track) {
-        g_debug("New track == current_track: doing nothing.");
+        g_debug("New track == current_track == %d: doing nothing.", g_current_track);
         return;
     }
 
