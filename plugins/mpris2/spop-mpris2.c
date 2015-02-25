@@ -331,7 +331,11 @@ void spop_mpris2_player_update_properties(Mpris2Player* obj) {
 
 gboolean spop_mpris2_player_update_position(Mpris2Player* obj) {
     guint64 pos = session_play_time() * 1000;
+    guint64 prev_pos = mpris2_player_get_position(obj);
     mpris2_player_set_position(obj, pos);
+    if (ABS(pos - prev_pos) >= 1000000) {
+        mpris2_player_emit_seeked(obj, pos);
+    }
     return TRUE;
 }
 /* }}} */
