@@ -95,5 +95,6 @@ int cb_music_delivery(sp_session* session, const sp_audioformat* format, const v
 void cb_play_token_lost(sp_session* session);
 void cb_log_message(sp_session* session, const char* data);
 void cb_end_of_track(sp_session* session);
+void cb_streaming_error(sp_session* session, sp_error error);
 
 #endif

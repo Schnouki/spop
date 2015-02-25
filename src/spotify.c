@@ -81,7 +81,7 @@ static sp_session_callbacks g_sp_session_callbacks = {
     &cb_play_token_lost,
     &cb_log_message,
     &cb_end_of_track,
-    NULL, /* streaming_error */
+    &cb_streaming_error,
     NULL, /* userinfo_updated */
     NULL, /* start_playback */
     NULL, /* stop_playback */
@@ -727,4 +727,7 @@ void cb_log_message(sp_session* session, const char* data) {
 void cb_end_of_track(sp_session* session) {
     g_debug("End of track.");
     g_idle_add_full(G_PRIORITY_DEFAULT, session_next_track_event, NULL, NULL);
+}
+void cb_streaming_error(sp_session* session, sp_error error) {
+    g_warning("Streaming error: %s", sp_error_message(error));
 }
