@@ -9,7 +9,8 @@
 }
 
 .fl1 { flex: 1; }
-.fl3 { flex: 3; }
+.fl2 { flex: 2; }
+.fl4 { flex: 4; }
 
 .btn {
     border: 1px solid rgba(0, 0, 0, 0.4);
@@ -20,13 +21,13 @@
     background-image: linear-gradient(to bottom, rgb(239, 239, 239) 0px, rgb(200, 200, 200) 100%);
     background-repeat: repeat-x;
     background-color: #C8C8C8;
-    margin: 1em 1em 0em 0em;
-    padding: 0.75em 1.875em 0.5625em;
+    margin: 0.5em;
+    padding-top: 0.75em;
+    padding-bottom: 0.5625em;
     text-align: center;
     text-shadow: 0px 1px 0px rgba(255, 255, 255, 0.4);
     filter: none !important;
 }
-.btn:first-child { margin-left: 1em; }
 
 .btn:hover, .btn:focus, .btn:active {
     background-image: linear-gradient(to bottom, #F5F5F5 0px, #CCC 100%);
