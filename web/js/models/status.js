@@ -8,7 +8,11 @@ define(["backbone", "underscore", "models/image"],
 function(Backbone,   _,            ImageModel) {
     var Status = Backbone.Model.extend({
         defaults: {
-            img: null
+            album: null,
+            artist: null,
+            current_track: null,
+            img: null,
+            title: null
         },
         url: "/api/status",
         poll_url: "/api/idle",

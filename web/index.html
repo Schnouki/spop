@@ -9,12 +9,12 @@
 </head>
 <body>
   <div id="status">
-    <img data-bind="attr:{src:img_src}"/>
+    <img data-bind="attr:{src:img_src}, classes:{empty:not(img_src)}"/>
     <div class="info">
       <div class="title"    data-bind="text:title"></div>
       <div class="artist"   data-bind="text:artist"></div>
       <div class="album"    data-bind="text:album"></div>
-      <div class="position" data-bind="text:format('$1 / $2', current_track, total_tracks)"></div>
+      <div class="position" data-bind="text:select(current_track, format('$1 / $2', current_track, total_tracks), '')"></div>
     </div>
     <div class="playback">
       <label class="fl1 btn">

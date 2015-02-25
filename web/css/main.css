@@ -55,6 +55,10 @@
 }
 #status img {
     min-width: 300px;
+    min-height: 300px;
+}
+#status img.empty {
+    opacity: hidden;
 }
 #status .buttons, #status .playback {
     display: flex;

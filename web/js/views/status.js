@@ -18,7 +18,11 @@ function(Backbone,   _) {
         },
         computeds: {
             img_src: function() {
-                return "data:image/jpeg;base64," + this.getBinding("img");
+                var img = this.getBinding("img");
+                if (img)
+                    return "data:image/jpeg;base64," + img;
+                else
+                    return null;
             },
             proxy_shuffle: {
                 deps: ["shuffle"],
