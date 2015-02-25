@@ -248,5 +248,8 @@ G_MODULE_EXPORT void get_audio_buffer_stats(sp_session* session, sp_audio_buffer
     stats->stutter = g_stutters;
     g_stutters = 0;
 
+    if (stats->stutter > 0)
+        g_debug("ao stats: samples: %d; stutter: %d", stats->samples, stats->stutter);
+
     g_mutex_unlock(&g_buf_mutex);
 }
