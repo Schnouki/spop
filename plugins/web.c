@@ -232,13 +232,23 @@ static void web_logger(SoupServer* server, SoupMessage* msg, SoupClientContext* 
     }
 }
 
+/* Start listening on an IP/port */
+static void spop_web_listen(SoupServer* server, gchar* ip, guint port) {
+    GError* err = NULL;
+
+    GSocketAddress* addr = g_inet_socket_address_new_from_string(ip, port);
+    if (!addr)
+        g_error("Could not parse or resolve the address for the web server");
+
+    if (!soup_server_listen(server, addr, 0, &err))
+        g_error("Could not start web server: %s", err->message);
+
+    g_info("web: Listening on %s:%d", ip, port);
+    g_object_unref(addr);
+}
+
 /* Plugin initialization */
 G_MODULE_EXPORT void spop_web_init() {
-    /* Get IP/port to listen on */
-    gchar* default_ip = g_strdup(WEB_DEFAULT_IP);
-    gchar* web_ip = config_get_string_opt_group("web", "ip", default_ip);
-    guint web_port = config_get_int_opt_group("web", "port", WEB_DEFAULT_PORT);
-
     /* Get the root for static files */
     gchar* default_static_root = g_strdup(WEB_STATIC_ROOT);
     gchar* static_root = config_get_string_opt_group("web", "root", default_static_root);
@@ -251,15 +261,8 @@ G_MODULE_EXPORT void spop_web_init() {
         static_root = new_static_root;
     }
 
-    SoupAddress* addr = soup_address_new(web_ip, web_port);
-    g_free(default_ip);
-    if (soup_address_resolve_sync(addr, NULL) != SOUP_STATUS_OK)
-        g_error("Could not resolve hostname for the web server");
-
     /* Init the server and add URL handlers */
-    SoupServer* server = soup_server_new("interface", addr,
-                                         "port", web_port,
-                                         "server-header", "spop/" SPOP_VERSION " ",
+    SoupServer* server = soup_server_new("server-header", "spop/" SPOP_VERSION " ",
                                          "raw-paths", TRUE,
                                          NULL);
     if (!server)
@@ -269,9 +272,21 @@ G_MODULE_EXPORT void spop_web_init() {
     soup_server_add_handler(server, "/", web_static_handler, static_root, NULL);
     g_signal_connect(server, "request-finished", G_CALLBACK(web_logger), NULL);
 
-    /* Start the server */
-    soup_server_run_async(server);
-    g_info("web: Listening on %s:%d", soup_address_get_physical(addr), web_port);
+    /* Listen on all the configured IPs */
+    guint web_port = config_get_int_opt_group("web", "port", WEB_DEFAULT_PORT);
+    gsize web_ips_size;
+    gchar** web_ips = config_get_string_list_group("web", "ip", &web_ips_size);
+
+    if (web_ips_size == 0) {
+        spop_web_listen(server, WEB_DEFAULT_IP, web_port);
+    }
+    else {
+        size_t i;
+        for (i = 0; i < web_ips_size; i++) {
+            g_strstrip(web_ips[i]);
+            spop_web_listen(server, web_ips[i], web_port);
+        }
+    }
 }
 
 G_MODULE_EXPORT void spop_web_close() {

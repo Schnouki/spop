@@ -110,9 +110,10 @@ password = PASSWORD
 #device = /dev/dsp
 
 [web]
-# IP/hostname and port the web server will listen on if enabled. By default it
-# will listen on 127.0.0.1, only allowing local connections. Set it to 0.0.0.0
-# to allow any host to use the web API (or :: if you're using IPv6).
+# List of local IP addresses and port the web server will listen on if enabled.
+# By default it will listen on 127.0.0.1, only allowing local IPv4 connections.
+# Set it to 0.0.0.0 to allow any host to use the web API (or :: if you're using
+# IPv6).
 #ip = 127.0.0.1
 #port = 8080
 
