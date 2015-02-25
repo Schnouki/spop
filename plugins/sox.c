@@ -77,6 +77,7 @@ static GCond   g_buf_cond;
 /* Player thread control */
 static GThread* g_player_thread = NULL;
 static gboolean g_player_stop   = FALSE;
+static int g_stutters = 0;
 
 /* SoX settings */
 static gboolean     g_sox_init     = FALSE;
@@ -287,8 +288,10 @@ static void* _sox_player(gpointer data) {
 static int _sox_input_drain(sox_effect_t* effp, sox_sample_t* obuf, size_t* osamp) {
     /* Is a buffer available? */
     g_mutex_lock(&g_buf_mutex);
-    while ((g_queue_get_length(g_full_bufs) == 0) && !g_player_stop)
+    while ((g_queue_get_length(g_full_bufs) == 0) && !g_player_stop) {
+        g_stutters += 1;
         g_cond_wait(&g_buf_cond, &g_buf_mutex);
+    }
 
     /* Should we stop now? */
     if (g_player_stop) {
@@ -399,4 +402,29 @@ G_MODULE_EXPORT int audio_delivery(const sp_audioformat* format, const void* fra
 
         return copied_frames;
     }
+}
+
+/* Increment stats->samples by the number of frames in a buffer */
+static void _compute_samples_in_buffer(sox_buf* buf, int* samples) {
+    if (buf) {
+        *samples += buf->size / g_sox_frame_size;
+    }
+}
+
+/* "Public" function, called from a libspotify callback */
+G_MODULE_EXPORT void get_audio_buffer_stats(sp_session* session, sp_audio_buffer_stats* stats) {
+    g_mutex_lock(&g_buf_mutex);
+
+    /* Compute the number of samples in each buffer */
+    stats->samples = 0;
+    if (g_full_bufs)
+        g_queue_foreach(g_full_bufs, (GFunc) _compute_samples_in_buffer, &(stats->samples));
+
+    stats->stutter = g_stutters;
+    g_stutters = 0;
+
+    if (stats->stutter > 0)
+        g_debug("sox stats: samples: %d; stutter: %d", stats->samples, stats->stutter);
+
+    g_mutex_unlock(&g_buf_mutex);
 }
