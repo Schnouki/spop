@@ -266,13 +266,14 @@ def menu_search(sc):
             if not album["available"]:
                 continue
             ainfo = sc.uinfo(album["uri"])
-            item = (album["uri"], "  " + format_search_album(ainfo))
+            item = (album["uri"], "  " + format_search_album(ainfo), ainfo["year"])
             if ainfo["album_type"] == "single":
                 singles.append(item)
             else:
                 albums.append(item)
 
     if len(albums) > 0:
+        albums.sort(key=lambda item: item[2])
         items.append((None, "Albums:"))
         items.extend(albums)
 
@@ -284,6 +285,7 @@ def menu_search(sc):
             items.append((track["uri"], "  " + format_search_track(track)))
 
     if len(singles) > 0:
+        singles.sort(key=lambda item: item[2])
         items.append((None, "Singles:"))
         items.extend(singles)
 
