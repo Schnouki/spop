@@ -120,7 +120,7 @@ static void _sox_init() {
         }
 
         g_sox_out_type = config_get_string_opt_group("sox", "output_type", NULL);
-        g_sox_out_name = config_get_string_group("sox", "output_name");
+        g_sox_out_name = config_get_string_opt_group("sox", "output_name", "default");
         g_sox_effects = config_get_string_list_group("sox", "effects", &g_sox_effects_size);
 
         g_sox_init = TRUE;
