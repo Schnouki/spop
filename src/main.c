@@ -208,7 +208,7 @@ void logging_init() {
     g_log_set_default_handler(spop_log_handler, NULL);
 
     /* Open the log file */
-    g_log_file_path = config_get_string_opt("log_file", "/var/log/spopd.log");
+    g_log_file_path = config_get_string_opt("log_file", "");
     if (strlen(g_log_file_path) > 0) {
         /* Install a handler so that we can reopen the file on SIGHUP */
         if (signal(SIGHUP, sighup_handler) == SIG_ERR)

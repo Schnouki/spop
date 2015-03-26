@@ -54,8 +54,8 @@ audio_output = oss
 #listen_port = 6602
 
 # Path to the log file. If blank, messages will not be saved anywhere.
-# Default is /var/log/spopd.log.
-#log_file = /var/log/spopd.log
+# Default is blank.
+#log_file =
 
 # Various plugins to load.
 #plugins = notify;scrobble
