@@ -82,6 +82,12 @@ Install required libraries via `apt-get`:
 
     sudo apt-get install libjson-glib-dev libao-dev libdbus-glib-1-dev libnotify-dev libsoup2.4-dev libsox-dev libspotify-dev
 
+### Mac OSX
+
+With [Homebrew][]:
+
+    brew install https://raw.github.com/mopidy/homebrew-mopidy/master/libspotify.rb
+
 
 ## Commands
 At the moment, spop can not modify your playlists or do any search on Spotify
@@ -169,6 +175,7 @@ ask me if you have any question regarding spop!
 
 [Awesome]: http://awesome.naquadah.org/
 [Glib]: http://library.gnome.org/devel/glib/
+[Homebrew]: http://brew.sh/
 [JSON-GLib]: http://live.gnome.org/JsonGlib
 [libspotify]: http://developer.spotify.com/en/libspotify/overview/
 [libao]: http://www.xiph.org/ao/
