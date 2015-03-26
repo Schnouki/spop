@@ -43,7 +43,7 @@ spotify_password = PASSWORD
 #   Probably not as lightweight as ao and oss, but supports more platform, and -
 #   adds the possibility to apply effects to the audio output. More details in -
 #   the [sox] section.
-audio_output = oss
+audio_output = ao
 
 # Address and port on which spopd should listen for commands.
 # The address can be IPv4 (x.x.x.x) or IPv6 (a:b:c::d).
