@@ -78,9 +78,17 @@ add_executable(spopd ${SPOPD})
 set_target_properties(spopd PROPERTIES
   COMPILE_FLAGS "${SPOTIFY_CFLAGS} ${GLIB2_CFLAGS} ${GMODULE2_CFLAGS} ${GTHREAD2_CFLAGS} ${JSON_GLIB_CFLAGS}"
 )
-target_link_libraries(spopd dl rt ${SPOTIFY_LIBRARIES} ${GLIB2_LIBRARIES}
+target_link_libraries(spopd dl ${SPOTIFY_LIBRARIES} ${GLIB2_LIBRARIES}
   ${GMODULE2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${JSON_GLIB_LIBRARIES})
 set(targets ${targets} spopd)
+
+# Apple specific stuff
+if(APPLE)
+  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -undefined dynamic_lookup")
+  set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -undefined dynamic_lookup")
+else(APPLE)
+  target_link_libraries(spopd rt)
+endif(APPLE)
 
 # Audio plugin: OSS
 if(HAVE_SYS_SOUNDCARD_H)
