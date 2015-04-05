@@ -29,11 +29,11 @@ import subprocess
 
 # {{{ Parameters
 # Possible values: {index}, {artist}, {track}, {album}, {duration}, {uri}, {playing}
-TRACK_FMT = "{playing}{index} - {artist} - {album} - {track} ({duration})"
+TRACK_FMT = "{index} - {artist} - {album} - {track} ({duration})"
 SEARCH_ALBUM_FMT = "({year}) {artist} - {album} ({tracks} tracks)"
 SEARCH_TRACK_FMT = "{artist} - {album} - {track} ({duration})"
 
-DMENU_OPTS = ["-i", "-l", "40"]
+DMENU_OPTS = ["-dmenu" , "-columns" , "1"]
 # }}}
 # {{{ Spop client
 class SpopClient:
@@ -59,7 +59,7 @@ class SpopClient:
                 pass
 
     def __getattr__(self, name):
-        if name in ("repeat", "shuffle", "qclear", "qls", "ls", "goto", "add", "play", "offline_toggle",
+        if name in ("repeat", "shuffle", "qclear", "qls", "ls", "goto", "add", "next", "prev", "toggle", "play", "offline_toggle",
                     "search", "status", "uadd", "uinfo", "uplay"):
             def func(*attrs):
                 return self._command(name.replace("_", "-"), *attrs)
@@ -68,9 +68,13 @@ class SpopClient:
             raise AttributeError
 # }}}
 # {{{ Dmenu interaction
-def dmenu(items):
-    args = ["dmenu"]
+def dmenu(items, highlight=[], prompt="dspop > "):
+    args = ["rofi", "-p", prompt ]
     args.extend(DMENU_OPTS)
+    if len(highlight) > 0:
+        test = ["-u", ",".join(highlight) ]
+        args.extend(test)
+
     p = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     for it in items:
         p.stdin.write((it+"\n").encode())
@@ -84,7 +88,7 @@ def dmenu(items):
     return items.index(out)
 
 def dmenu_input(prompt):
-    args = ["dmenu", "-p", prompt]
+    args = ["rofi", "-p", prompt]
     args.extend(DMENU_OPTS)
     p = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     out, _ = p.communicate()
@@ -165,7 +169,12 @@ def main_menu(sc):
             ("sep",       "-"*40),
             ("search",    "[ Search ]>"),
             ("offline",   "[ Offline playlists ]>"),
+            ("sep",       "-"*40),
+            ("toggle",    "[ Toggle Playback ]"),
+            ("next",      "[ Next Track ]"),
+            ("prev",      "[ Previous Track ]"),
         ]
+
         idx = dmenu([ch[1] for ch in choices])
         choice = None if idx is None else choices[idx][0]
 
@@ -181,26 +190,38 @@ def main_menu(sc):
             sc.repeat()
         elif choice == "shuffle":
             sc.shuffle()
+        elif choice == "toggle":
+            sc.toggle()
+        elif choice == "next":
+            sc.next()
+        elif choice == "prev":
+            sc.prev()
         elif choice == "search":
             done = menu_search(sc)
 
 def menu_queue(sc):
-    items = ["[ Clear queue ]"]
+    done = False
+    while not done:
+        items = ["[ Clear queue ]"]
 
-    tracks = sc.qls()["tracks"]
-    current_track = sc.status()
-    items.extend(format_tracks(tracks, current_track))
+        tracks = sc.qls()["tracks"]
+        current_track = sc.status()
+        if "current_track" in current_track:
+            play_track = [ str(current_track["current_track"]) ];
+        try:
+            items.extend(format_tracks(tracks, current_track))
+            choice = dmenu(items, play_track, "Play Queue > ")
+        except UnboundLocalError:
+            choice = dmenu(items)
 
-    choice = dmenu(items)
-
-    if choice is None:
-        return False
-    elif choice == 0:
-        sc.qclear()
-        return False
-    else:
-        sc.goto(choice)
-        return True
+        if choice is None:
+            done = True
+        elif choice == 0:
+            sc.qclear()
+            done = True
+        else:
+            sc.goto(choice)
+    return False
 
 def menu_playlists(sc):
     pls = sc.ls()["playlists"]
@@ -253,7 +274,7 @@ def menu_offline(sc):
             sc.offline_toggle(idx)
 
 def menu_search(sc):
-    query = dmenu_input("Query:")
+    query = dmenu_input("Query > ")
     if len(query) == 0:
         return False
 
