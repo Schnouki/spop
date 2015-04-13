@@ -185,6 +185,6 @@ ask me if you have any question regarding spop!
 [LastFM]: http://www.last.fm/
 [LibreFM]: http://libre.fm/
 [libsoup]: http://live.gnome.org/LibSoup
-[MPD]: http://mpd.wikia.com/
+[MPD]: http://www.musicpd.org/
 [MPRIS2]: http://specifications.freedesktop.org/mpris-spec/latest/
 [premium account]: http://www.spotify.com/uk/get-spotify/overview/
