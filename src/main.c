@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011, 2012, 2013, 2014 Thomas Jost
+ * Copyright (C) 2010, 2011, 2012, 2013, 2014, 2015 The spop contributors
  *
  * This file is part of spop.
  *
@@ -54,7 +54,7 @@ extern int daemon(int, int);
 #include "spotify.h"
 
 static const char* copyright_notice =
-    "spop Copyright (C) " SPOP_YEAR " Thomas Jost\n"
+    "spop Copyright (C) " SPOP_YEAR " Thomas Jost and the spop contributors\n"
     "This program comes with ABSOLUTELY NO WARRANTY.\n"
     "This is free software, and you are welcome to redistribute it under certain conditions.\n"
     "See the COPYING file bundled with this program for details.\n"

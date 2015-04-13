@@ -1,4 +1,4 @@
--- Copyright (C) 2010, 2011, 2012, 2013 Thomas Jost
+-- Copyright (C) 2010, 2011, 2012, 2013, 2015 The spop contributors
 --
 -- This file is part of spop.
 --
