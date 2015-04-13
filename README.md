@@ -62,6 +62,15 @@ Right now, several plugins are available:
 
         telnet localhost 6602
 
+5.  If you want something more GUI-like, you can use `dspop`, which uses either
+    [dmenu][] or [rofi][]:
+
+        ./dspop/dspop
+
+    Or, on Linux, you can enable the `mpris2` plugin in the configuration file
+    and use the media controls integrated with some desktop environments.
+
+
 If you want to install spop somewhere on your system, do the following steps:
 
     mkdir build
@@ -187,3 +196,5 @@ ask me if you have any question regarding spop!
 [MPD]: http://www.musicpd.org/
 [MPRIS2]: http://specifications.freedesktop.org/mpris-spec/latest/
 [premium account]: http://www.spotify.com/uk/get-spotify/overview/
+[dmenu]: http://tools.suckless.org/dmenu/
+[rofi]: https://davedavenport.github.io/rofi/
