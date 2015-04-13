@@ -24,16 +24,27 @@
 # Program grant you additional permission to convey the resulting work.
 
 import json
+import os
+import os.path
 import socket
 import subprocess
 
 # {{{ Parameters
 # Possible values: {index}, {artist}, {track}, {album}, {duration}, {uri}, {playing}
-TRACK_FMT = "{index} - {artist} - {album} - {track} ({duration})"
+TRACK_FMT = "{playing}{index} - {artist} - {album} - {track} ({duration})"
 SEARCH_ALBUM_FMT = "({year}) {artist} - {album} ({tracks} tracks)"
 SEARCH_TRACK_FMT = "{artist} - {album} - {track} ({duration})"
 
-DMENU_OPTS = ["-dmenu" , "-columns" , "1"]
+DMENU_OPTS = ["-i", "-l", "40"]
+ROFI_OPTS = ["-dmenu" , "-columns" , "1"]
+
+# Use rofi if it's available
+USE_ROFI = False
+for _path in os.get_exec_path():
+    _path = os.path.join(_path, "rofi")
+    if os.path.isfile(_path) and os.access(_path, os.R_OK | os.X_OK):
+        USE_ROFI = True
+        break
 # }}}
 # {{{ Spop client
 class SpopClient:
@@ -69,11 +80,11 @@ class SpopClient:
 # }}}
 # {{{ Dmenu interaction
 def dmenu(items, highlight=[], prompt="dspop > "):
-    args = ["rofi", "-p", prompt ]
-    args.extend(DMENU_OPTS)
-    if len(highlight) > 0:
-        test = ["-u", ",".join(highlight) ]
-        args.extend(test)
+    args = ["dmenu"] + DMENU_OPTS
+    if USE_ROFI:
+        args = ["rofi", "-p", prompt] + ROFI_OPTS
+        if len(highlight) > 0:
+            args += ["-a", ",".join(highlight)]
 
     p = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     for it in items:
@@ -88,7 +99,7 @@ def dmenu(items, highlight=[], prompt="dspop > "):
     return items.index(out)
 
 def dmenu_input(prompt):
-    args = ["rofi", "-p", prompt]
+    args = ["rofi" if USE_ROFI else "dmenu", "-p", prompt]
     args.extend(DMENU_OPTS)
     p = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     out, _ = p.communicate()
@@ -122,6 +133,9 @@ def format_tracks(tracks, current_track):
 
     items = []
     for track in tracks:
+        playing = "* " if "uri" in current_track and current_track["uri"] == track["uri"] and not USE_ROFI else "  "
+        if USE_ROFI:
+            playing = ""
         params = {
             "album": track["album"],
             "artist": track["artist"],
@@ -129,7 +143,7 @@ def format_tracks(tracks, current_track):
             "index": index_format % track["index"],
             "track": track["title"],
             "uri": track["uri"],
-            "playing": "* " if "uri" in current_track and current_track["uri"] == track["uri"] else "  ",
+            "playing": playing,
         }
         items.append(TRACK_FMT.format(**params))
     return items
@@ -206,13 +220,12 @@ def menu_queue(sc):
 
         tracks = sc.qls()["tracks"]
         current_track = sc.status()
+        highlight = []
         if "current_track" in current_track:
-            play_track = [ str(current_track["current_track"]) ];
-        try:
-            items.extend(format_tracks(tracks, current_track))
-            choice = dmenu(items, play_track, "Play Queue > ")
-        except UnboundLocalError:
-            choice = dmenu(items)
+            highlight = [str(current_track["current_track"])]
+
+        items.extend(format_tracks(tracks, current_track))
+        choice = dmenu(items, highlight, "Play Queue > ")
 
         if choice is None:
             done = True
