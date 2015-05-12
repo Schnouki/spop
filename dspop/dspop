@@ -54,7 +54,7 @@ class SpopClient:
         self.greeting = self._sock.recv(1024).decode().strip()
 
     def _command(self, command, *args):
-        esc_args = ['"'+arg.replace('"', '\"')+'"' if type(arg) is str else str(arg) for arg in args]
+        esc_args = ['"'+arg.replace('"', '\\"')+'"' if type(arg) is str else str(arg) for arg in args]
         esc_args.insert(0, command)
         cmd = " ".join(esc_args) + "\n"
         self._sock.send(cmd.encode())
