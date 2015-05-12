@@ -293,6 +293,7 @@ def menu_search(sc):
         return False
 
     res = sc.search(query)
+    albums_by_uri = {}
 
     SearchItem = collections.namedtuple("SearchItem", ["uri", "title", "is_album"])
     items = []
@@ -303,6 +304,7 @@ def menu_search(sc):
             if not album["available"]:
                 continue
             ainfo = sc.uinfo(album["uri"])
+            albums_by_uri[album["uri"]] = ainfo
             item = SearchItem(album["uri"], "  " + format_search_album(ainfo), True)
             if ainfo["album_type"] == "single":
                 singles.append(item)
@@ -333,11 +335,24 @@ def menu_search(sc):
             return False
 
         sel_items = ["[ Set as queue ]", "[ Add to queue ]"]
-        sel_choice = dmenu(sel_items)
+        highlight = []
+
+        if sel_item.is_album:
+            sel_album = albums_by_uri[sel_item.uri]
+            current_track = sc.status()
+            if "current_track" in current_track:
+                highlight = [str(current_track["current_track"])]
+            sel_album_tracks = [track for track in sel_album["tracks"]
+                                if track["available"]]
+            sel_items.extend(format_tracks(sel_album_tracks, current_track))
+
+        sel_choice = dmenu(sel_items, highlight)
         if sel_choice == 0:
             sc.uplay(sel_item.uri)
         elif sel_choice == 1:
             sc.uadd(sel_item.uri)
+        elif sel_choice is not None:
+            sc.uplay(sel_album_tracks[sel_choice-2]["uri"])
 # }}}
 
 if __name__ == "__main__":
