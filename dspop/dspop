@@ -100,7 +100,7 @@ def dmenu(items, highlight=[], prompt="dspop > "):
 
 def dmenu_input(prompt):
     args = ["rofi" if USE_ROFI else "dmenu", "-p", prompt]
-    args.extend(DMENU_OPTS)
+    args.extend(ROFI_OPTS if USE_ROFI else DMENU_OPTS)
     p = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     out, _ = p.communicate()
     return out[:-1].decode()
