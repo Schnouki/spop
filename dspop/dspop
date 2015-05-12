@@ -23,6 +23,7 @@
 # covered by the terms of the Libspotify Terms of Use, the licensors of this
 # Program grant you additional permission to convey the resulting work.
 
+import collections
 import json
 import os
 import os.path
@@ -292,6 +293,8 @@ def menu_search(sc):
         return False
 
     res = sc.search(query)
+
+    SearchItem = collections.namedtuple("SearchItem", ["uri", "title", "is_album"])
     items = []
     albums, singles = [], []
 
@@ -300,41 +303,41 @@ def menu_search(sc):
             if not album["available"]:
                 continue
             ainfo = sc.uinfo(album["uri"])
-            item = (album["uri"], "  " + format_search_album(ainfo), ainfo["year"])
+            item = SearchItem(album["uri"], "  " + format_search_album(ainfo), True)
             if ainfo["album_type"] == "single":
                 singles.append(item)
             else:
                 albums.append(item)
 
     if len(albums) > 0:
-        albums.sort(key=lambda item: item[2])
-        items.append((None, "Albums:"))
+        albums.sort(key=lambda item: item.title)
+        items.append(SearchItem(None, "Albums:", None))
         items.extend(albums)
 
     if "tracks" in res and len(res["tracks"]) > 0:
-        items.append((None, "Tracks:"))
+        items.append(SearchItem(None, "Tracks:", None))
         for track in res["tracks"]:
             if not track["available"]:
                 continue
-            items.append((track["uri"], "  " + format_search_track(track)))
+            items.append(SearchItem(track["uri"], "  " + format_search_track(track), False))
 
     if len(singles) > 0:
         singles.sort(key=lambda item: item[2])
-        items.append((None, "Singles:"))
+        items.append(SearchItem(None, "Singles:", None))
         items.extend(singles)
 
     while True:
-        idx = dmenu([it[1] for it in items])
-        uri = None if idx is None else items[idx][0]
-        if uri is None:
+        idx = dmenu([it.title for it in items])
+        sel_item = None if idx is None else items[idx]
+        if sel_item is None or sel_item.uri is None:
             return False
 
         sel_items = ["[ Set as queue ]", "[ Add to queue ]"]
         sel_choice = dmenu(sel_items)
         if sel_choice == 0:
-            sc.uplay(uri)
+            sc.uplay(sel_item.uri)
         elif sel_choice == 1:
-            sc.uadd(uri)
+            sc.uadd(sel_item.uri)
 # }}}
 
 if __name__ == "__main__":
