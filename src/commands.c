@@ -845,6 +845,7 @@ static gboolean _uri_info_playlist_cb(gpointer* data) {
     size_t count = (size_t) ++data[1];
     sp_playlist* pl = data[2];
     sp_link* lnk = data[3];
+    sp_user* owner = NULL;
 
     /* If not loaded, wait a little more */
     if (!sp_playlist_is_loaded(pl)) {
@@ -854,6 +855,12 @@ static gboolean _uri_info_playlist_cb(gpointer* data) {
             jb_add_string(ctx->jb, "error", "playlist not loaded");
             goto _uipc_clean;
         }
+    }
+
+    /* Make sure the owner is loaded */
+    owner = sp_playlist_owner(pl);
+    if (!sp_user_is_loaded(owner)) {
+        return TRUE;
     }
 
     /* Make sure all tracks are loaded */
@@ -872,6 +879,10 @@ static gboolean _uri_info_playlist_cb(gpointer* data) {
     if (desc) {
         jb_add_string(ctx->jb, "description", desc);
     }
+    jb_add_string(ctx->jb, "owner", sp_user_display_name(owner));
+    jb_add_bool(ctx->jb, "collaborative", sp_playlist_is_collaborative(pl));
+    jb_add_int(ctx->jb, "subscribers", sp_playlist_num_subscribers(pl));
+    /* TODO: image */
 
     json_builder_set_member_name(ctx->jb, "tracks");
     json_builder_begin_array(ctx->jb);
@@ -882,6 +893,8 @@ static gboolean _uri_info_playlist_cb(gpointer* data) {
 
  _uipc_clean:
     sp_link_release(lnk);
+    if (owner)
+        sp_user_release(owner);
     g_free(data);
     command_end(ctx);
     return FALSE;
