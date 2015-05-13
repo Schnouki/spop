@@ -34,6 +34,7 @@ import subprocess
 # Possible values: {index}, {artist}, {track}, {album}, {duration}, {uri}, {playing}
 TRACK_FMT = "{playing}{index} - {artist} - {album} - {track} ({duration})"
 SEARCH_ALBUM_FMT = "({year}) {artist} - {album} ({tracks} tracks)"
+SEARCH_PLAYLIST_FMT = "{name} (by {owner}, {tracks} tracks)"
 SEARCH_TRACK_FMT = "{artist} - {album} - {track} ({duration})"
 
 DMENU_OPTS = ["-i", "-l", "40"]
@@ -117,6 +118,14 @@ def format_search_album(album):
     }
     return SEARCH_ALBUM_FMT.format(**params)
 
+def format_search_playlist(playlist):
+    params = {
+        "name": playlist["name"],
+        "owner": playlist["owner"],
+        "tracks": len(playlist["tracks"]),
+    }
+    return SEARCH_PLAYLIST_FMT.format(**params)
+
 def format_search_track(track):
     params = {
         "album": track["album"],
@@ -183,6 +192,7 @@ def main_menu(sc):
             ("shuffle",   "[ Shuffle ]"),
             ("sep",       "-"*40),
             ("search",    "[ Search ]>"),
+            ("search_pl", "[ Search (with playlists) ]>"),
             ("offline",   "[ Offline playlists ]>"),
             ("sep",       "-"*40),
             ("toggle",    "[ Toggle Playback ]"),
@@ -213,6 +223,8 @@ def main_menu(sc):
             sc.prev()
         elif choice == "search":
             done = menu_search(sc)
+        elif choice == "search_pl":
+            done = menu_search(sc, include_playlists=True)
 
 def menu_queue(sc):
     done = False
@@ -287,15 +299,15 @@ def menu_offline(sc):
                 continue
             sc.offline_toggle(idx)
 
-def menu_search(sc):
+def menu_search(sc, include_playlists=False):
     query = dmenu_input("Query > ")
     if len(query) == 0:
         return False
 
     res = sc.search(query)
-    albums_by_uri = {}
+    containers_by_uri = {}
 
-    SearchItem = collections.namedtuple("SearchItem", ["uri", "title", "is_album"])
+    SearchItem = collections.namedtuple("SearchItem", ["uri", "title", "is_container"])
     items = []
     albums, singles = [], []
 
@@ -304,7 +316,7 @@ def menu_search(sc):
             if not album["available"]:
                 continue
             ainfo = sc.uinfo(album["uri"])
-            albums_by_uri[album["uri"]] = ainfo
+            containers_by_uri[album["uri"]] = ainfo
             item = SearchItem(album["uri"], "  " + format_search_album(ainfo), True)
             if ainfo["album_type"] == "single":
                 singles.append(item)
@@ -324,9 +336,23 @@ def menu_search(sc):
             items.append(SearchItem(track["uri"], "  " + format_search_track(track), False))
 
     if len(singles) > 0:
-        singles.sort(key=lambda item: item[2])
+        singles.sort(key=lambda item: item.title)
         items.append(SearchItem(None, "Singles:", None))
         items.extend(singles)
+
+    if include_playlists and "playlists" in res and len(res["playlists"]) > 0:
+        playlists = []
+        for playlist in res["playlists"]:
+            if "error" in playlist:
+                continue
+            pinfo = sc.uinfo(playlist["uri"])
+            containers_by_uri[playlist["uri"]] = pinfo
+            item = SearchItem(playlist["uri"], "  " + format_search_playlist(pinfo), True)
+            playlists.append(item)
+        if len(playlists) > 0:
+            playlists.sort(key=lambda item: item.title)
+            items.append(SearchItem(None, "Playlists:", None))
+            items.extend(playlists)
 
     while True:
         idx = dmenu([it.title for it in items])
@@ -337,14 +363,14 @@ def menu_search(sc):
         sel_items = ["[ Set as queue ]", "[ Add to queue ]"]
         highlight = []
 
-        if sel_item.is_album:
-            sel_album = albums_by_uri[sel_item.uri]
+        if sel_item.is_container:
+            sel_cont = containers_by_uri[sel_item.uri]
             current_track = sc.status()
             if "current_track" in current_track:
                 highlight = [str(current_track["current_track"])]
-            sel_album_tracks = [track for track in sel_album["tracks"]
-                                if track["available"]]
-            sel_items.extend(format_tracks(sel_album_tracks, current_track))
+            sel_cont_tracks = [track for track in sel_cont["tracks"]
+                               if track["available"]]
+            sel_items.extend(format_tracks(sel_cont_tracks, current_track))
 
         sel_choice = dmenu(sel_items, highlight)
         if sel_choice == 0:
@@ -352,7 +378,7 @@ def menu_search(sc):
         elif sel_choice == 1:
             sc.uadd(sel_item.uri)
         elif sel_choice is not None:
-            sc.uplay(sel_album_tracks[sel_choice-2]["uri"])
+            sc.uplay(sel_cont_tracks[sel_choice-2]["uri"])
 # }}}
 
 if __name__ == "__main__":
