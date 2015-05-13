@@ -365,11 +365,14 @@ def menu_search(sc, include_playlists=False):
 
         if sel_item.is_container:
             sel_cont = containers_by_uri[sel_item.uri]
-            current_track = sc.status()
-            if "current_track" in current_track:
-                highlight = [str(current_track["current_track"])]
             sel_cont_tracks = [track for track in sel_cont["tracks"]
                                if track["available"]]
+            current_track = sc.status()
+            if "uri" in current_track:
+                for idx, track in enumerate(sel_cont_tracks):
+                    if track["uri"] == current_track["uri"]:
+                        highlight = [str(idx + 2)]
+                        break
             sel_items.extend(format_tracks(sel_cont_tracks, current_track))
 
         sel_choice = dmenu(sel_items, highlight)
