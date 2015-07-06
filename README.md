@@ -70,6 +70,9 @@ Right now, several plugins are available:
     Or, on Linux, you can enable the `mpris2` plugin in the configuration file
     and use the media controls integrated with some desktop environments.
 
+6.  If you want a *really* nice web interface, have a look at [spop-web][] by
+    Xemle.
+
 
 If you want to install spop somewhere on your system, do the following steps:
 
@@ -198,3 +201,4 @@ ask me if you have any question regarding spop!
 [premium account]: http://www.spotify.com/uk/get-spotify/overview/
 [dmenu]: http://tools.suckless.org/dmenu/
 [rofi]: https://davedavenport.github.io/rofi/
+[spop-web]: https://github.com/xemle/spop-web
