@@ -1,5 +1,6 @@
 #include <glib.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "spop.h"
 #include "interface.h"
