@@ -311,7 +311,10 @@ gboolean list_playlists(command_context* ctx) {
                 json_builder_end_object(ctx->jb);
                 break;
             }
-            pn = sp_playlist_name(pl);
+            if (i == 0)
+                pn = "Starred";
+            else
+                pn = sp_playlist_name(pl);
 
             if (g_strcmp0("-", pn)) {
                 /* Regular playlist */
