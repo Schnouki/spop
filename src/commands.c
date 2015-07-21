@@ -272,6 +272,9 @@ gboolean list_playlists(command_context* ctx) {
     const char* pn;
     gchar* pfn;
 
+    sp_link* lnk;
+    gchar uri[1024];
+
     n = playlists_len();
     json_builder_set_member_name(ctx->jb, "playlists");
     json_builder_begin_array(ctx->jb);
@@ -326,6 +329,12 @@ gboolean list_playlists(command_context* ctx) {
                 jb_add_int(ctx->jb, "tracks", t);
                 json_playlist_offline_status(pl, ctx->jb);
                 jb_add_int(ctx->jb, "index", i);
+
+                lnk = sp_link_create_from_playlist(pl);
+                if (sp_link_as_string(lnk, uri, 1024) < 1024) {
+                    jb_add_string(ctx->jb, "uri", uri);
+                }
+                sp_link_release(lnk);
             }
             else {
                 /* Playlist separator */
