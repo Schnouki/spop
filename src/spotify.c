@@ -421,7 +421,7 @@ GArray* tracks_get_playlist(sp_playlist* pl) {
 }
 
 void track_get_data(sp_track* track, gchar** name, gchar** artist, gchar** album, gchar** link,
-                    guint* duration, int* popularity) {
+                    guint* duration, int* popularity, bool* starred) {
     sp_artist** art = NULL;
     sp_album* alb = NULL;
     sp_link* lnk;
@@ -473,6 +473,9 @@ void track_get_data(sp_track* track, gchar** name, gchar** artist, gchar** album
     }
     if (popularity) {
         *popularity = sp_track_popularity(track);
+    }
+    if (starred) {
+        *starred = sp_track_is_starred(g_session, track);
     }
 
     /* Now create destination strings */

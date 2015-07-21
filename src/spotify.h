@@ -66,7 +66,7 @@ gboolean session_remove_callback(spop_session_callback_ptr func, gpointer user_d
 
 /* Tracks management */
 GArray* tracks_get_playlist(sp_playlist* pl);
-void track_get_data(sp_track* track, gchar** name, gchar** artist, gchar** album, gchar** link, guint* duration, int* popularity);
+void track_get_data(sp_track* track, gchar** name, gchar** artist, gchar** album, gchar** link, guint* duration, int* popularity, bool *starred);
 gboolean track_available(sp_track* track);
 
 sp_image* track_get_image(sp_track* track);

@@ -151,7 +151,7 @@ static void notification_callback(const GString* status, gpointer data) {
 
         repeat = queue_get_repeat();
         shuffle = queue_get_shuffle();
-        track_get_data(cur_track, &track_name, &track_artist, &track_album, NULL, NULL, NULL);
+        track_get_data(cur_track, &track_name, &track_artist, &track_album, NULL, NULL, NULL, NULL);
 
         /* Prepare data to display */
         if (qs == PAUSED)

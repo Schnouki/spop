@@ -72,7 +72,7 @@ GVariant* spop_get_track_metadata(sp_track* track) {
     gchar* track_link;
     int duration;
 
-    track_get_data(track, &track_name, &track_artist, &track_album, &track_link, &duration, NULL);
+    track_get_data(track, &track_name, &track_artist, &track_album, &track_link, &duration, NULL, NULL);
 
     /* Turn artist into a GVariant array of strings */
     gchar* artists[] = {track_artist, NULL};
@@ -400,7 +400,7 @@ gboolean spop_mpris2_tracklist_get_tracks_metadata(Mpris2TrackList* obj, GDBusMe
         for (idx = 0; !found && (idx < queue->len); idx++) {
             sp_track* tr = g_array_index(queue, sp_track*, idx);
             gchar* uri;
-            track_get_data(tr, NULL, NULL, NULL, &uri, NULL, NULL);
+            track_get_data(tr, NULL, NULL, NULL, &uri, NULL, NULL, NULL);
             gchar* this_trackid = spop_uri_to_trackid(uri);
             if (g_strcmp0(this_trackid, *trackid) == 0) {
                 /* Hit: get the metadata */
@@ -472,7 +472,7 @@ void spop_mpris2_tracklist_update_tracks(Mpris2TrackList* obj) {
     for (idx = 0; idx < nb_tracks; idx++) {
         gchar* uri;
         sp_track* tr = g_array_index(tracks, sp_track*, idx);
-        track_get_data(tr, NULL, NULL, NULL, &uri, NULL, NULL);
+        track_get_data(tr, NULL, NULL, NULL, &uri, NULL, NULL, NULL);
         trackids[idx] = spop_uri_to_trackid(uri);
         g_free(uri);
     }

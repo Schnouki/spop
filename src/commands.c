@@ -67,7 +67,7 @@ static void json_tracks_array(GArray* tracks, JsonBuilder* jb) {
     int i;
     sp_track* track;
 
-    bool track_avail;
+    bool track_avail, track_starred;
     guint track_duration;
     int track_popularity;
     gchar* track_name;
@@ -82,7 +82,7 @@ static void json_tracks_array(GArray* tracks, JsonBuilder* jb) {
 
         track_avail = track_available(track);
         track_get_data(track, &track_name, &track_artist, &track_album, &track_link,
-                       &track_duration, &track_popularity);
+                       &track_duration, &track_popularity, &track_starred);
 
         json_builder_begin_object(jb);
         jb_add_string(jb, "artist", track_artist);
@@ -92,6 +92,7 @@ static void json_tracks_array(GArray* tracks, JsonBuilder* jb) {
         jb_add_string(jb, "uri", track_link);
         jb_add_bool(jb, "available", track_avail);
         jb_add_int(jb, "popularity", track_popularity);
+        jb_add_bool(jb, "starred", track_starred);
         jb_add_int(jb, "index", i+1);
         json_builder_end_object(jb);
 
@@ -389,6 +390,7 @@ gboolean status(command_context* ctx) {
     gchar* track_artist;
     gchar* track_album;
     gchar* track_link;
+    bool track_starred;
 
     qs = queue_get_status(&track, &track_nb, &total_tracks);
 
@@ -404,7 +406,7 @@ gboolean status(command_context* ctx) {
         jb_add_int(ctx->jb, "current_track", track_nb+1);
 
         track_get_data(track, &track_name, &track_artist, &track_album, &track_link,
-                       &track_duration, &track_popularity);
+                       &track_duration, &track_popularity, &track_starred);
         track_position = session_play_time();
 
         jb_add_string(ctx->jb, "artist", track_artist);
@@ -414,6 +416,7 @@ gboolean status(command_context* ctx) {
         jb_add_double(ctx->jb, "position", track_position/1000.);
         jb_add_string(ctx->jb, "uri", track_link);
         jb_add_int(ctx->jb, "popularity", track_popularity);
+        jb_add_bool(ctx->jb, "starred", track_starred)
         g_free(track_name);
         g_free(track_artist);
         g_free(track_album);
@@ -926,7 +929,8 @@ static gboolean _uri_info_track_cb(gpointer* data) {
     gchar* album;
     guint duration;
     int popularity;
-    track_get_data(track, &name, &artist, &album, NULL, &duration, &popularity);
+    bool starred;
+    track_get_data(track, &name, &artist, &album, NULL, &duration, &popularity, &starred);
     gboolean available = track_available(track);
 
     jb_add_string(ctx->jb, "artist", artist);
@@ -936,6 +940,7 @@ static gboolean _uri_info_track_cb(gpointer* data) {
     jb_add_int(ctx->jb, "offset", offset);
     jb_add_bool(ctx->jb, "available", available);
     jb_add_int(ctx->jb, "popularity", popularity);
+    jb_add_bool(ctx->jb, "starred", starred);
 
     g_free(name);
     g_free(artist);
