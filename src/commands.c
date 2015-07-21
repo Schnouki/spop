@@ -1514,6 +1514,220 @@ gboolean uri_image_size(command_context* ctx, sp_link* lnk, guint size) {
 }
 
 /* }}} */
+/* {{{ Starred tracks */
+gboolean toggle_star(command_context* ctx) {
+    sp_track* track = NULL;
+    bool starred;
+
+    queue_get_status(&track, NULL, NULL);
+    if (!track) {
+        jb_add_string(ctx->jb, "status", "empty-queue");
+        return TRUE;
+    }
+    if (!sp_track_is_loaded(track)) {
+        jb_add_string(ctx->jb, "status", "not-loaded");
+        return TRUE;
+    }
+
+    track_get_data(track, NULL, NULL, NULL, NULL, NULL, NULL, &starred);
+    sp_track* tracks[] = {track, NULL};
+    track_set_starred(tracks, !starred);
+    return status(ctx);
+}
+
+/* Callback to set track starred status */
+struct _uri_star_tracks_data {
+    command_context* ctx;
+    size_t count;
+    sp_track** tracks;
+    bool starred;
+};
+
+static gboolean _uri_star_tracks_cb(struct _uri_star_tracks_data* data) {
+    data->count += 1;
+    size_t size = 0;
+    while (data->tracks[size] != NULL)
+        size += 1;
+
+    /* If any track is not loaded, wait a little more */
+    size_t i;
+    for (i=0; i < size; i++) {
+        if (!sp_track_is_loaded(data->tracks[i])) {
+            if (data->count < CMD_CALLBACK_MAX_CALLS)
+                return TRUE;
+            else {
+                jb_add_string(data->ctx->jb, "error", "track not loaded");
+                goto _ustc_clean;
+            }
+        }
+    }
+
+    // Star!
+    track_set_starred(data->tracks, data->starred);
+    jb_add_string(data->ctx->jb, "status", "success");
+    jb_add_int(data->ctx->jb, "tracks_changed", size);
+
+ _ustc_clean:
+    command_end(data->ctx);
+    g_free(data->tracks);
+    g_free(data);
+    return FALSE;
+}
+
+static void _uri_star_album_cb(sp_albumbrowse* ab, gpointer userdata) {
+    struct _uri_star_tracks_data* data = (struct _uri_star_tracks_data*) userdata;
+
+    /* Check for error */
+    sp_error err = sp_albumbrowse_error(ab);
+    if (err != SP_ERROR_OK) {
+        jb_add_string(data->ctx->jb, "error", sp_error_message(err));
+        goto _usac_clean_err;
+    }
+
+    /* Get all tracks */
+    int n = sp_albumbrowse_num_tracks(ab);
+    sp_track** tracks = g_new0(sp_track*, n+1);
+    size_t i;
+    for (i=0; i < n; i++) {
+        sp_track* tr = sp_albumbrowse_track(ab, i);
+        tracks[i] = tr;
+    }
+    data->tracks = tracks;
+
+    /* Delegate to the "tracks" callback */
+    g_idle_add((GSourceFunc) _uri_star_tracks_cb, data);
+    goto _usac_clean;
+
+ _usac_clean_err:
+    command_end(data->ctx);
+    g_free(data);
+
+ _usac_clean:
+    sp_albumbrowse_release(ab);
+}
+
+struct _uri_star_playlist_data {
+    struct _uri_star_tracks_data* data;
+    sp_playlist* pl;
+    sp_link* lnk;
+};
+static gboolean _uri_star_playlist_cb(struct _uri_star_playlist_data* pl_data) {
+    pl_data->data->count += 1;
+
+    /* If not loaded, wait a little more */
+    if (!sp_playlist_is_loaded(pl_data->pl)) {
+        if (pl_data->data->count < CMD_CALLBACK_MAX_CALLS)
+            return TRUE;
+        else {
+            jb_add_string(pl_data->data->ctx->jb, "error", "playlist not loaded");
+            goto _uspc_clean_err;
+        }
+    }
+
+    /* Get all tracks */
+    GArray* tracks = tracks_get_playlist(pl_data->pl);
+    pl_data->data->tracks = g_new(sp_track*, tracks->len + 1);
+    int i;
+    for (i=0; i < tracks->len; i++)
+        pl_data->data->tracks[i] = g_array_index(tracks, sp_track*, i);
+    pl_data->data->tracks[tracks->len] = NULL;
+    g_array_free(tracks, TRUE);
+
+    /* Delegate to the "tracks" callback */
+    pl_data->data->count -= 1;
+    g_idle_add((GSourceFunc) _uri_star_tracks_cb, pl_data->data);
+    goto _uspc_clean;
+
+ _uspc_clean_err:
+    command_end(pl_data->data->ctx);
+    g_free(pl_data->data);
+ _uspc_clean:
+    sp_link_release(pl_data->lnk);
+    g_free(pl_data);
+    return FALSE;
+}
+
+gboolean uri_star(command_context* ctx, sp_link* lnk, guint starred) {
+    sp_linktype type = sp_link_type(lnk);
+    gboolean done = TRUE;
+
+    switch(type) {
+    case SP_LINKTYPE_INVALID:
+        jb_add_string(ctx->jb, "error", "link not supported");
+        sp_link_release(lnk);
+        break;
+
+    case SP_LINKTYPE_TRACK: {
+        sp_track* track = sp_link_as_track(lnk);
+        if (!track) {
+            jb_add_string(ctx->jb, "error", "can't retrieve track");
+            sp_link_release(lnk);
+            break;
+        }
+        struct _uri_star_tracks_data* data = g_malloc0(sizeof(struct _uri_star_tracks_data));
+        data->ctx = ctx;
+        data->count = 0;
+        data->tracks = g_new(sp_track*, 2);
+        data->tracks[0] = track;
+        data->tracks[1] = NULL;
+        data->starred = starred;
+        if (!sp_track_is_loaded(track))
+            g_timeout_add(CMD_CALLBACK_WAIT_TIME, (GSourceFunc) _uri_star_tracks_cb, data);
+        else
+            _uri_star_tracks_cb(data);
+        done = FALSE;
+        break;
+    }
+
+    case SP_LINKTYPE_ALBUM: {
+        sp_album* album = sp_link_as_album(lnk);
+        if (!album) {
+            jb_add_string(ctx->jb, "error", "can't retrieve album");
+            sp_link_release(lnk);
+            break;
+        }
+        done = FALSE;
+        struct _uri_star_tracks_data* data = g_malloc0(sizeof(struct _uri_star_tracks_data));
+        data->ctx = ctx;
+        data->count = 0;
+        data->starred = starred;
+        albumbrowse_create(album, _uri_star_album_cb, data);
+        sp_link_release(lnk);
+        break;
+    }
+
+    case SP_LINKTYPE_PLAYLIST: {
+        sp_playlist* pl = playlist_get_from_link(lnk);
+        if (!pl) {
+            jb_add_string(ctx->jb, "error", "can't retrieve playlist");
+            sp_link_release(lnk);
+            break;
+        }
+        struct _uri_star_tracks_data* data = g_malloc0(sizeof(struct _uri_star_tracks_data));
+        data->ctx = ctx;
+        data->count = 0;
+        data->starred = starred;
+        struct _uri_star_playlist_data* pl_data = g_malloc0(sizeof(struct _uri_star_playlist_data));
+        pl_data->data = data;
+        pl_data->pl = pl;
+        pl_data->lnk = lnk;
+        if (!sp_playlist_is_loaded(pl))
+            g_timeout_add(CMD_CALLBACK_WAIT_TIME, (GSourceFunc) _uri_star_playlist_cb, pl_data);
+        else
+            _uri_star_playlist_cb(pl_data);
+        done = FALSE;
+
+        break;
+    }
+    default:
+        jb_add_string(ctx->jb, "error", "not implemented");
+        sp_link_release(lnk);
+        break;
+    }
+
+    return done;
+}
+/* }}} */
 /* {{{ Search */
 static void _search_cb(sp_search* srch, gpointer userdata) {
     command_context* ctx = (command_context*) userdata;

@@ -171,6 +171,12 @@ Except for that, the following commands are available:
 
 ---
 
+- `star`: toggle the "starred" status of the current track
+- `ustar uri val`: set the "starred" status of all the tracks in the given URI
+  (playlist, track or album) to `val` (0 or 1)
+
+---
+
 - `bye`: close the connection to the spop daemon
 - `quit`: exit spop
 

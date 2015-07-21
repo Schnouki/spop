@@ -84,6 +84,9 @@ gboolean uri_play(command_context* ctx, sp_link* lnk);
 gboolean uri_image(command_context* ctx, sp_link* lnk);
 gboolean uri_image_size(command_context* ctx, sp_link* lnk, guint size);
 
+gboolean toggle_star(command_context* ctx);
+gboolean uri_star(command_context* ctx, sp_link* lnk, guint starred);
+
 gboolean search(command_context* ctx, const gchar* query);
 
 #endif

@@ -510,6 +510,17 @@ gboolean track_available(sp_track* track) {
     return (sp_track_get_availability(g_session, track) == SP_TRACK_AVAILABILITY_AVAILABLE);
 }
 
+void track_set_starred(sp_track** tracks, gboolean starred) {
+    size_t size = 0;
+    while (tracks[size] != NULL)
+        size += 1;
+    if (size == 0)
+        return;
+    sp_error error = sp_track_set_starred(g_session, tracks, size, starred);
+    if (error != SP_ERROR_OK)
+        g_warning("Failed to set track starred status: %s", sp_error_message(error));
+}
+
 sp_image* image_id_get_image(const void* img_id) {
   return sp_image_create(g_session, img_id);
 }

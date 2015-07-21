@@ -96,6 +96,9 @@ command_full_descriptor g_commands[] = {
     { "uimage",  CT_FUNC, { uri_image,      {CA_URI, CA_NONE}}, "get the cover image for the given URI"},
     { "uimage",  CT_FUNC, { uri_image_size, {CA_URI, CA_INT}},  "get the cover image for a given URI; size must be 0 (normal), 1 (large) or 2 (small)"},
 
+    { "star",    CT_FUNC, { toggle_star, {CA_NONE}},        "toggle the \"starred\" status of the current track"},
+    { "ustar",   CT_FUNC, { uri_star,    {CA_URI, CA_INT}}, "set the \"starred\" status of the given Spotify URI arg1 (playlist, track or album) to arg2 (0 or 1)"},
+
     { "search",  CT_FUNC, { search, {CA_STR, CA_NONE}}, "perform a search with the given query arg1"},
 
     { "bye",     CT_BYE,  {}, "close the connection to the spop daemon"},
