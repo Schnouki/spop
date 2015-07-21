@@ -178,6 +178,10 @@ void session_init() {
     g_debug("Setting cache size to %zu.", cache_size);
     sp_session_set_cache_size(g_session, cache_size);
 
+    gboolean normalize_volume = config_get_bool_opt("normalize_volume", TRUE);
+    g_debug("%s volume normalization.", normalize_volume ? "Enabling" : "Disabling");
+    sp_session_set_volume_normalization(g_session, normalize_volume);
+
     g_debug("Session created.");
 }
 

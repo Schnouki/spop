@@ -30,6 +30,9 @@ spotify_password = PASSWORD
 # space.
 #cache_size = 0
 
+# Enable volume normalization in libspotify. Enabled by default.
+#normalize_volume = true
+
 # Number of results returned by the search command.
 #search_results = 100
 
