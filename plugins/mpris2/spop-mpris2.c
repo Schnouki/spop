@@ -71,8 +71,10 @@ GVariant* spop_get_track_metadata(sp_track* track) {
     gchar* track_album;
     gchar* track_link;
     int duration;
+    int popularity;
+    bool starred;
 
-    track_get_data(track, &track_name, &track_artist, &track_album, &track_link, &duration, NULL, NULL);
+    track_get_data(track, &track_name, &track_artist, &track_album, &track_link, &duration, &popularity, &starred);
 
     /* Turn artist into a GVariant array of strings */
     gchar* artists[] = {track_artist, NULL};
@@ -100,6 +102,9 @@ GVariant* spop_get_track_metadata(sp_track* track) {
     g_variant_builder_add_parsed(vb, "{'xesam:url', <%s>}", track_link);
     if (image_uri)
         g_variant_builder_add_parsed(vb, "{'mpris:artUrl', <%s>}", image_uri);
+    g_variant_builder_add_parsed(vb, "{'xesam:autoRating', <%d>}", popularity / 100.);
+    if (starred)
+        g_variant_builder_add_parsed(vb, "{'xesam:userRating', <1.0>}");
 
     GVariant* metadata = g_variant_builder_end(vb);
 
