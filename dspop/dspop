@@ -73,7 +73,7 @@ class SpopClient:
 
     def __getattr__(self, name):
         if name in ("repeat", "shuffle", "qclear", "qls", "ls", "goto", "add", "next", "prev", "toggle", "play", "offline_toggle",
-                    "search", "status", "uadd", "uinfo", "uplay"):
+                    "search", "star", "status", "uadd", "uinfo", "uplay"):
             def func(*attrs):
                 return self._command(name.replace("_", "-"), *attrs)
             return func
@@ -185,6 +185,7 @@ def format_folder(items, indent=0, offline_status=False):
 def main_menu(sc):
     done = False
     while not done:
+        status = sc.status()
         choices = [
             ("queue",     "[ Queue ]>"),
             ("playlists", "[ Playlists ]>"),
@@ -199,6 +200,8 @@ def main_menu(sc):
             ("next",      "[ Next Track ]"),
             ("prev",      "[ Previous Track ]"),
         ]
+        if "starred" in status:
+            choices += [("star", "[ Unstar ]" if status["starred"] else "[ Star ]")]
 
         idx = dmenu([ch[1] for ch in choices])
         choice = None if idx is None else choices[idx][0]
@@ -221,6 +224,8 @@ def main_menu(sc):
             sc.next()
         elif choice == "prev":
             sc.prev()
+        elif choice == "star":
+            sc.star()
         elif choice == "search":
             done = menu_search(sc)
         elif choice == "search_pl":
