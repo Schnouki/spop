@@ -36,9 +36,10 @@ TRACK_FMT = "{playing}{index} - {artist} - {album} - {track} ({duration})"
 SEARCH_ALBUM_FMT = "({year}) {artist} - {album} ({tracks} tracks)"
 SEARCH_PLAYLIST_FMT = "{name} (by {owner}, {tracks} tracks)"
 SEARCH_TRACK_FMT = "{artist} - {album} - {track} ({duration})"
+STAR_TRACK_FMT = "{action} \"{title}\" by {artist}"
 
 DMENU_OPTS = ["-i", "-l", "40"]
-ROFI_OPTS = ["-dmenu" , "-columns" , "1"]
+ROFI_OPTS = ["-dmenu", "-i" , "-columns" , "1"]
 
 # Use rofi if it's available
 USE_ROFI = False
@@ -201,7 +202,8 @@ def main_menu(sc):
             ("prev",      "[ Previous Track ]"),
         ]
         if "starred" in status:
-            choices += [("star", "[ Unstar ]" if status["starred"] else "[ Star ]")]
+            action = "[ Unstar ]" if status["starred"] else "[ Star ]"
+            choices += [("star", STAR_TRACK_FMT.format(action=action, **status))]
 
         idx = dmenu([ch[1] for ch in choices])
         choice = None if idx is None else choices[idx][0]
