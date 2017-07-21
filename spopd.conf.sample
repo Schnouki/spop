@@ -36,7 +36,7 @@ spotify_password = PASSWORD
 # Number of results returned by the search command.
 #search_results = 100
 
-# Audio plugin -- right now, three plugins are available:
+# Audio plugin -- right now, four plugins are available:
 # - ao: uses libao, a simple and very portable library. Recommended for people
 #   who use ALSA, a sound server (Pulse Audio, aRts, etc.), or a platform that
 #   does not support OSS (Windows, MacOS X).
@@ -46,6 +46,8 @@ spotify_password = PASSWORD
 #   Probably not as lightweight as ao and oss, but supports more platform, and -
 #   adds the possibility to apply effects to the audio output. More details in -
 #   the [sox] section.
+# - dummy: a dummy plugin that does nothing. Useful when you just want to use
+#   spop on a device without a sound card.
 audio_output = ao
 
 # Address and port on which spopd should listen for commands.

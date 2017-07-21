@@ -90,6 +90,17 @@ else(APPLE)
   target_link_libraries(spopd rt)
 endif(APPLE)
 
+# Audio plugin: dummy
+set(AUDIO_DUMMY
+  plugins/dummy.c
+)
+add_library(spop_audio_dummy MODULE ${AUDIO_DUMMY})
+set_target_properties(spop_audio_dummy PROPERTIES
+  COMPILE_FLAGS "${GLIB2_CFLAGS}"
+)
+target_link_libraries(spop_audio_dummy ${GLIB2_LIBRARIES})
+set(targets ${targest} spop_audio_dummy)
+
 # Audio plugin: OSS
 if(HAVE_SYS_SOUNDCARD_H)
   set(AUDIO_OSS
