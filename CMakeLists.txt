@@ -99,7 +99,7 @@ set_target_properties(spop_audio_dummy PROPERTIES
   COMPILE_FLAGS "${GLIB2_CFLAGS}"
 )
 target_link_libraries(spop_audio_dummy ${GLIB2_LIBRARIES})
-set(targets ${targest} spop_audio_dummy)
+set(targets ${targets} spop_audio_dummy)
 
 # Audio plugin: OSS
 if(HAVE_SYS_SOUNDCARD_H)
