@@ -353,6 +353,8 @@ def menu_search(sc, include_playlists=False):
             if "error" in playlist:
                 continue
             pinfo = sc.uinfo(playlist["uri"])
+            if "error" in pinfo:
+                continue
             containers_by_uri[playlist["uri"]] = pinfo
             item = SearchItem(playlist["uri"], "  " + format_search_playlist(pinfo), True)
             playlists.append(item)
